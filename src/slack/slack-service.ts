@@ -1,7 +1,7 @@
 import { WebClient, LogLevel } from '@slack/web-api';
-import { CONFIG } from '../config/index';
-import { logger } from '../utils/logger';
-import { SlackAPIError } from '../utils/errors';
+import { CONFIG } from '../config/index.js';
+import { logger } from '../utils/logger.js';
+import { SlackAPIError } from '../utils/errors.js';
 import {
   validateInput,
   SendMessageSchema,
@@ -40,7 +40,7 @@ import {
   ListTeamMembersSchema,
   GetWorkspaceActivitySchema,
   GetServerHealthSchema,
-} from '../utils/validation';
+} from '../utils/validation.js';
 import type {
   SlackThread,
   ThreadAnalysis,
@@ -60,7 +60,7 @@ import type {
   WorkspaceActivity,
   ServerHealth,
   SearchThreadsInput,
-} from './types';
+} from './types.js';
 
 /**
  * Service class for Slack API operations

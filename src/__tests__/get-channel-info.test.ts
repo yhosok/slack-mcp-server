@@ -1,11 +1,11 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { SlackService } from '../slack/slack-service';
+import { SlackService } from '../slack/slack-service.js';
 import { WebClient } from '@slack/web-api';
 
 jest.mock('@slack/web-api');
 
 // Mock the config module
-jest.mock('../config/index', () => ({
+jest.mock('../config/index.js', () => ({
   CONFIG: {
     SLACK_BOT_TOKEN: 'xoxb-test-token',
     LOG_LEVEL: 'info',

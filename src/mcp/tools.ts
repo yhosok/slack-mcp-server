@@ -2,7 +2,7 @@
  * MCP tool definitions for Slack operations
  */
 
-import type { MCPTool } from './types';
+import type { MCPTool } from './types.js';
 
 /**
  * Tool definition for sending messages to Slack

@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { SlackService } from '../slack/slack-service';
+import { SlackService } from '../slack/slack-service.js';
 import { WebClient } from '@slack/web-api';
 
 jest.mock('@slack/web-api');
@@ -11,7 +11,7 @@ const mockConfig = {
   LOG_LEVEL: 'info',
 };
 
-jest.unstable_mockModule('../config/index', () => ({
+jest.unstable_mockModule('../config/index.js', () => ({
   CONFIG: mockConfig,
 }));
 

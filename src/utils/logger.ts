@@ -1,4 +1,4 @@
-import { getConfig } from '../config/index';
+import { getConfig } from '../config/index.js';
 
 /**
  * Log levels enumeration

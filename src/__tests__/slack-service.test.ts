@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
-import { SlackService } from '../slack/slack-service';
-import { SlackAPIError } from '../utils/errors';
+import { SlackService } from '../slack/slack-service.js';
+import { SlackAPIError } from '../utils/errors.js';
 
 // Mock the WebClient
 jest.mock('@slack/web-api', () => ({
@@ -32,7 +32,7 @@ jest.mock('@slack/web-api', () => ({
 }));
 
 // Mock the config
-jest.mock('../config/index', () => ({
+jest.mock('../config/index.js', () => ({
   CONFIG: {
     SLACK_BOT_TOKEN: 'xoxb-test-token',
     LOG_LEVEL: 'info',
