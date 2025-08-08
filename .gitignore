@@ -52,3 +52,4 @@ temp/
 # claude
 .claude/
 .mcp.json
+CLAUDE.md
