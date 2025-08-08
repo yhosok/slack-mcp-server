@@ -4,20 +4,20 @@ This Slack MCP (Model Context Protocol) server now provides comprehensive file o
 
 ## 🚀 Quick Start
 
-### MCP Client Configuration
+### MCP Configuration
 
-This server can be used with any MCP-compatible client (Claude Desktop, VSCode, etc.).
+This server implements the Model Context Protocol (MCP) and can be used with any MCP-compatible client.
 
-#### Using with Claude Desktop
+#### Configuration Examples
 
-Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+##### Direct from GitHub repository (Basic - Bot token only)
 
 ```json
 {
   "mcpServers": {
     "slack": {
       "command": "npx",
-      "args": ["slack-mcp-server"],
+      "args": ["-y", "github:yhosok/slack-mcp-server"],
       "env": {
         "SLACK_BOT_TOKEN": "xoxb-your-token-here"
       }
@@ -26,21 +26,46 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 }
 ```
 
-#### Using with local installation
+##### With extended functionality (User token for search)
+
+```json
+{
+  "mcpServers": {
+    "slack": {
+      "command": "npx",
+      "args": ["-y", "github:yhosok/slack-mcp-server"],
+      "env": {
+        "SLACK_BOT_TOKEN": "xoxb-your-token-here",
+        "SLACK_USER_TOKEN": "xoxp-your-user-token",
+        "USE_USER_TOKEN_FOR_READ": "true"
+      }
+    }
+  }
+}
+```
+
+##### Local installation
 
 ```json
 {
   "mcpServers": {
     "slack": {
       "command": "node",
-      "args": ["/path/to/slack-mcp-server/dist/index.js"],
+      "args": ["./path/to/slack-mcp-server/dist/index.js"],
       "env": {
-        "SLACK_BOT_TOKEN": "xoxb-your-token-here"
+        "SLACK_BOT_TOKEN": "xoxb-your-token-here",
+        "SLACK_USER_TOKEN": "xoxp-your-user-token",  // Optional
+        "USE_USER_TOKEN_FOR_READ": "true"              // Optional
       }
     }
   }
 }
 ```
+
+**Notes**: 
+- The `-y` flag in npx commands ensures automatic installation without prompts
+- `SLACK_USER_TOKEN` is required when `USE_USER_TOKEN_FOR_READ` is set to `true`
+- User token enables search functionality and broader workspace visibility
 
 ### Local Development
 ```bash
