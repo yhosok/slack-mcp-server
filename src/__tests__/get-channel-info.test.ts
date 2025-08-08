@@ -1,8 +1,19 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { SlackService } from '../slack/slack-service.js';
+import { SlackService } from '../slack/slack-service';
 import { WebClient } from '@slack/web-api';
 
 jest.mock('@slack/web-api');
+
+// Mock the config module
+jest.mock('../config/index', () => ({
+  CONFIG: {
+    SLACK_BOT_TOKEN: 'xoxb-test-token',
+    LOG_LEVEL: 'info',
+    MCP_SERVER_NAME: 'test-server',
+    MCP_SERVER_VERSION: '1.0.0',
+    PORT: 3000,
+  },
+}));
 
 describe('SlackService.getChannelInfo', () => {
   let slackService: SlackService;

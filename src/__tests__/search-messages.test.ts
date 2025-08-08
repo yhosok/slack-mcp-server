@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { SlackService } from '../slack/slack-service.js';
+import { SlackService } from '../slack/slack-service';
 import { WebClient } from '@slack/web-api';
 
 jest.mock('@slack/web-api');
@@ -11,7 +11,7 @@ const mockConfig = {
   LOG_LEVEL: 'info',
 };
 
-jest.unstable_mockModule('../config/index.js', () => ({
+jest.unstable_mockModule('../config/index', () => ({
   CONFIG: mockConfig,
 }));
 
@@ -41,9 +41,7 @@ describe('SlackService.searchMessages', () => {
     } as any;
     
     // Mock WebClient constructor to return different instances
-    let callCount = 0;
     (WebClient as any).mockImplementation((token: string) => {
-      callCount++;
       if (token === 'xoxp-test-token') {
         return mockUserClient;
       } else {

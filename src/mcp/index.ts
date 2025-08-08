@@ -2,5 +2,5 @@
  * MCP module barrel export
  */
 
-export * from './types.js';
-export * from './tools.js';
+export * from './types';
+export * from './tools';

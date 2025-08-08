@@ -54,6 +54,68 @@ npm run build
 npm start
 ```
 
+## ⚙️ Configuration
+
+### Environment Variables
+
+The server supports the following environment variables:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SLACK_BOT_TOKEN` | ✅ Yes | - | Bot token (xoxb-*) from your Slack App |
+| `SLACK_USER_TOKEN` | ❌ No | - | User token (xoxp-*) for extended functionality |
+| `USE_USER_TOKEN_FOR_READ` | ❌ No | `false` | Use user token for read operations |
+| `LOG_LEVEL` | ❌ No | `info` | Logging level (debug, info, warn, error) |
+
+### Token Usage Strategy
+
+By default (security-first approach):
+- **All operations use bot token** (requires proper bot scopes)
+- Search operations will return helpful error messages
+
+For extended functionality:
+- Set `USE_USER_TOKEN_FOR_READ=true` to enable:
+  - Message and file search capabilities
+  - Access to channels bot hasn't joined
+  - Broader workspace visibility
+
+Example configurations:
+
+#### Bot Token Only (Default - Most Secure)
+```json
+{
+  "env": {
+    "SLACK_BOT_TOKEN": "xoxb-your-bot-token"
+  }
+}
+```
+
+#### With User Token for Extended Features
+```json
+{
+  "env": {
+    "SLACK_BOT_TOKEN": "xoxb-your-bot-token",
+    "SLACK_USER_TOKEN": "xoxp-your-user-token",
+    "USE_USER_TOKEN_FOR_READ": "true"
+  }
+}
+```
+
+### Required Bot Token Scopes
+
+For bot-only mode, ensure your Slack App has these OAuth scopes:
+- `channels:read` - Read channel information
+- `channels:history` - Read channel messages
+- `groups:read` - Read private channels
+- `groups:history` - Read private channel messages
+- `users:read` - Read user information
+- `team:read` - Read workspace information
+- `files:read` - Read file information
+- `files:write` - Upload and manage files
+- `chat:write` - Send messages
+- `reactions:read` - Read reactions
+- `reactions:write` - Add/remove reactions
+
 ## 🚀 New Features Implemented
 
 ### File Operations

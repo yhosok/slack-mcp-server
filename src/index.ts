@@ -12,17 +12,17 @@ const __dirname = path.dirname(__filename);
 // Look for .env in the project root (parent of dist or src)
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   Tool,
-} from '@modelcontextprotocol/sdk/types.js';
-import { SlackService } from './slack/slack-service.js';
-import { CONFIG } from './config/index.js';
-import { logger } from './utils/logger.js';
-import { ALL_TOOLS } from './mcp/tools.js';
+} from '@modelcontextprotocol/sdk/types';
+import { SlackService } from './slack/slack-service';
+import { CONFIG } from './config/index';
+import { logger } from './utils/logger';
+import { ALL_TOOLS } from './mcp/tools';
 
 /**
  * Main MCP Server class for Slack integration

@@ -1,7 +1,7 @@
 import { WebClient, LogLevel } from '@slack/web-api';
-import { CONFIG } from '../config/index.js';
-import { logger } from '../utils/logger.js';
-import { SlackAPIError } from '../utils/errors.js';
+import { CONFIG } from '../config/index';
+import { logger } from '../utils/logger';
+import { SlackAPIError } from '../utils/errors';
 import {
   validateInput,
   SendMessageSchema,
@@ -40,7 +40,7 @@ import {
   ListTeamMembersSchema,
   GetWorkspaceActivitySchema,
   GetServerHealthSchema,
-} from '../utils/validation.js';
+} from '../utils/validation';
 import type {
   SlackThread,
   ThreadAnalysis,
@@ -60,7 +60,7 @@ import type {
   WorkspaceActivity,
   ServerHealth,
   SearchThreadsInput,
-} from './types.js';
+} from './types';
 
 /**
  * Service class for Slack API operations
@@ -98,6 +98,43 @@ export class SlackService {
     return this.userClient;
   }
 
+  /**
+   * Get the appropriate client based on operation type and configuration
+   * @param operationType - 'read' for read operations, 'write' for write operations
+   * @returns WebClient instance configured with bot or user token
+   */
+  private getClientForOperation(operationType: 'read' | 'write'): WebClient {
+    // For write operations, always use bot token
+    if (operationType === 'write') {
+      return this.getClient();
+    }
+    
+    // For read operations, check configuration
+    if (CONFIG.USE_USER_TOKEN_FOR_READ && CONFIG.SLACK_USER_TOKEN) {
+      // Use user token for read operations if configured and available
+      return this.getUserClient();
+    }
+    
+    // Default to bot token for all operations
+    return this.getClient();
+  }
+
+  /**
+   * Check if search API is available and throw appropriate error if not
+   * @param operationName - Name of the search operation for error messaging
+   * @param alternative - Alternative method suggestion for error message
+   */
+  private checkSearchApiAvailability(operationName: string, alternative: string): void {
+    if (!CONFIG.USE_USER_TOKEN_FOR_READ || !CONFIG.SLACK_USER_TOKEN) {
+      throw new SlackAPIError(
+        `${operationName} requires a user token. Bot tokens cannot use search API. ` +
+        'Please either:\n' +
+        '1. Set USE_USER_TOKEN_FOR_READ=true and provide SLACK_USER_TOKEN (xoxp-*), or\n' +
+        `2. ${alternative}`
+      );
+    }
+  }
+
   private getSlackLogLevel(): LogLevel {
     switch (CONFIG.LOG_LEVEL) {
       case 'debug':
@@ -128,7 +165,7 @@ export class SlackService {
     }
 
     try {
-      const result = await this.getUserClient().users.info({ user: userId });
+      const result = await this.getClientForOperation('read').users.info({ user: userId });
       if (result.user) {
         // Prefer display_name, then real_name, then name
         const displayName = result.user.profile?.display_name ||
@@ -174,7 +211,7 @@ export class SlackService {
     try {
       logger.info(`Sending message to channel: ${input.channel}`);
       
-      const result = await this.getClient().chat.postMessage({
+      const result = await this.getClientForOperation('write').chat.postMessage({
         channel: input.channel,
         text: input.text,
         ...(input.thread_ts && { thread_ts: input.thread_ts }),
@@ -212,7 +249,7 @@ export class SlackService {
     try {
       logger.info('Fetching channels list');
       
-      const result = await this.getUserClient().conversations.list({
+      const result = await this.getClientForOperation('read').conversations.list({
         ...(input.types && { types: input.types }),
         exclude_archived: true,
       });
@@ -262,7 +299,7 @@ export class SlackService {
     try {
       logger.info(`Fetching history for channel: ${input.channel}`);
       
-      const result = await this.getUserClient().conversations.history({
+      const result = await this.getClientForOperation('read').conversations.history({
         channel: input.channel,
         ...(input.limit && { limit: input.limit }),
       });
@@ -301,7 +338,13 @@ export class SlackService {
     try {
       logger.info(`Searching messages with query: ${input.query}`);
       
-      const result = await this.getUserClient().search.messages({
+      // Check if search API is available
+      this.checkSearchApiAvailability(
+        'Search operations',
+        'Use alternative methods like get_channel_history with filtering'
+      );
+      
+      const result = await this.getClientForOperation('read').search.messages({
         query: input.query,
         sort: input.sort,
         sort_dir: input.sort_dir,
@@ -359,7 +402,7 @@ export class SlackService {
     try {
       logger.info(`Fetching channel info for: ${input.channel}`);
       
-      const result = await this.getUserClient().conversations.info({
+      const result = await this.getClientForOperation('read').conversations.info({
         channel: input.channel,
         include_locale: true,
         include_num_members: true,
@@ -423,7 +466,7 @@ export class SlackService {
     try {
       logger.info(`Fetching user info for: ${input.user}`);
       
-      const result = await this.getUserClient().users.info({
+      const result = await this.getClientForOperation('read').users.info({
         user: input.user,
       });
 
@@ -490,7 +533,7 @@ export class SlackService {
       logger.info(`Finding threads in channel: ${input.channel}`);
       
       // First, get channel history to find messages with replies
-      const result = await this.getUserClient().conversations.history({
+      const result = await this.getClientForOperation('read').conversations.history({
         channel: input.channel,
         ...(input.limit && { limit: input.limit }),
         ...(input.cursor && { cursor: input.cursor }),
@@ -514,7 +557,7 @@ export class SlackService {
       
       for (const parentMsg of threadParents) {
         // Get thread replies for each parent message
-        const repliesResult = await this.getUserClient().conversations.replies({
+        const repliesResult = await this.getClientForOperation('read').conversations.replies({
           channel: input.channel,
           ts: parentMsg.ts!,
           limit: 100,
@@ -573,7 +616,7 @@ export class SlackService {
     try {
       logger.info(`Getting thread replies: ${input.channel}/${input.thread_ts}`);
       
-      const result = await this.getUserClient().conversations.replies({
+      const result = await this.getClientForOperation('read').conversations.replies({
         channel: input.channel,
         ts: input.thread_ts,
         ...(input.limit && { limit: input.limit }),
@@ -636,6 +679,12 @@ export class SlackService {
     try {
       logger.info(`Searching threads with query: "${input.query}"`);
       
+      // Check if search API is available
+      this.checkSearchApiAvailability(
+        'Thread search',
+        'Use find_threads_in_channel for channel-specific thread discovery'
+      );
+      
       // Use Slack's search API to find messages
       const searchQuery = this.buildThreadSearchQuery(input);
       
@@ -646,7 +695,7 @@ export class SlackService {
       };
       if (input.limit) searchArgs.count = input.limit;
 
-      const result = await this.getUserClient().search.messages(searchArgs);
+      const result = await this.getClientForOperation('read').search.messages(searchArgs);
 
       if (!result.ok) {
         throw new SlackAPIError(`Failed to search messages: ${result.error}`);
@@ -675,7 +724,7 @@ export class SlackService {
           try {
             // Try to get thread details using user client for broader access
             // Note: User token has access to more channels and history
-            const threadResult = await this.getUserClient().conversations.replies({
+            const threadResult = await this.getClientForOperation('read').conversations.replies({
               channel: message.channel.id,
               ts: threadTs,
             });
@@ -775,7 +824,7 @@ export class SlackService {
     try {
       logger.info(`Posting reply to thread: ${input.channel}/${input.thread_ts}`);
       
-      const result = await this.getClient().chat.postMessage({
+      const result = await this.getClientForOperation('write').chat.postMessage({
         channel: input.channel,
         text: input.text,
         thread_ts: input.thread_ts,
@@ -815,7 +864,7 @@ export class SlackService {
       logger.info(`Creating new thread in channel: ${input.channel}`);
       
       // Post the initial message
-      const parentResult = await this.getClient().chat.postMessage({
+      const parentResult = await this.getClientForOperation('write').chat.postMessage({
         channel: input.channel,
         text: input.text,
       });
@@ -827,7 +876,7 @@ export class SlackService {
       let replyResult;
       // If reply text is provided, post a reply to create the thread
       if (input.reply_text) {
-        replyResult = await this.getClient().chat.postMessage({
+        replyResult = await this.getClientForOperation('write').chat.postMessage({
           channel: input.channel,
           text: input.reply_text,
           thread_ts: parentResult.ts!,
@@ -871,7 +920,7 @@ export class SlackService {
       
       // Add a bookmark or pin the message (if the bot has permissions)
       // For now, we'll add a reaction and/or post a message
-      const reactionResult = await this.getClient().reactions.add({
+      const reactionResult = await this.getClientForOperation('write').reactions.add({
         channel: input.channel,
         timestamp: input.thread_ts,
         name: this.getImportanceReaction(input.importance_level || 'medium'),
@@ -885,7 +934,7 @@ export class SlackService {
       const notificationText = `📌 Thread marked as **${input.importance_level}** importance` +
         (input.reason ? ` - ${input.reason}` : '');
 
-      const messageResult = await this.getClient().chat.postMessage({
+      const messageResult = await this.getClientForOperation('write').chat.postMessage({
         channel: input.channel,
         text: notificationText,
         thread_ts: input.thread_ts,
@@ -930,7 +979,7 @@ export class SlackService {
       logger.info(`Analyzing thread: ${input.channel}/${input.thread_ts}`);
       
       // Get the full thread
-      const result = await this.getUserClient().conversations.replies({
+      const result = await this.getClientForOperation('read').conversations.replies({
         channel: input.channel,
         ts: input.thread_ts,
         limit: 1000,
@@ -1015,7 +1064,7 @@ export class SlackService {
     try {
       logger.info(`Summarizing thread: ${input.channel}/${input.thread_ts}`);
       
-      const result = await this.getUserClient().conversations.replies({
+      const result = await this.getClientForOperation('read').conversations.replies({
         channel: input.channel,
         ts: input.thread_ts,
         limit: 1000,
@@ -1027,7 +1076,7 @@ export class SlackService {
 
       const messages = result.messages || [];
       const participants = this.analyzeThreadParticipants(messages as any[]);
-      const keyTopics = this.extractTopicsFromThread(messages as any[]);
+      // const keyTopics = this.extractTopicsFromThread(messages as any[]); // TODO: Use for topic extraction
       const actionItems = input.include_action_items ? this.extractActionItemsFromMessages(messages as any[]) : [];
       const decisions = input.include_decisions ? this.extractDecisions(messages as any[]) : [];
 
@@ -1073,7 +1122,7 @@ export class SlackService {
     try {
       logger.info(`Extracting action items from thread: ${input.channel}/${input.thread_ts}`);
       
-      const result = await this.getUserClient().conversations.replies({
+      const result = await this.getClientForOperation('read').conversations.replies({
         channel: input.channel,
         ts: input.thread_ts,
         limit: 1000,
@@ -1139,7 +1188,7 @@ export class SlackService {
       const oldestTime = (Date.now() / 1000 - hoursAgo * 3600).toString();
       
       // Get recent messages from the channel
-      const result = await this.getUserClient().conversations.history({
+      const result = await this.getClientForOperation('read').conversations.history({
         channel: input.channel,
         oldest: oldestTime,
         limit: 200,
@@ -1158,7 +1207,7 @@ export class SlackService {
 
       for (const parentMsg of threadParents) {
         try {
-          const repliesResult = await this.getUserClient().conversations.replies({
+          const repliesResult = await this.getClientForOperation('read').conversations.replies({
             channel: input.channel,
             ts: parentMsg.ts!,
           });
@@ -1230,7 +1279,7 @@ export class SlackService {
     try {
       logger.info(`Exporting thread: ${input.channel}/${input.thread_ts} as ${input.format}`);
       
-      const result = await this.getUserClient().conversations.replies({
+      const result = await this.getClientForOperation('read').conversations.replies({
         channel: input.channel,
         ts: input.thread_ts,
         limit: 1000,
@@ -1282,7 +1331,7 @@ messages as any[],
       logger.info(`Finding threads related to: ${input.channel}/${input.thread_ts}`);
       
       // Get the source thread
-      const sourceResult = await this.getUserClient().conversations.replies({
+      const sourceResult = await this.getClientForOperation('read').conversations.replies({
         channel: input.channel,
         ts: input.thread_ts,
         limit: 1000,
@@ -1294,16 +1343,35 @@ messages as any[],
 
       const sourceMessages = sourceResult.messages || [];
       const sourceKeywords = this.extractTopicsFromThread(sourceMessages as SlackMessage[]);
-      const sourceParticipants = this.analyzeThreadParticipants(sourceMessages as SlackMessage[]).map(p => p.user_id);
+      // const sourceParticipants = this.analyzeThreadParticipants(sourceMessages as SlackMessage[]).map(p => p.user_id); // TODO: Use for participant matching
 
       const relatedThreads: RelatedThread[] = [];
 
+      // Check if search API is available
+      try {
+        this.checkSearchApiAvailability(
+          'Related thread search',
+          'Use find_threads_in_channel for channel-specific discovery'
+        );
+      } catch (error) {
+        logger.warn('Search API not available with bot token. Skipping search-based related thread discovery.');
+        if (error instanceof SlackAPIError) {
+          return {
+            content: [{
+              type: 'text',
+              text: error.message
+            }],
+          };
+        }
+        throw error;
+      }
+
       // Search for related threads using various methods
-      const searchQueries = this.buildRelatedThreadSearchQueries(sourceKeywords, input);
+      const searchQueries = this.buildRelatedThreadSearchQueries(sourceKeywords);
 
       for (const query of searchQueries) {
         try {
-          const searchResult = await this.getUserClient().search.messages({
+          const searchResult = await this.getClientForOperation('read').search.messages({
             query: query.query,
             count: 20,
           });
@@ -1313,13 +1381,7 @@ messages as any[],
               const message = match as any;
               
               if (message.channel?.id && message.ts && message.ts !== input.thread_ts) {
-                const similarity = this.calculateThreadSimilarity(
-                  sourceMessages as SlackMessage[],
-                  [message],
-                  sourceKeywords,
-                  sourceParticipants,
-                  query.type
-                );
+                const similarity = this.calculateThreadSimilarity();
 
                 if (similarity >= (input.similarity_threshold || 0.3)) {
                   relatedThreads.push({
@@ -1378,8 +1440,8 @@ messages as any[],
     try {
       logger.info(`Getting thread metrics for ${input.channel || 'all channels'}`);
       
-      const timeRange = this.calculateTimeRange(input.after, input.before);
-      let allThreads: SlackThread[] = [];
+      // const timeRange = this.calculateTimeRange(input.after, input.before); // TODO: Use for filtering threads
+      const allThreads: SlackThread[] = [];
 
       if (input.channel) {
         // Get threads from specific channel
@@ -1390,7 +1452,7 @@ messages as any[],
         logger.warn('Getting metrics for all channels not yet implemented');
       }
 
-      const metrics = this.calculateThreadMetrics(allThreads, input);
+      const metrics = this.calculateThreadMetrics(allThreads);
 
       return {
         content: [
@@ -1424,13 +1486,19 @@ messages as any[],
         ? input.participants.map(p => `from:${p}`).join(' ')
         : input.participants.map(p => `from:${p}`).join(' OR ');
       
+      // Check if search API is available
+      this.checkSearchApiAvailability(
+        'Participant search',
+        'Use get_channel_history with manual filtering as an alternative'
+      );
+      
       // Don't add has:thread - we'll filter for threads in the result processing
       const fullQuery = searchQuery + 
         (input.channel ? ` in:${input.channel}` : '') +
         (input.after ? ` after:${input.after}` : '') +
         (input.before ? ` before:${input.before}` : '');
 
-      const result = await this.getUserClient().search.messages({
+      const result = await this.getClientForOperation('read').search.messages({
         query: fullQuery,
         ...(input.limit && { count: input.limit }),
       });
@@ -1515,7 +1583,7 @@ messages as any[],
         uploadArgs.thread_ts = input.thread_ts;
       }
 
-      const result = await this.getClient().files.upload(uploadArgs);
+      const result = await this.getClientForOperation('write').files.upload(uploadArgs);
 
       if (!result.ok) {
         throw new SlackAPIError(`Failed to upload file: ${result.error}`);
@@ -1566,7 +1634,7 @@ messages as any[],
       if (input.count) listArgs.count = input.count;
       if (input.page) listArgs.page = input.page;
 
-      const result = await this.getUserClient().files.list(listArgs);
+      const result = await this.getClientForOperation('read').files.list(listArgs);
 
       if (!result.ok) {
         throw new SlackAPIError(`Failed to list files: ${result.error}`);
@@ -1610,7 +1678,7 @@ messages as any[],
     try {
       logger.info(`Getting file info: ${input.file_id}`);
       
-      const result = await this.getUserClient().files.info({
+      const result = await this.getClientForOperation('read').files.info({
         file: input.file_id,
         ...(input.include_comments && { count: 100 }),
       });
@@ -1668,7 +1736,7 @@ messages as any[],
     try {
       logger.info(`Deleting file: ${input.file_id}`);
       
-      const result = await this.getClient().files.delete({
+      const result = await this.getClientForOperation('write').files.delete({
         file: input.file_id,
       });
 
@@ -1704,7 +1772,7 @@ messages as any[],
     try {
       logger.info(`Sharing file ${input.file_id} to channel ${input.channel}`);
       
-      const result = await this.getClient().files.sharedPublicURL({
+      const result = await this.getClientForOperation('write').files.sharedPublicURL({
         file: input.file_id,
       });
 
@@ -1713,7 +1781,7 @@ messages as any[],
       }
 
       // Post the file link to the channel
-      const shareResult = await this.getClient().chat.postMessage({
+      const shareResult = await this.getClientForOperation('write').chat.postMessage({
         channel: input.channel,
         text: `Shared file: ${result.file?.permalink}`,
         unfurl_links: true,
@@ -1754,7 +1822,7 @@ messages as any[],
       const daysAgo = input.days_back || 30;
       const tsFrom = (Date.now() / 1000 - daysAgo * 24 * 3600).toString();
       
-      const result = await this.getUserClient().files.list({
+      const result = await this.getClientForOperation('read').files.list({
         ...(input.channel && { channel: input.channel }),
         ...(input.user && { user: input.user }),
         ts_from: tsFrom,
@@ -1796,6 +1864,12 @@ messages as any[],
     try {
       logger.info(`Searching files with query: "${input.query}"`);
       
+      // Check if search API is available
+      this.checkSearchApiAvailability(
+        'File search',
+        'Use list_files with filtering as an alternative'
+      );
+      
       // Build search query
       let searchQuery = input.query;
       if (input.types) searchQuery += ` filetype:${input.types}`;
@@ -1807,7 +1881,7 @@ messages as any[],
       const searchArgs: any = { query: searchQuery };
       if (input.count) searchArgs.count = input.count;
 
-      const result = await this.getUserClient().search.files(searchArgs);
+      const result = await this.getClientForOperation('read').search.files(searchArgs);
 
       if (!result.ok) {
         throw new SlackAPIError(`Failed to search files: ${result.error}`);
@@ -1854,7 +1928,7 @@ messages as any[],
     try {
       logger.info(`Adding reaction ${input.reaction_name} to message ${input.message_ts}`);
       
-      const result = await this.getClient().reactions.add({
+      const result = await this.getClientForOperation('write').reactions.add({
         channel: input.channel,
         timestamp: input.message_ts,
         name: input.reaction_name,
@@ -1892,7 +1966,7 @@ messages as any[],
     try {
       logger.info(`Removing reaction ${input.reaction_name} from message ${input.message_ts}`);
       
-      const result = await this.getClient().reactions.remove({
+      const result = await this.getClientForOperation('write').reactions.remove({
         channel: input.channel,
         timestamp: input.message_ts,
         name: input.reaction_name,
@@ -1936,7 +2010,7 @@ messages as any[],
       };
       if (input.full !== undefined) getArgs.full = input.full;
 
-      const result = await this.getUserClient().reactions.get(getArgs);
+      const result = await this.getClientForOperation('read').reactions.get(getArgs);
 
       if (!result.ok) {
         throw new SlackAPIError(`Failed to get reactions: ${result.error}`);
@@ -1987,7 +2061,7 @@ messages as any[],
       const messages: SlackMessage[] = [];
       
       if (input.channel) {
-        const result = await this.getUserClient().conversations.history({
+        const result = await this.getClientForOperation('read').conversations.history({
           channel: input.channel,
           oldest: oldest,
           limit: 1000,
@@ -2028,6 +2102,12 @@ messages as any[],
     try {
       logger.info(`Finding messages with reactions: ${input.reactions.join(', ')}`);
       
+      // Check if search API is available
+      this.checkSearchApiAvailability(
+        'Reaction search',
+        'Use get_reactions on specific messages as an alternative'
+      );
+      
       // Build search query based on reactions
       const searchQuery = input.reactions.map(r => `has::${r}:`).join(input.match_type === 'all' ? ' ' : ' OR ') +
         (input.channel ? ` in:${input.channel}` : '') +
@@ -2037,7 +2117,7 @@ messages as any[],
       const searchArgs: any = { query: searchQuery };
       if (input.limit) searchArgs.count = input.limit;
 
-      const result = await this.getUserClient().search.messages(searchArgs);
+      const result = await this.getClientForOperation('read').search.messages(searchArgs);
 
       if (!result.ok) {
         throw new SlackAPIError(`Failed to search messages by reactions: ${result.error}`);
@@ -2093,7 +2173,7 @@ messages as any[],
     try {
       logger.info('Getting workspace information');
       
-      const result = await this.getUserClient().team.info();
+      const result = await this.getClientForOperation('read').team.info();
 
       if (!result.ok) {
         throw new SlackAPIError(`Failed to get workspace info: ${result.error}`);
@@ -2137,7 +2217,7 @@ messages as any[],
       if (input.limit) listArgs.limit = input.limit;
       if (input.cursor) listArgs.cursor = input.cursor;
 
-      const result = await this.getUserClient().users.list(listArgs);
+      const result = await this.getClientForOperation('read').users.list(listArgs);
 
       if (!result.ok) {
         throw new SlackAPIError(`Failed to list team members: ${result.error}`);
@@ -2262,7 +2342,7 @@ messages as any[],
       const startTime = process.hrtime();
       
       // Test API connectivity
-      const testResult = await this.getClient().auth.test();
+      const testResult = await this.getClientForOperation('write').auth.test();
       
       const [seconds, nanoseconds] = process.hrtime(startTime);
       const responseTimeMs = seconds * 1000 + nanoseconds / 1e6;
@@ -2716,12 +2796,12 @@ messages as any[],
   }
 
   // Placeholder methods for complex features
-  private buildRelatedThreadSearchQueries(keywords: string[], _input: any): any[] {
+  private buildRelatedThreadSearchQueries(keywords: string[]): any[] {
     // Don't add has:thread - we'll identify threads in the result processing
     return [{ query: keywords.join(' '), type: 'keyword_overlap' }];
   }
 
-  private calculateThreadSimilarity(_sourceMessages: SlackMessage[], _targetMessages: any[], _sourceKeywords: string[], _sourceParticipants: string[], _type: string): number {
+  private calculateThreadSimilarity(): number {
     // Simplified similarity calculation
     return Math.random() * 0.8 + 0.2; // Placeholder
   }
@@ -2743,7 +2823,7 @@ messages as any[],
     };
   }
 
-  private calculateThreadMetrics(threads: SlackThread[], _input: any): ThreadMetrics {
+  private calculateThreadMetrics(threads: SlackThread[]): ThreadMetrics {
     // Placeholder implementation
     return {
       total_threads: threads.length,

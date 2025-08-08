@@ -2,5 +2,5 @@
  * Slack module barrel export
  */
 
-export * from './slack-service.js';
-export * from './types.js';
+export * from './slack-service';
+export * from './types';

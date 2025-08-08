@@ -7,6 +7,7 @@ const ConfigSchema = z.object({
   // Slack configuration
   SLACK_BOT_TOKEN: z.string().min(1, 'Slack bot token is required'),
   SLACK_USER_TOKEN: z.string().optional(), // Optional user token for search operations
+  USE_USER_TOKEN_FOR_READ: z.coerce.boolean().default(false), // Use user token for read operations (default: false = bot token only)
 
   // MCP configuration
   MCP_SERVER_NAME: z.string().default('slack-mcp-server'),

@@ -2,7 +2,7 @@
  * Utility functions barrel export
  */
 
-export * from './logger.js';
-export * from './validation.js';
-export * from './errors.js';
-export { formatTimestamp, isValidSlackId, parseSlackMention } from './helpers.js';
+export * from './logger';
+export * from './validation';
+export * from './errors';
+export { formatTimestamp, isValidSlackId, parseSlackMention } from './helpers';
