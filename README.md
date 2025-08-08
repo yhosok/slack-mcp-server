@@ -17,7 +17,7 @@ This server implements the Model Context Protocol (MCP) and can be used with any
   "mcpServers": {
     "slack": {
       "command": "npx",
-      "args": ["-y", "github:yhosok/slack-mcp-server"],
+      "args": ["github:yhosok/slack-mcp-server"],
       "env": {
         "SLACK_BOT_TOKEN": "xoxb-your-token-here"
       }
@@ -33,7 +33,7 @@ This server implements the Model Context Protocol (MCP) and can be used with any
   "mcpServers": {
     "slack": {
       "command": "npx",
-      "args": ["-y", "github:yhosok/slack-mcp-server"],
+      "args": ["github:yhosok/slack-mcp-server"],
       "env": {
         "SLACK_BOT_TOKEN": "xoxb-your-token-here",
         "SLACK_USER_TOKEN": "xoxp-your-user-token",
@@ -63,7 +63,8 @@ This server implements the Model Context Protocol (MCP) and can be used with any
 ```
 
 **Notes**: 
-- The `-y` flag in npx commands ensures automatic installation without prompts
+- The `npx github:yhosok/slack-mcp-server` command automatically builds the TypeScript source when installing
+- First run may take longer as it needs to compile the TypeScript source
 - `SLACK_USER_TOKEN` is required when `USE_USER_TOKEN_FOR_READ` is set to `true`
 - User token enables search functionality and broader workspace visibility
 
