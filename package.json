@@ -26,13 +26,6 @@
   ],
   "author": "Your Name",
   "license": "MIT",
-  "files": [
-    "dist/**/*",
-    "src/**/*",
-    "package.json",
-    "README.md",
-    ".env.example"
-  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@slack/web-api": "^7.0.0",

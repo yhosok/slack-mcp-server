@@ -181,16 +181,17 @@ class SlackMCPServer {
   }
 }
 
-// Start the server if this file is run directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  // Delay server creation to ensure dotenv has loaded
-  setTimeout(() => {
-    const server = new SlackMCPServer();
-    server.start().catch((error) => {
-      logger.error('Failed to start server:', error);
-      process.exit(1);
-    });
-  }, 0);
-}
+// Start the server when this file is run
+// This works for both direct execution and npx
+const startServer = () => {
+  const server = new SlackMCPServer();
+  server.start().catch((error) => {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  });
+};
+
+// Start immediately
+startServer();
 
 export { SlackMCPServer };
