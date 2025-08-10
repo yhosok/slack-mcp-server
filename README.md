@@ -198,6 +198,11 @@ npm start
   - `@slack/web-api`からの型インポートによる型安全なAPI呼び出し
   - Slack APIレスポンスと内部型の変換ユーティリティ
 - **バリデーション層**: すべての操作にZodベースの入力検証
+- **Zodベーススキーマアーキテクチャ**: 
+  - Zodを単一の信頼できるソースとして使用したスキーマ管理
+  - ZodスキーマからMCP JSONスキーマへの自動変換
+  - スキーマの重複を排除し、バリデーションとツール定義の同期を実現
+  - `additionalProperties: false`による厳密な入力検証
 - **エラーハンドリング**: 詳細なログ記録による堅牢なエラー処理
 - **パフォーマンス**: 大規模ワークスペース操作に最適化
 - **レート制限対応**: 
@@ -285,10 +290,11 @@ npm run format
 ### プロジェクト構造
 ```
 src/
-├── __tests__/          # Jestテストファイル（3つのテストスイート）
+├── __tests__/          # Jestテストファイル（4つのテストスイート）
 ├── config/             # 設定管理（Zodベースの環境変数検証）
 ├── index.ts            # MCPサーバーエントリポイント
 ├── mcp/                # MCPプロトコル定義
+│   ├── schema-converter.ts # ZodからJSONスキーマへの変換ユーティリティ
 │   ├── tools.ts        # ツール定義（36ツール）
 │   └── types.ts        # MCP TypeScript型
 ├── slack/              # Slack統合
@@ -303,13 +309,42 @@ src/
 
 ### 新しいツールの追加方法
 
-1. `src/mcp/tools.ts`にツールスキーマを定義
-2. `ALL_TOOLS`エクスポートに追加
-3. `src/utils/validation.ts`にバリデーションスキーマを追加
-4. `src/slack/slack-service.ts`にメソッドを実装
-5. `src/index.ts`のswitchステートメントにケースを追加
-6. 必要に応じて`src/slack/types.ts`に型を追加
-7. `src/__tests__/`にテストを作成
+新しいMCPツールを追加する際は、Zodスキーマベースの統一アプローチに従います：
+
+1. **Zodスキーマの定義** (`src/utils/validation.ts`)
+   ```typescript
+   export const MyNewToolSchema = z.object({
+     param1: z.string().describe('パラメータの説明'),
+     param2: z.number().optional().describe('オプショナルパラメータ'),
+   });
+   ```
+
+2. **ツール定義の作成** (`src/mcp/tools.ts`)
+   ```typescript
+   export const MY_NEW_TOOL = defineSlackTool(
+     'my_new_tool',
+     'ツールの説明（LLMが理解するための詳細）',
+     MyNewToolSchema
+   );
+   ```
+   `ALL_TOOLS`配列に追加
+
+3. **サービスメソッドの実装** (`src/slack/slack-service.ts`)
+   ```typescript
+   async myNewTool(args: unknown): Promise<MCPToolResponse> {
+     const input = validateInput(MyNewToolSchema, args);
+     // Slack API呼び出しとレスポンス処理
+   }
+   ```
+
+4. **ルーティングの追加** (`src/index.ts`)
+   switchステートメントに新しいケースを追加
+
+5. **型定義の追加** (`src/slack/types.ts`)
+   必要に応じて新しい型を定義
+
+6. **テストの作成** (`src/__tests__/`)
+   ユニットテストとスキーマ変換テストを追加
 
 ## 📝 ライセンスと貢献
 
