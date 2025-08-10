@@ -301,7 +301,11 @@ export interface RelatedThread {
   thread_ts: string;
   channel_id: string;
   similarity_score: number;
-  relationship_type: 'keyword_overlap' | 'participant_overlap' | 'temporal_proximity' | 'topic_similarity';
+  relationship_type:
+    | 'keyword_overlap'
+    | 'participant_overlap'
+    | 'temporal_proximity'
+    | 'topic_similarity';
   brief_summary: string;
 }
 
@@ -608,6 +612,25 @@ export interface ServerHealth {
     last_rate_limit_time: string | null;
     rate_limits_by_tier: { [tier: string]: number };
     rate_limit_percentage: number;
+  };
+  modular_architecture?: {
+    enabled: boolean;
+    services: {
+      messages: boolean;
+      threads: boolean;
+      files: boolean;
+      reactions: boolean;
+      workspace: boolean;
+    };
+    performanceMetrics: {
+      enabled: boolean;
+      monitoring: boolean;
+      totalMetrics: number;
+      stats?: {
+        legacy: { avgTime: number; successRate: number; count: number };
+        modular: { avgTime: number; successRate: number; count: number };
+      };
+    };
   };
 }
 

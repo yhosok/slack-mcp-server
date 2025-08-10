@@ -71,7 +71,7 @@ describe('SlackService.getChannelInfo', () => {
       on: jest.fn(),
       apiCall: jest.fn(),
     } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    
+
     (WebClient as any).mockImplementation(() => mockWebClient); // eslint-disable-line @typescript-eslint/no-explicit-any
     slackService = new SlackService();
   });
@@ -230,9 +230,9 @@ describe('SlackService.getChannelInfo', () => {
       error: 'channel_not_found',
     });
 
-    await expect(
-      slackService.getChannelInfo({ channel: 'C999999999' })
-    ).rejects.toThrow('Failed to get channel info: channel_not_found');
+    await expect(slackService.getChannelInfo({ channel: 'C999999999' })).rejects.toThrow(
+      'Failed to get channel info: channel_not_found'
+    );
   });
 
   it('should handle missing channel in response', async () => {
@@ -241,9 +241,9 @@ describe('SlackService.getChannelInfo', () => {
       // channel is missing
     });
 
-    await expect(
-      slackService.getChannelInfo({ channel: 'C1234567890' })
-    ).rejects.toThrow('Channel not found');
+    await expect(slackService.getChannelInfo({ channel: 'C1234567890' })).rejects.toThrow(
+      'Channel not found'
+    );
   });
 
   it('should handle API errors', async () => {
@@ -252,27 +252,23 @@ describe('SlackService.getChannelInfo', () => {
       error: 'missing_scope',
     });
 
-    await expect(
-      slackService.getChannelInfo({ channel: 'C1234567890' })
-    ).rejects.toThrow('Failed to get channel info: missing_scope');
+    await expect(slackService.getChannelInfo({ channel: 'C1234567890' })).rejects.toThrow(
+      'Failed to get channel info: missing_scope'
+    );
   });
 
   it('should handle network errors', async () => {
     mockWebClient.conversations.info.mockRejectedValue(new Error('Network error'));
 
-    await expect(
-      slackService.getChannelInfo({ channel: 'C1234567890' })
-    ).rejects.toThrow('Failed to get channel info: Error: Network error');
+    await expect(slackService.getChannelInfo({ channel: 'C1234567890' })).rejects.toThrow(
+      'Failed to get channel info: Error: Network error'
+    );
   });
 
   it('should validate required parameters', async () => {
-    await expect(
-      slackService.getChannelInfo({})
-    ).rejects.toThrow();
+    await expect(slackService.getChannelInfo({})).rejects.toThrow();
 
-    await expect(
-      slackService.getChannelInfo({ channel: '' })
-    ).rejects.toThrow();
+    await expect(slackService.getChannelInfo({ channel: '' })).rejects.toThrow();
   });
 
   it('should handle direct message channel', async () => {

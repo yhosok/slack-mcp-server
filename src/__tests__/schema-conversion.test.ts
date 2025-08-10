@@ -4,12 +4,12 @@ import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { JSONSchema7 } from 'json-schema';
 import { createMCPTool, defineSlackTool } from '../mcp/schema-converter.js';
-import { 
+import {
   SendMessageSchema,
   ListChannelsSchema,
   GetChannelHistorySchema,
   AnalyzeThreadSchema,
-  SearchMessagesSchema
+  SearchMessagesSchema,
 } from '../utils/validation.js';
 
 // Mock configuration to prevent environment variable requirements in tests
@@ -151,7 +151,8 @@ describe('Schema Conversion', () => {
 
     it('should correctly convert AnalyzeThreadSchema with booleans', () => {
       const result = createMCPTool('analyze_thread', 'Analyze thread', AnalyzeThreadSchema);
-      const sentimentProp = result.inputSchema.properties?.include_sentiment_analysis as JSONSchema7;
+      const sentimentProp = result.inputSchema.properties
+        ?.include_sentiment_analysis as JSONSchema7;
       const topicsProp = result.inputSchema.properties?.extract_topics as JSONSchema7;
 
       expect(result.inputSchema.required).toEqual(['channel', 'thread_ts']);
@@ -209,7 +210,7 @@ describe('Schema Conversion', () => {
       expect(wrapperResult.inputSchema.type).toBe(directConversion.type);
       expect(wrapperResult.inputSchema.properties).toEqual(directConversion.properties);
       expect(wrapperResult.inputSchema.required).toEqual(directConversion.required);
-      
+
       // Our wrapper should add additionalProperties: false
       expect(wrapperResult.inputSchema.additionalProperties).toBe(false);
     });

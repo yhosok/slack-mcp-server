@@ -4,7 +4,8 @@ import { SlackService } from '../slack/slack-service';
 import { SlackAPIError } from '../utils/errors';
 
 // Create a shared mock WebClient instance
-const createMockWebClient = (): any => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+const createMockWebClient = (): any => ({
+  // eslint-disable-line @typescript-eslint/no-explicit-any
   chat: {
     postMessage: jest.fn(),
   },
@@ -94,7 +95,8 @@ jest.mock('../utils/validation', () => {
   const originalModule = jest.requireActual('../utils/validation') as any; // eslint-disable-line @typescript-eslint/no-explicit-any
   return {
     ...originalModule,
-    validateInput: jest.fn((schema: any, input: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    validateInput: jest.fn((schema: any, input: any) => {
+      // eslint-disable-line @typescript-eslint/no-explicit-any
       return originalModule.validateInput(schema, input);
     }),
   };
@@ -106,10 +108,10 @@ describe('SlackService', () => {
   beforeEach(() => {
     // Clear all mocks before each test
     jest.clearAllMocks();
-    
+
     // Reset the mock WebClient instance
     mockWebClientInstance = createMockWebClient();
-    
+
     slackService = new SlackService();
   });
 
@@ -686,7 +688,7 @@ describe('SlackService', () => {
         // Arrange
         const mockParentResult = { ok: true, ts: '1234567890.123456' };
         const mockReplyResult = { ok: true, ts: '1234567890.234567' };
-        
+
         mockWebClientInstance.chat.postMessage
           .mockResolvedValueOnce(mockParentResult)
           .mockResolvedValueOnce(mockReplyResult);
@@ -734,7 +736,7 @@ describe('SlackService', () => {
         // Arrange
         const mockReactionResult = { ok: true };
         const mockMessageResult = { ok: true, ts: '1234567890.456789' };
-        
+
         mockWebClientInstance.reactions.add.mockResolvedValue(mockReactionResult);
         mockWebClientInstance.chat.postMessage.mockResolvedValue(mockMessageResult);
 
@@ -763,7 +765,9 @@ describe('SlackService', () => {
           reply_broadcast: true,
         });
 
-        expect(result.content[0]?.text).toContain('Thread 1234567890.123456 marked as high importance');
+        expect(result.content[0]?.text).toContain(
+          'Thread 1234567890.123456 marked as high importance'
+        );
       });
     });
   });
@@ -832,11 +836,10 @@ describe('SlackService', () => {
           },
         };
 
-        mockWebClientInstance.conversations.replies
-          .mockResolvedValueOnce({
-            ok: true,
-            messages: mockSourceMessages,
-          });
+        mockWebClientInstance.conversations.replies.mockResolvedValueOnce({
+          ok: true,
+          messages: mockSourceMessages,
+        });
 
         mockWebClientInstance.search.messages.mockResolvedValue(mockSearchResults);
 
@@ -935,7 +938,9 @@ describe('SlackService', () => {
       };
 
       // Act & Assert
-      await expect(slackService.getThreadReplies(args)).rejects.toThrow('Failed to get thread replies');
+      await expect(slackService.getThreadReplies(args)).rejects.toThrow(
+        'Failed to get thread replies'
+      );
     });
   });
 });

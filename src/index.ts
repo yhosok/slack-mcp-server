@@ -54,12 +54,12 @@ class SlackMCPServer {
   private setupToolHandlers(): void {
     // List available tools
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      const tools: Tool[] = ALL_TOOLS.map(tool => ({
+      const tools: Tool[] = ALL_TOOLS.map((tool) => ({
         name: tool.name,
         description: tool.description,
         inputSchema: {
           ...tool.inputSchema,
-          type: 'object' as const
+          type: 'object' as const,
         } as Tool['inputSchema'],
       }));
 

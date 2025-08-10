@@ -74,7 +74,7 @@ describe('SlackService.searchMessages', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock for bot client (second call)
     mockBotClient = {
       users: {
@@ -86,7 +86,7 @@ describe('SlackService.searchMessages', () => {
       on: jest.fn(),
       apiCall: jest.fn(),
     } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    
+
     // Mock for user client (first call)
     mockUserClient = {
       search: {
@@ -101,7 +101,7 @@ describe('SlackService.searchMessages', () => {
       on: jest.fn(),
       apiCall: jest.fn(),
     } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    
+
     // Mock WebClient constructor to return different instances
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (WebClient as any).mockImplementation((token: string) => {
@@ -111,7 +111,7 @@ describe('SlackService.searchMessages', () => {
         return mockBotClient;
       }
     });
-    
+
     slackService = new SlackService();
   });
 
@@ -144,7 +144,8 @@ describe('SlackService.searchMessages', () => {
     };
 
     mockUserClient.search.messages.mockResolvedValue(mockSearchResult);
-    mockUserClient.users.info.mockImplementation((options: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    mockUserClient.users.info.mockImplementation((options: any) => {
+      // eslint-disable-line @typescript-eslint/no-explicit-any
       if (options.user === 'U123456') {
         return Promise.resolve({
           ok: true,
@@ -232,23 +233,21 @@ describe('SlackService.searchMessages', () => {
       error: 'rate_limited',
     });
 
-    await expect(
-      slackService.searchMessages({ query: 'test' })
-    ).rejects.toThrow('Failed to search messages: rate_limited');
+    await expect(slackService.searchMessages({ query: 'test' })).rejects.toThrow(
+      'Failed to search messages: rate_limited'
+    );
   });
 
   it('should handle network errors', async () => {
     mockUserClient.search.messages.mockRejectedValue(new Error('Network error'));
 
-    await expect(
-      slackService.searchMessages({ query: 'test' })
-    ).rejects.toThrow('Failed to search messages: Error: Network error');
+    await expect(slackService.searchMessages({ query: 'test' })).rejects.toThrow(
+      'Failed to search messages: Error: Network error'
+    );
   });
 
   it('should validate required parameters', async () => {
-    await expect(
-      slackService.searchMessages({})
-    ).rejects.toThrow();
+    await expect(slackService.searchMessages({})).rejects.toThrow();
   });
 
   it('should handle search with special operators', async () => {

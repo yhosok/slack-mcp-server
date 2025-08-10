@@ -97,10 +97,7 @@ export function truncateText(text: string, maxLength: number): string {
  * Escape special characters for Slack message formatting
  */
 export function escapeSlackText(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /**
@@ -117,7 +114,7 @@ export function createSlackLink(url: string, text?: string): string {
  * Format a list of items for display in Slack
  */
 export function formatSlackList(items: string[], bullet: string = '•'): string {
-  return items.map(item => `${bullet} ${item}`).join('\n');
+  return items.map((item) => `${bullet} ${item}`).join('\n');
 }
 
 /**

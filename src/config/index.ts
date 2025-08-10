@@ -15,6 +15,16 @@ const ConfigSchema = z.object({
   SLACK_REJECT_RATE_LIMITED_CALLS: z.coerce.boolean().default(false), // Reject rate-limited calls instead of retrying
   SLACK_ENABLE_RATE_LIMIT_RETRY: z.coerce.boolean().default(true), // Enable automatic retry on rate limits
 
+  // Modular architecture configuration (Phase 4 migration)
+  USE_MODULAR_ARCHITECTURE: z.coerce.boolean().default(false), // Enable new modular architecture
+  ENABLE_MODULAR_MESSAGES: z.coerce.boolean().default(false), // Enable modular message service
+  ENABLE_MODULAR_THREADS: z.coerce.boolean().default(false), // Enable modular thread service
+  ENABLE_MODULAR_FILES: z.coerce.boolean().default(false), // Enable modular file service
+  ENABLE_MODULAR_REACTIONS: z.coerce.boolean().default(false), // Enable modular reaction service
+  ENABLE_MODULAR_WORKSPACE: z.coerce.boolean().default(false), // Enable modular workspace service
+  ENABLE_PERFORMANCE_METRICS: z.coerce.boolean().default(false), // Enable performance monitoring
+  MONITOR_LEGACY_COMPARISON: z.coerce.boolean().default(false), // Monitor legacy vs modular performance
+
   // MCP configuration
   MCP_SERVER_NAME: z.string().default('slack-mcp-server'),
   MCP_SERVER_VERSION: z.string().default('1.0.0'),
@@ -56,7 +66,7 @@ export function getConfig(): Config {
 export const CONFIG = new Proxy({} as Config, {
   get(target, prop): unknown {
     return getConfig()[prop as keyof Config];
-  }
+  },
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

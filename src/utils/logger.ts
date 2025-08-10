@@ -52,7 +52,7 @@ class Logger {
 
     const timestamp = new Date().toISOString();
     const levelName = LogLevel[level];
-    
+
     console.log(`[${timestamp}] ${levelName}: ${message}`, ...args);
   }
 

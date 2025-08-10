@@ -1,0 +1,173 @@
+/**
+ * Integration updater utility for Phase 4 migration
+ * 
+ * This file contains the method mappings and updates needed to integrate
+ * the modular architecture with the existing SlackService.
+ * 
+ * Usage: This file serves as documentation and a reference for the manual updates
+ * that need to be applied to SlackService methods.
+ */
+
+/**
+ * Mapping of SlackService methods to their domain types
+ * Used to determine which modular service should handle each method
+ */
+export const METHOD_DOMAIN_MAPPING = {
+  // Message operations
+  sendMessage: 'messages',
+  listChannels: 'messages',
+  getChannelHistory: 'messages',
+  getUserInfo: 'messages',
+  searchMessages: 'messages',
+  getChannelInfo: 'messages',
+
+  // Thread operations
+  findThreadsInChannel: 'threads',
+  getThreadReplies: 'threads',
+  searchThreads: 'threads',
+  analyzeThread: 'threads',
+  summarizeThread: 'threads',
+  extractActionItems: 'threads',
+  postThreadReply: 'threads',
+  createThread: 'threads',
+  markThreadImportant: 'threads',
+  identifyImportantThreads: 'threads',
+  exportThread: 'threads',
+  findRelatedThreads: 'threads',
+  getThreadMetrics: 'threads',
+  getThreadsByParticipants: 'threads',
+
+  // File operations
+  uploadFile: 'files',
+  listFiles: 'files',
+  getFileInfo: 'files',
+  deleteFile: 'files',
+  shareFile: 'files',
+  analyzeFiles: 'files',
+  searchFiles: 'files',
+
+  // Reaction operations
+  addReaction: 'reactions',
+  removeReaction: 'reactions',
+  getReactions: 'reactions',
+  getReactionStatistics: 'reactions',
+  findMessagesByReactions: 'reactions',
+
+  // Workspace operations
+  getWorkspaceInfo: 'workspace',
+  listTeamMembers: 'workspace',
+  getWorkspaceActivity: 'workspace',
+  getServerHealth: 'workspace',
+} as const;
+
+/**
+ * Template for updating a SlackService method to use the routing system
+ */
+export function generateMethodUpdate(
+  methodName: string,
+  originalMethodBody: string,
+  domainType: string
+): string {
+  return `  async ${methodName}(args: unknown) {
+    return this.routeMethod(
+      '${methodName}',
+      args,
+      async () => {
+        // Legacy implementation
+${originalMethodBody.split('\n').map(line => '        ' + line.trim()).join('\n').replace(/^        $/, '')}
+      },
+      '${domainType}'
+    );
+  }`;
+}
+
+/**
+ * List of all methods that need to be updated
+ */
+export const METHODS_TO_UPDATE = Object.keys(METHOD_DOMAIN_MAPPING);
+
+/**
+ * Priority order for updating methods (for gradual rollout)
+ */
+export const UPDATE_PRIORITY = {
+  high: ['sendMessage', 'listChannels', 'getChannelHistory', 'getWorkspaceInfo'],
+  medium: ['searchMessages', 'analyzeThread', 'uploadFile', 'addReaction'],
+  low: ['getServerHealth', 'exportThread', 'findRelatedThreads'],
+} as const;
+
+/**
+ * Validation to ensure all methods are accounted for
+ */
+export function validateMethodMapping(): boolean {
+  const expectedMethods = [
+    // Messages (6)
+    'sendMessage', 'listChannels', 'getChannelHistory', 'getUserInfo', 'searchMessages', 'getChannelInfo',
+    // Threads (14)
+    'findThreadsInChannel', 'getThreadReplies', 'searchThreads', 'analyzeThread', 'summarizeThread',
+    'extractActionItems', 'postThreadReply', 'createThread', 'markThreadImportant', 'identifyImportantThreads',
+    'exportThread', 'findRelatedThreads', 'getThreadMetrics', 'getThreadsByParticipants',
+    // Files (7)
+    'uploadFile', 'listFiles', 'getFileInfo', 'deleteFile', 'shareFile', 'analyzeFiles', 'searchFiles',
+    // Reactions (5)
+    'addReaction', 'removeReaction', 'getReactions', 'getReactionStatistics', 'findMessagesByReactions',
+    // Workspace (4)
+    'getWorkspaceInfo', 'listTeamMembers', 'getWorkspaceActivity', 'getServerHealth'
+  ];
+
+  const mappedMethods = Object.keys(METHOD_DOMAIN_MAPPING);
+  
+  const missing = expectedMethods.filter(method => !mappedMethods.includes(method));
+  const extra = mappedMethods.filter(method => !expectedMethods.includes(method));
+
+  if (missing.length > 0) {
+    console.warn('Missing methods from mapping:', missing);
+    return false;
+  }
+
+  if (extra.length > 0) {
+    console.warn('Extra methods in mapping:', extra);
+    return false;
+  }
+
+  return expectedMethods.length === 36 && mappedMethods.length === 36;
+}
+
+/**
+ * Instructions for manual integration
+ */
+export const INTEGRATION_INSTRUCTIONS = `
+Phase 4 Integration Instructions:
+
+1. ✅ Created service-factory.ts with modular architecture integration
+2. ✅ Extended CONFIG with feature flags for gradual rollout  
+3. ✅ Added modular service integration to SlackService constructor
+4. ✅ Added routing methods for legacy/modular switching
+5. ✅ Updated sendMessage method as example
+
+Remaining steps:
+
+6. Update all remaining 35 methods to use routeMethod()
+   - Each method should wrap its existing logic in the legacy implementation
+   - Use METHOD_DOMAIN_MAPPING to determine the correct domain type
+   
+7. Test the integration:
+   - Ensure all methods work with feature flags disabled (legacy mode)
+   - Test enabling feature flags one domain at a time
+   - Verify performance monitoring works when enabled
+
+8. Create migration documentation:
+   - Document the feature flags for operators
+   - Provide rollback procedures
+   - Create monitoring dashboards
+
+Example method update pattern:
+${generateMethodUpdate('exampleMethod', `const input = validateInput(Schema, args);
+// existing method logic here
+return { content: [...] };`, 'messages')}
+
+All ${METHODS_TO_UPDATE.length} methods are mapped and ready for systematic update.
+Validation passed: ${validateMethodMapping()}
+`;
+
+// Run validation on import
+console.log('Method mapping validation:', validateMethodMapping() ? 'PASSED' : 'FAILED');

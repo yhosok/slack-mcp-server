@@ -10,11 +10,7 @@ import type { JSONSchema7 } from 'json-schema';
 /**
  * Convert a Zod schema to an MCPTool definition
  */
-export function createMCPTool(
-  name: string,
-  description: string,
-  schema: z.ZodSchema
-): MCPTool {
+export function createMCPTool(name: string, description: string, schema: z.ZodSchema): MCPTool {
   const jsonSchema = zodToJsonSchema(schema, {
     $refStrategy: 'none', // MCP doesn't use references
     target: 'jsonSchema7',
@@ -36,10 +32,6 @@ export function createMCPTool(
 /**
  * Utility function to create tools with consistent structure
  */
-export function defineSlackTool(
-  name: string,
-  description: string,
-  schema: z.ZodSchema
-): MCPTool {
+export function defineSlackTool(name: string, description: string, schema: z.ZodSchema): MCPTool {
   return createMCPTool(name, description, schema);
 }
