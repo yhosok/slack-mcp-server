@@ -1,16 +1,26 @@
-# Slack MCP Server - Comprehensive Implementation
+# Slack MCP Server
 
-This Slack MCP (Model Context Protocol) server now provides comprehensive file operations and reaction management functionality, completing the "slack apiでできることは一通り実装" requirement.
+⚠️ **重要な注意事項**: このプロジェクトはまだ十分にテストされていません。本番環境での使用には注意が必要で、予期しない不具合が発生する可能性があります。使用する際は十分な検証を行ってください。
 
-## 🚀 Quick Start
+このSlack MCP (Model Context Protocol) サーバーは、Slack APIの機能を網羅的に実装し、ファイル操作、リアクション管理、スレッド分析など、40個のツールを提供します。
 
-### MCP Configuration
+## 🚀 クイックスタート
 
-This server implements the Model Context Protocol (MCP) and can be used with any MCP-compatible client.
+### 必要なトークンの準備
 
-#### Configuration Examples
+このサーバーを使用するには、最低限**ボットトークン**が必要です：
 
-##### Direct from GitHub repository (Basic - Bot token only)
+- **ボットトークン** (`xoxb-*`): Slack Appから取得。基本的な読み書き操作に必要
+- **ユーザートークン** (`xoxp-*`): オプション。検索機能を使いたい場合に必要
+
+### MCP設定
+
+MCP互換クライアントでの設定例を用途別に紹介します。
+
+#### 設定例
+
+##### 1. 基本設定（ボットトークンのみ）
+メッセージの送受信、ファイルアップロード、リアクション管理など基本機能が使用可能
 
 ```json
 {
@@ -26,7 +36,8 @@ This server implements the Model Context Protocol (MCP) and can be used with any
 }
 ```
 
-##### With extended functionality (User token for search)
+##### 2. 検索機能付き設定（ボット + ユーザートークン）
+基本機能に加えて、メッセージ検索、スレッド検索、ファイル検索が使用可能
 
 ```json
 {
@@ -44,7 +55,7 @@ This server implements the Model Context Protocol (MCP) and can be used with any
 }
 ```
 
-##### Local installation
+##### 3. ローカルインストール版
 
 ```json
 {
@@ -54,227 +65,232 @@ This server implements the Model Context Protocol (MCP) and can be used with any
       "args": ["./path/to/slack-mcp-server/dist/index.js"],
       "env": {
         "SLACK_BOT_TOKEN": "xoxb-your-token-here",
-        "SLACK_USER_TOKEN": "xoxp-your-user-token",  // Optional
-        "USE_USER_TOKEN_FOR_READ": "true"              // Optional
+        "SLACK_USER_TOKEN": "xoxp-your-user-token",
+        "USE_USER_TOKEN_FOR_READ": "true"
       }
     }
   }
 }
 ```
 
-**Notes**: 
-- The `npx github:yhosok/slack-mcp-server` command automatically builds the TypeScript source when installing
-- First run may take longer as it needs to compile the TypeScript source
-- `SLACK_USER_TOKEN` is required when `USE_USER_TOKEN_FOR_READ` is set to `true`
-- User token enables search functionality and broader workspace visibility
+**設定のポイント**: 
+- 初回実行時はTypeScriptのコンパイルのため時間がかかる場合があります
+- 検索機能を使う場合は `USE_USER_TOKEN_FOR_READ` を `true` に設定し、ユーザートークンも必要です
+- どの設定を選ぶかは「必要な機能」と「セキュリティ要件」のバランスで決めてください
 
-### Local Development
+### ローカル開発
 ```bash
-# Clone and setup
+# クローンとセットアップ
 git clone https://github.com/yourusername/slack-mcp-server.git
 cd slack-mcp-server
 ./setup.sh
 
-# Build and run
+# ビルドと実行
 npm run build
 npm start
 ```
 
-## ⚙️ Configuration
+## ⚙️ 設定
 
-### Environment Variables
+### 環境変数
 
-The server supports the following environment variables:
+サーバーは以下の環境変数をサポートしています：
 
-| Variable | Required | Default | Description |
+| 変数 | 必須 | デフォルト | 説明 |
 |----------|----------|---------|-------------|
-| `SLACK_BOT_TOKEN` | ✅ Yes | - | Bot token (xoxb-*) from your Slack App |
-| `SLACK_USER_TOKEN` | ❌ No | - | User token (xoxp-*) for extended functionality |
-| `USE_USER_TOKEN_FOR_READ` | ❌ No | `false` | Use user token for read operations |
-| `LOG_LEVEL` | ❌ No | `info` | Logging level (debug, info, warn, error) |
+| `SLACK_BOT_TOKEN` | ✅ 必須 | - | Slack Appのボットトークン (xoxb-*) |
+| `SLACK_USER_TOKEN` | ❌ 任意 | - | 拡張機能用のユーザートークン (xoxp-*) |
+| `USE_USER_TOKEN_FOR_READ` | ❌ 任意 | `false` | 読み取り操作でユーザートークンを使用 |
+| `LOG_LEVEL` | ❌ 任意 | `info` | ログレベル (debug, info, warn, error) |
 
-### Token Usage Strategy
+### トークンの使い分けガイド
 
-By default (security-first approach):
-- **All operations use bot token** (requires proper bot scopes)
-- Search operations will return helpful error messages
+このサーバーは2種類のトークンを使い分けることで、セキュリティと機能のバランスを取ります：
 
-For extended functionality:
-- Set `USE_USER_TOKEN_FOR_READ=true` to enable:
-  - Message and file search capabilities
-  - Access to channels bot hasn't joined
-  - Broader workspace visibility
+#### ボットトークンのみ（推奨）
+- **利点**: セキュアで権限管理が明確
+- **制限**: 検索機能は使用不可
+- **用途**: 通常のチャンネル操作、メッセージ送信、ファイル管理
 
-Example configurations:
+#### ボット + ユーザートークン
+- **利点**: 全機能が使用可能（検索を含む）
+- **注意**: ユーザートークンは強力な権限を持つため取り扱い注意
+- **用途**: 検索機能が必要な高度な自動化
 
-#### Bot Token Only (Default - Most Secure)
-```json
-{
-  "env": {
-    "SLACK_BOT_TOKEN": "xoxb-your-bot-token"
-  }
-}
-```
+### 必要なボットトークンスコープ
 
-#### With User Token for Extended Features
-```json
-{
-  "env": {
-    "SLACK_BOT_TOKEN": "xoxb-your-bot-token",
-    "SLACK_USER_TOKEN": "xoxp-your-user-token",
-    "USE_USER_TOKEN_FOR_READ": "true"
-  }
-}
-```
+ボットのみモードでは、Slack Appに以下のOAuthスコープが必要です：
+- `channels:read` - チャンネル情報の読み取り
+- `channels:history` - チャンネルメッセージの読み取り
+- `groups:read` - プライベートチャンネルの読み取り
+- `groups:history` - プライベートチャンネルメッセージの読み取り
+- `users:read` - ユーザー情報の読み取り
+- `team:read` - ワークスペース情報の読み取り
+- `files:read` - ファイル情報の読み取り
+- `files:write` - ファイルのアップロードと管理
+- `chat:write` - メッセージの送信
+- `reactions:read` - リアクションの読み取り
+- `reactions:write` - リアクションの追加/削除
 
-### Required Bot Token Scopes
+### 必要なユーザートークンスコープ
 
-For bot-only mode, ensure your Slack App has these OAuth scopes:
-- `channels:read` - Read channel information
-- `channels:history` - Read channel messages
-- `groups:read` - Read private channels
-- `groups:history` - Read private channel messages
-- `users:read` - Read user information
-- `team:read` - Read workspace information
-- `files:read` - Read file information
-- `files:write` - Upload and manage files
-- `chat:write` - Send messages
-- `reactions:read` - Read reactions
-- `reactions:write` - Add/remove reactions
+検索機能を使用する場合：
+- `search:read` - メッセージとファイルの検索
 
-## 🚀 New Features Implemented
+## 📋 完全なツールリスト（全40ツール）
 
-### File Operations
-- **File Upload**: Upload files to channels/threads with metadata support
-- **File Management**: List, get info, delete, and share files across workspace
-- **File Analysis**: Analyze file types, sizes, usage patterns, and identify cleanup opportunities
-- **File Search**: Search files by name, type, content with advanced filtering
-- **Bulk Operations**: Manage file permissions and generate file reports
+### コアメッセージング（6ツール）
+- `send_message` - チャンネル/スレッドへのメッセージ送信
+- `list_channels` - ワークスペースチャンネル一覧
+- `get_channel_history` - チャンネルメッセージ履歴の取得
+- `get_user_info` - ユーザー情報の取得
+- `search_messages` - メッセージ検索（ユーザートークン必要）
+- `get_channel_info` - チャンネル詳細情報の取得
 
-### Reaction Management
-- **Add/Remove Reactions**: Add or remove emoji reactions to any message
-- **Reaction Analytics**: Get detailed statistics and trends for workspace reactions
-- **Pattern Search**: Find messages by specific reaction patterns
-- **User Insights**: Track top reactors and most used reactions
+### スレッド管理（14ツール）
+- `find_threads_in_channel` - チャンネル内のすべてのスレッド検索
+- `get_thread_replies` - スレッドの完全な内容取得
+- `search_threads` - キーワード/参加者によるスレッド検索
+- `analyze_thread` - スレッド分析（参加者、タイムライン、トピック）
+- `summarize_thread` - スレッドサマリー生成（パターンマッチング方式）
+- `post_thread_reply` - 既存スレッドへの返信
+- `create_thread` - 新規スレッドの作成
+- `mark_thread_important` - 重要スレッドのマーク
+- `extract_action_items` - スレッドからのタスク抽出
+- `identify_important_threads` - 重要度の高いディスカッションの特定
+- `export_thread` - スレッドのエクスポート（markdown、JSON、HTML、CSV）
+- `find_related_threads` - 関連ディスカッションの発見
+- `get_thread_metrics` - スレッド分析と統計
+- `get_threads_by_participants` - ユーザー参加によるスレッド検索
 
-### Workspace Management
-- **Team Info**: Get comprehensive workspace information and settings
-- **Member Management**: List team members with roles and permissions
-- **Activity Reports**: Generate detailed workspace activity analytics
-- **Health Monitoring**: Monitor server performance and API usage
+### ファイル操作（7ツール）
+- `upload_file` - メタデータ付きファイルアップロード
+- `list_files` - フィルター付きワークスペースファイル一覧
+- `get_file_info` - 詳細なファイル情報
+- `delete_file` - ファイル削除（権限がある場合）
+- `share_file` - 追加チャンネルへのファイル共有
+- `analyze_files` - ファイル使用分析とクリーンアップ洞察
+- `search_files` - 高度なファイル検索機能
 
-### Analytics & Reporting
-- **Comprehensive Reports**: Message, user, channel, and file analytics
-- **Performance Monitoring**: Real-time server health and rate limit tracking
-- **Trend Analysis**: Usage patterns and engagement metrics
-- **Export Capabilities**: Multiple format support for data export
+### リアクション管理（5ツール）
+- `add_reaction` - メッセージへの絵文字リアクション追加
+- `remove_reaction` - メッセージからのリアクション削除
+- `get_reactions` - メッセージ上のすべてのリアクション一覧
+- `get_reaction_statistics` - リアクション分析とトレンド
+- `find_messages_by_reactions` - リアクションパターンによるメッセージ検索
 
-## 📋 Complete Tool List (43 Tools Total)
+### ワークスペース管理（4ツール）
+- `get_workspace_info` - ワークスペース/チーム情報
+- `list_team_members` - 役割付きチームメンバー一覧
+- `get_workspace_activity` - 包括的なアクティビティレポート
+- `get_server_health` - サーバーヘルスとパフォーマンス監視
 
-### Core Messaging (6 tools)
-- `send_message` - Send messages to channels/threads
-- `list_channels` - List workspace channels 
-- `get_channel_history` - Get channel message history
-- `get_user_info` - Get user information
-- `search_messages` - Search messages (legacy)
-- `get_channel_info` - Get channel details (legacy)
+## 🛠️ 技術的実装
 
-### Thread Management (16 tools)
-- `find_threads_in_channel` - Find all threaded conversations
-- `get_thread_replies` - Get complete thread content
-- `search_threads` - Search threads by keywords/participants
-- `analyze_thread` - Deep thread analysis (participants, timeline, topics)
-- `summarize_thread` - AI-powered thread summaries
-- `post_thread_reply` - Reply to existing threads
-- `create_thread` - Start new threaded conversations
-- `mark_thread_important` - Flag important threads
-- `extract_action_items` - Extract tasks from threads
-- `identify_important_threads` - Find high-priority discussions
-- `export_thread` - Export threads (markdown, JSON, HTML, CSV)
-- `find_related_threads` - Discover related discussions
-- `get_thread_metrics` - Thread analytics and statistics
-- `get_threads_by_participants` - Find threads by user participation
-- And more thread utilities...
+### アーキテクチャ
+- **型安全設計**: すべてのSlack APIエンティティの包括的なTypeScript型
+- **バリデーション層**: すべての操作にZodベースの入力検証
+- **エラーハンドリング**: 詳細なログ記録による堅牢なエラー処理
+- **パフォーマンス**: 大規模ワークスペース操作に最適化
 
-### File Operations (7 tools)
-- `upload_file` - Upload files with metadata
-- `list_files` - List workspace files with filters
-- `get_file_info` - Detailed file information
-- `delete_file` - Delete files (where permitted)
-- `share_file` - Share files to additional channels
-- `analyze_files` - File usage analysis and cleanup insights
-- `search_files` - Advanced file search capabilities
+### 高度な機能
+- **バイナリファイルサポート**: 適切なバイナリデータ処理によるファイルアップロード
+- **マルチフォーマットエクスポート**: markdown、JSON、HTML、CSVエクスポートのサポート
+- **クロスチャンネル操作**: 複数のチャンネルとワークスペースでの作業
+- **パターンマッチング分析**: キーワードベースのスレッド分析（AI/NLPは使用せず）
 
-### Reaction Management (5 tools)
-- `add_reaction` - Add emoji reactions to messages
-- `remove_reaction` - Remove reactions from messages
-- `get_reactions` - List all reactions on a message
-- `get_reaction_statistics` - Reaction analytics and trends
-- `find_messages_by_reactions` - Find messages by reaction patterns
+### 統合機能
+- **MCPプロトコル**: 完全なModel Context Protocolコンプライアンス
+- **権限処理**: Slackの権限とアクセス制御の尊重
+- **トークン戦略**: ボット/ユーザートークンの柔軟な使い分け
 
-### Workspace Management (2 tools)
-- `get_workspace_info` - Workspace/team information
-- `list_team_members` - Team member listing with roles
+## 🎯 使用例
 
-### Analytics & Reporting (2 tools)
-- `get_workspace_activity` - Comprehensive activity reports
-- `get_server_health` - Server health and performance monitoring
+この実装により可能になること：
 
-## 🛠️ Technical Implementation
+1. **チーム通信分析**: チームのコミュニケーションパターンの深い洞察
+2. **コンテンツ管理**: ワークスペースファイルとドキュメントの整理と管理
+3. **ワークフロー自動化**: 定型的なSlack操作とメンテナンスの自動化
+4. **コンプライアンスと監査**: コンプライアンス要件のレポート生成
+5. **生産性分析**: チームの生産性の測定と最適化
+6. **ナレッジ管理**: 組織知識の抽出と整理
+7. **統合ハブ**: Slackと外部システム/ワークフローの接続
 
-### Architecture
-- **Type-Safe Design**: Comprehensive TypeScript types for all Slack API entities
-- **Validation Layer**: Zod-based input validation for all operations
-- **Error Handling**: Robust error handling with detailed logging
-- **Rate Limiting**: Built-in rate limit awareness and management
-- **Performance**: Optimized for large-scale workspace operations
-
-### Advanced Features
-- **Binary File Support**: Handle file uploads with proper binary data processing
-- **Streaming Support**: Large file upload capabilities
-- **Multi-format Export**: Support for markdown, JSON, HTML, CSV exports
-- **Cross-channel Operations**: Work across multiple channels and workspaces
-- **Comprehensive Analytics**: Deep insights into workspace usage patterns
-
-### Integration Capabilities
-- **MCP Protocol**: Full Model Context Protocol compliance
-- **Webhook Support**: Handle Slack webhook integrations
-- **Bot Management**: Manage bot presence and status
-- **Permission Handling**: Respect Slack permissions and access controls
-
-## 🎯 Use Cases
-
-This comprehensive implementation enables:
-
-1. **Team Communication Analysis**: Deep insights into team communication patterns
-2. **Content Management**: Organize and manage workspace files and documents
-3. **Workflow Automation**: Automate routine Slack operations and maintenance
-4. **Compliance & Auditing**: Generate reports for compliance requirements
-5. **Productivity Analytics**: Measure and optimize team productivity
-6. **Knowledge Management**: Extract and organize institutional knowledge
-7. **Integration Hub**: Connect Slack with external systems and workflows
-
-## 🚀 Getting Started
+## 🚀 開発を始める
 
 ```bash
-# Install dependencies
+# 依存関係のインストール
 npm install
 
-# Build the project
+# プロジェクトのビルド
 npm run build
 
-# Start the server
+# サーバーの起動
 npm start
+
+# 開発モード（ホットリロード付き）
+npm run dev
+
+# テストの実行（.env設定が必要）
+npm test
+
+# リント
+npm run lint
+
+# コードフォーマット
+npm run format
 ```
 
-The server provides a complete Slack API implementation through the MCP protocol, making it easy to build sophisticated Slack integrations and automation tools.
+## 📊 パフォーマンスとスケーラビリティ
 
-## 📊 Performance & Scalability
+- **非同期処理**: Slack APIの非同期呼び出しをサポート
+- **メモリ効率**: 大規模データセットの効率的な処理
+- **エラーハンドリング**: 堅牢なエラー処理と詳細なログ出力
+- **レート制限**: 現在は実装されていません（将来の改善点）
 
-- **Concurrent Operations**: Handle multiple API calls efficiently
-- **Memory Optimization**: Efficient memory usage for large datasets
-- **Caching Strategy**: Smart caching to minimize API calls
-- **Error Recovery**: Robust error handling and retry logic
-- **Rate Limit Management**: Automatic rate limit handling and backoff
+## ⚠️ 既知の制限事項
 
-This implementation represents a complete, production-ready Slack MCP server that can handle enterprise-scale operations while maintaining excellent performance and reliability.
+1. **検索API依存性**: 検索操作（`searchMessages`、`searchThreads`、`searchFiles`）にはユーザートークンが必要
+2. **スレッド分析**: 基本的なパターンマッチング（AI/NLPではない）
+3. **レート制限**: レート制限の実装なし
+4. **対話的操作**: `-i`フラグ付きgitコマンドなどはサポートされていません
+5. **テスト環境**: テスト実行には有効な`.env`ファイルとトークンが必要
+
+## 🔧 開発者向け情報
+
+### プロジェクト構造
+```
+src/
+├── __tests__/          # Jestテストファイル（3つのテストスイート）
+├── config/             # 設定管理（Zodベースの環境変数検証）
+├── index.ts            # MCPサーバーエントリポイント
+├── mcp/                # MCPプロトコル定義
+│   ├── tools.ts        # ツール定義（40ツール）
+│   └── types.ts        # MCP TypeScript型
+├── slack/              # Slack統合
+│   ├── slack-service.ts # コアサービス実装（3000行以上）
+│   └── types.ts        # Slack固有の型定義
+└── utils/              # ユーティリティ
+    ├── errors.ts       # カスタムエラークラス
+    ├── helpers.ts      # ヘルパー関数
+    ├── logger.ts       # ログユーティリティ
+    └── validation.ts   # Zodバリデーションスキーマ
+```
+
+### 新しいツールの追加方法
+
+1. `src/mcp/tools.ts`にツールスキーマを定義
+2. `ALL_TOOLS`エクスポートに追加
+3. `src/utils/validation.ts`にバリデーションスキーマを追加
+4. `src/slack/slack-service.ts`にメソッドを実装
+5. `src/index.ts`のswitchステートメントにケースを追加
+6. 必要に応じて`src/slack/types.ts`に型を追加
+7. `src/__tests__/`にテストを作成
+
+## 📝 ライセンスと貢献
+
+このプロジェクトへの貢献を歓迎します。プルリクエストを送信する前に、テストが通ることを確認してください。
+
+---
+
+⚠️ **再度の注意**: このプロジェクトは開発中であり、本番環境での使用には十分な検証が必要です。不具合や予期しない動作が発生する可能性があります。
