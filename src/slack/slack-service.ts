@@ -1,6 +1,7 @@
 import { 
   WebClient, 
   LogLevel,
+  WebClientEvent,
   type SearchAllArguments,
   type FilesListArguments,
   type UsersListArguments,
@@ -81,6 +82,15 @@ export class SlackService {
   private client: WebClient | undefined;
   private userClient: WebClient | undefined;
   private userCache: Map<string, string> = new Map();
+  
+  // Rate limiting metrics
+  private rateLimitMetrics = {
+    totalRequests: 0,
+    rateLimitedRequests: 0,
+    retryAttempts: 0,
+    lastRateLimitTime: null as Date | null,
+    rateLimitsByTier: new Map<string, number>(),
+  };
 
   constructor() {
     // Delay initialization until first use
@@ -90,7 +100,19 @@ export class SlackService {
     if (!this.client) {
       this.client = new WebClient(CONFIG.SLACK_BOT_TOKEN, {
         logLevel: this.getSlackLogLevel(),
+        retryConfig: CONFIG.SLACK_ENABLE_RATE_LIMIT_RETRY ? {
+          retries: CONFIG.SLACK_RATE_LIMIT_RETRIES,
+          factor: 2,
+          minTimeout: 1000,
+          maxTimeout: 300000,
+          randomize: true,
+        } : undefined,
+        maxRequestConcurrency: CONFIG.SLACK_MAX_REQUEST_CONCURRENCY,
+        rejectRateLimitedCalls: CONFIG.SLACK_REJECT_RATE_LIMITED_CALLS,
       });
+      
+      // Add rate limiting event listeners
+      this.setupRateLimitListeners(this.client, 'bot');
     }
     return this.client;
   }
@@ -105,9 +127,71 @@ export class SlackService {
     if (!this.userClient) {
       this.userClient = new WebClient(CONFIG.SLACK_USER_TOKEN, {
         logLevel: this.getSlackLogLevel(),
+        retryConfig: CONFIG.SLACK_ENABLE_RATE_LIMIT_RETRY ? {
+          retries: CONFIG.SLACK_RATE_LIMIT_RETRIES,
+          factor: 2,
+          minTimeout: 1000,
+          maxTimeout: 300000,
+          randomize: true,
+        } : undefined,
+        maxRequestConcurrency: CONFIG.SLACK_MAX_REQUEST_CONCURRENCY,
+        rejectRateLimitedCalls: CONFIG.SLACK_REJECT_RATE_LIMITED_CALLS,
       });
+      
+      // Add rate limiting event listeners
+      this.setupRateLimitListeners(this.userClient, 'user');
     }
     return this.userClient;
+  }
+
+  /**
+   * Setup rate limiting event listeners for WebClient
+   * @param client - WebClient instance
+   * @param clientType - Type of client (bot/user) for logging
+   */
+  private setupRateLimitListeners(client: WebClient, clientType: 'bot' | 'user'): void {
+    client.on(WebClientEvent.RATE_LIMITED, (numSeconds: number, { team_id, api_url }) => {
+      this.rateLimitMetrics.rateLimitedRequests++;
+      this.rateLimitMetrics.lastRateLimitTime = new Date();
+      
+      // Track by tier (extract from API URL)
+      const tier = this.extractTierFromUrl(api_url);
+      const currentCount = this.rateLimitMetrics.rateLimitsByTier.get(tier) || 0;
+      this.rateLimitMetrics.rateLimitsByTier.set(tier, currentCount + 1);
+      
+      logger.warn(`Rate limit hit for ${clientType} client`, {
+        team_id,
+        api_url,
+        retry_after_seconds: numSeconds,
+        tier,
+        total_rate_limits: this.rateLimitMetrics.rateLimitedRequests
+      });
+    });
+
+    // Track total requests - use a different approach since HTTP_REQUEST may not be available
+    const originalRequest = client.apiCall.bind(client);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    client.apiCall = (method: string, options?: any) => {
+      this.rateLimitMetrics.totalRequests++;
+      return originalRequest(method, options);
+    };
+  }
+
+  /**
+   * Extract rate limit tier from API URL
+   * @param apiUrl - Slack API URL
+   * @returns Tier identifier
+   */
+  private extractTierFromUrl(apiUrl?: string): string {
+    if (!apiUrl) return 'unknown';
+    
+    // Common patterns for different tiers
+    if (apiUrl.includes('chat.') || apiUrl.includes('files.')) return 'tier1';
+    if (apiUrl.includes('conversations.') || apiUrl.includes('users.')) return 'tier2';
+    if (apiUrl.includes('search.')) return 'tier3';
+    if (apiUrl.includes('admin.')) return 'tier4';
+    
+    return 'other';
   }
 
   /**
@@ -2425,6 +2509,10 @@ export class SlackService {
       const memoryUsage = process.memoryUsage();
       const uptime = process.uptime();
       
+      const rateLimitPercentage = this.rateLimitMetrics.totalRequests > 0 
+        ? (this.rateLimitMetrics.rateLimitedRequests / this.rateLimitMetrics.totalRequests) * 100 
+        : 0;
+
       const health: ServerHealth = {
         status: testResult.ok ? 'healthy' : 'degraded',
         uptime_seconds: uptime,
@@ -2445,6 +2533,14 @@ export class SlackService {
           p95_ms: responseTimeMs * 1.2,
           p99_ms: responseTimeMs * 1.5,
         },
+        rate_limit_metrics: {
+          total_requests: this.rateLimitMetrics.totalRequests,
+          rate_limited_requests: this.rateLimitMetrics.rateLimitedRequests,
+          retry_attempts: this.rateLimitMetrics.retryAttempts,
+          last_rate_limit_time: this.rateLimitMetrics.lastRateLimitTime?.toISOString() || null,
+          rate_limits_by_tier: Object.fromEntries(this.rateLimitMetrics.rateLimitsByTier),
+          rate_limit_percentage: rateLimitPercentage,
+        },
       };
       
       return {
@@ -2458,6 +2554,10 @@ export class SlackService {
     } catch (error) {
       logger.error('Error getting server health:', error);
       
+      const rateLimitPercentage = this.rateLimitMetrics.totalRequests > 0 
+        ? (this.rateLimitMetrics.rateLimitedRequests / this.rateLimitMetrics.totalRequests) * 100 
+        : 0;
+
       const degradedHealth: ServerHealth = {
         status: 'unhealthy',
         uptime_seconds: process.uptime(),
@@ -2477,6 +2577,14 @@ export class SlackService {
           avg_ms: 0,
           p95_ms: 0,
           p99_ms: 0,
+        },
+        rate_limit_metrics: {
+          total_requests: this.rateLimitMetrics.totalRequests,
+          rate_limited_requests: this.rateLimitMetrics.rateLimitedRequests,
+          retry_attempts: this.rateLimitMetrics.retryAttempts,
+          last_rate_limit_time: this.rateLimitMetrics.lastRateLimitTime?.toISOString() || null,
+          rate_limits_by_tier: Object.fromEntries(this.rateLimitMetrics.rateLimitsByTier),
+          rate_limit_percentage: rateLimitPercentage,
         },
       };
       
@@ -3117,6 +3225,27 @@ export class SlackService {
 
     result += `🔍 Last API Call: ${health.last_api_call}\n` +
               `❌ Errors (last hour): ${health.error_count_last_hour}`;
+
+    // Add rate limit metrics if available
+    if (health.rate_limit_metrics) {
+      result += '\n\n📊 Rate Limit Metrics:\n' +
+                `  Total Requests: ${health.rate_limit_metrics.total_requests}\n` +
+                `  Rate Limited Requests: ${health.rate_limit_metrics.rate_limited_requests}\n` +
+                `  Rate Limit Percentage: ${health.rate_limit_metrics.rate_limit_percentage.toFixed(2)}%\n` +
+                `  Retry Attempts: ${health.rate_limit_metrics.retry_attempts}\n`;
+      
+      if (health.rate_limit_metrics.last_rate_limit_time) {
+        result += `  Last Rate Limited: ${health.rate_limit_metrics.last_rate_limit_time}\n`;
+      }
+      
+      const tierEntries = Object.entries(health.rate_limit_metrics.rate_limits_by_tier);
+      if (tierEntries.length > 0) {
+        result += '  Rate Limits by Tier:\n';
+        tierEntries.forEach(([tier, count]) => {
+          result += `    ${tier}: ${count}\n`;
+        });
+      }
+    }
 
     return result;
   }

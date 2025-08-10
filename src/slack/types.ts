@@ -601,6 +601,14 @@ export interface ServerHealth {
     p95_ms: number;
     p99_ms: number;
   };
+  rate_limit_metrics: {
+    total_requests: number;
+    rate_limited_requests: number;
+    retry_attempts: number;
+    last_rate_limit_time: string | null;
+    rate_limits_by_tier: { [tier: string]: number };
+    rate_limit_percentage: number;
+  };
 }
 
 /**

@@ -3,7 +3,27 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { SlackService } from '../slack/slack-service';
 import { WebClient } from '@slack/web-api';
 
-jest.mock('@slack/web-api');
+jest.mock('@slack/web-api', () => ({
+  WebClient: jest.fn(),
+  LogLevel: {
+    DEBUG: 'debug',
+    INFO: 'info',
+    WARN: 'warn',
+    ERROR: 'error',
+  },
+  WebClientEvent: {
+    RATE_LIMITED: 'rate_limited',
+  },
+  retryPolicies: {
+    fiveRetriesInFiveMinutes: {
+      retries: 5,
+      factor: 2,
+      minTimeout: 1000,
+      maxTimeout: 300000,
+      randomize: true,
+    },
+  },
+}));
 
 // Mock the config module
 jest.mock('../config/index', () => {
@@ -60,6 +80,11 @@ describe('SlackService.searchMessages', () => {
       users: {
         info: jest.fn(),
       },
+      auth: {
+        test: jest.fn(),
+      },
+      on: jest.fn(),
+      apiCall: jest.fn(),
     } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
     
     // Mock for user client (first call)
@@ -70,6 +95,11 @@ describe('SlackService.searchMessages', () => {
       users: {
         info: jest.fn(),
       },
+      auth: {
+        test: jest.fn(),
+      },
+      on: jest.fn(),
+      apiCall: jest.fn(),
     } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
     
     // Mock WebClient constructor to return different instances

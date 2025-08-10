@@ -30,6 +30,11 @@ const createMockWebClient = (): any => ({ // eslint-disable-line @typescript-esl
     delete: jest.fn(),
     share: jest.fn(),
   },
+  auth: {
+    test: jest.fn(),
+  },
+  on: jest.fn(),
+  apiCall: jest.fn(),
 });
 
 let mockWebClientInstance = createMockWebClient();
@@ -42,6 +47,18 @@ jest.mock('@slack/web-api', () => ({
     INFO: 'info',
     WARN: 'warn',
     ERROR: 'error',
+  },
+  WebClientEvent: {
+    RATE_LIMITED: 'rate_limited',
+  },
+  retryPolicies: {
+    fiveRetriesInFiveMinutes: {
+      retries: 5,
+      factor: 2,
+      minTimeout: 1000,
+      maxTimeout: 300000,
+      randomize: true,
+    },
   },
 }));
 

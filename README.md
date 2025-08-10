@@ -102,6 +102,10 @@ npm start
 | `SLACK_USER_TOKEN` | ❌ 任意 | - | 拡張機能用のユーザートークン (xoxp-*) |
 | `USE_USER_TOKEN_FOR_READ` | ❌ 任意 | `false` | 読み取り操作でユーザートークンを使用 |
 | `LOG_LEVEL` | ❌ 任意 | `info` | ログレベル (debug, info, warn, error) |
+| `SLACK_ENABLE_RATE_LIMIT_RETRY` | ❌ 任意 | `true` | レート制限時の自動リトライを有効化 |
+| `SLACK_RATE_LIMIT_RETRIES` | ❌ 任意 | `3` | リトライ回数 |
+| `SLACK_MAX_REQUEST_CONCURRENCY` | ❌ 任意 | `3` | 最大同時リクエスト数 |
+| `SLACK_REJECT_RATE_LIMITED_CALLS` | ❌ 任意 | `false` | レート制限時にリトライせず即座に拒否 |
 
 ### トークンの使い分けガイド
 
@@ -183,7 +187,7 @@ npm start
 - `get_workspace_info` - ワークスペース/チーム情報
 - `list_team_members` - 役割付きチームメンバー一覧
 - `get_workspace_activity` - 包括的なアクティビティレポート
-- `get_server_health` - サーバーヘルスとパフォーマンス監視
+- `get_server_health` - サーバーヘルスとパフォーマンス監視（レート制限メトリクスを含む）
 
 ## 🛠️ 技術的実装
 
@@ -196,6 +200,10 @@ npm start
 - **バリデーション層**: すべての操作にZodベースの入力検証
 - **エラーハンドリング**: 詳細なログ記録による堅牢なエラー処理
 - **パフォーマンス**: 大規模ワークスペース操作に最適化
+- **レート制限対応**: 
+  - 自動リトライ機能（指数バックオフ）
+  - 同時リクエスト数の制限
+  - レート制限メトリクスの追跡と報告
 
 ### 高度な機能
 - **バイナリファイルサポート**: 適切なバイナリデータ処理によるファイルアップロード

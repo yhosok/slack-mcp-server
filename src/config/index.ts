@@ -9,6 +9,12 @@ const ConfigSchema = z.object({
   SLACK_USER_TOKEN: z.string().optional(), // Optional user token for search operations
   USE_USER_TOKEN_FOR_READ: z.coerce.boolean().default(false), // Use user token for read operations (default: false = bot token only)
 
+  // Slack rate limiting configuration
+  SLACK_RATE_LIMIT_RETRIES: z.coerce.number().min(0).max(10).default(3), // Number of retries for rate-limited requests
+  SLACK_MAX_REQUEST_CONCURRENCY: z.coerce.number().min(1).max(20).default(3), // Maximum concurrent requests
+  SLACK_REJECT_RATE_LIMITED_CALLS: z.coerce.boolean().default(false), // Reject rate-limited calls instead of retrying
+  SLACK_ENABLE_RATE_LIMIT_RETRY: z.coerce.boolean().default(true), // Enable automatic retry on rate limits
+
   // MCP configuration
   MCP_SERVER_NAME: z.string().default('slack-mcp-server'),
   MCP_SERVER_VERSION: z.string().default('1.0.0'),
