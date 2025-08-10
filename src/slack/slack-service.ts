@@ -1218,7 +1218,7 @@ export class SlackService {
       const rawMessages = result.messages || [];
       const messages = rawMessages.map(msg => this.convertMessageElementToSlackMessage(msg));
       const participants = this.analyzeThreadParticipants(messages);
-      // const keyTopics = this.extractTopicsFromThread(messages); // TODO: Use for topic extraction
+      // Topic extraction available via extractTopicsFromThread() method but not included in analysis output
       const actionItems = input.include_action_items ? this.extractActionItemsFromMessages(messages) : [];
       const decisions = input.include_decisions ? this.extractDecisions(messages) : [];
 
@@ -1496,7 +1496,7 @@ export class SlackService {
 
       const sourceMessages = sourceResult.messages || [];
       const sourceKeywords = this.extractTopicsFromThread(sourceMessages as SlackMessage[]);
-      // const sourceParticipants = this.analyzeThreadParticipants(sourceMessages as SlackMessage[]).map(p => p.user_id); // TODO: Use for participant matching
+      // Participant matching functionality available but not currently implemented in relationship scoring
 
       const relatedThreads: RelatedThread[] = [];
 
@@ -1534,7 +1534,7 @@ export class SlackService {
               const message = match;
               
               if (message.channel?.id && message.ts && message.ts !== input.thread_ts) {
-                const similarity = this.calculateThreadSimilarity();
+                const similarity = this.calculateThreadSimilarity(sourceKeywords, message.text || '');
 
                 if (similarity >= (input.similarity_threshold || 0.3)) {
                   relatedThreads.push({
@@ -1593,13 +1593,13 @@ export class SlackService {
     try {
       logger.info(`Getting thread metrics for ${input.channel || 'all channels'}`);
       
-      // const timeRange = this.calculateTimeRange(input.after, input.before); // TODO: Use for filtering threads
+      // Time range filtering infrastructure available but not integrated with thread metrics collection
       const allThreads: SlackThread[] = [];
 
       if (input.channel) {
         // Get threads from specific channel
         // This would need to be implemented to return actual thread objects instead of formatted text
-        // For now, we'll use empty array as placeholder
+        // Thread metrics collection requires iterating through channel history to identify and analyze threads
       } else {
         // This would require iterating through all channels the bot has access to
         logger.warn('Getting metrics for all channels not yet implemented');
@@ -2687,20 +2687,105 @@ export class SlackService {
    * Extract topics from thread
    */
   private extractTopicsFromThread(messages: SlackMessage[]): string[] {
-    const text = messages.map(m => m.text || '').join(' ').toLowerCase();
+    const text = messages.map(m => m.text || '').join(' ');
     
-    // Simple keyword extraction - in practice, you'd use more sophisticated NLP
-    const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'cannot', 'this', 'that', 'these', 'those'];
-    const words = text.split(/\s+/).filter(word => word.length > 3 && !commonWords.includes(word));
+    // Remove URLs, mentions, and emojis
+    const cleanedText = text
+      .replace(/<[^>]+>/g, ' ') // Remove Slack-style links/mentions
+      .replace(/:[a-z_]+:/g, ' ') // Remove emoji codes
+      .replace(/https?:\/\/[^\s]+/g, ' '); // Remove URLs
+    
+    // Japanese stop words (particles and common words)
+    const japaneseStopWords = new Set([
+      'の', 'に', 'は', 'を', 'た', 'が', 'で', 'て', 'と', 'し', 'れ', 'さ',
+      'ある', 'いる', 'も', 'する', 'から', 'な', 'こと', 'として', 'い', 'や',
+      'など', 'なり', 'へ', 'か', 'だ', 'これ', 'それ', 'あれ', 'この', 'その',
+      'もの', 'ため', 'なっ', 'なる', 'でも', 'です', 'ます', 'ました', 'でした'
+    ]);
+    
+    // English stop words
+    const englishStopWords = new Set([
+      'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+      'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+      'should', 'may', 'might', 'can', 'cannot', 'this', 'that', 'these',
+      'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which',
+      'who', 'when', 'where', 'why', 'how', 'all', 'each', 'every', 'both',
+      'few', 'more', 'most', 'other', 'some', 'such', 'no', 'not', 'only',
+      'own', 'same', 'so', 'than', 'too', 'very', 'just', 'as'
+    ]);
     
     const wordCounts = new Map<string, number>();
-    words.forEach(word => {
-      wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
-    });
     
+    // Split text into tokens by spaces and Japanese word boundaries
+    // This regex splits on spaces and common Japanese particles
+    const tokens = cleanedText.split(/[\s\u3000、。！？「」（）[\]【】〈〉《》〔〕『』｛｝]+/);
+    
+    for (const token of tokens) {
+      if (!token || token.length < 2) continue;
+      
+      const lowerToken = token.toLowerCase();
+      
+      // Check if token contains Japanese characters
+      const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(token);
+      
+      if (hasJapanese) {
+        // For Japanese tokens, extract meaningful parts
+        // Split by common particles but keep the segments
+        const japaneseSegments = token.split(/(?=[をにでとはがもやからまでへより])|(?<=[をにでとはがもやからまでへより])/);
+        
+        for (const segment of japaneseSegments) {
+          // Skip particles and stop words
+          if (segment.length >= 2 && !japaneseStopWords.has(segment)) {
+            // Prefer Kanji compounds and Katakana words
+            const hasKanji = /[\u4E00-\u9FAF]/.test(segment);
+            const isKatakana = /^[\u30A0-\u30FF]+$/.test(segment);
+            
+            if ((hasKanji && segment.length >= 2) || 
+                (isKatakana && segment.length >= 2) || 
+                segment.length >= 3) {
+              wordCounts.set(segment, (wordCounts.get(segment) || 0) + 1);
+            }
+          }
+        }
+        
+        // Also add the whole token if it's meaningful
+        if (token.length >= 2 && token.length <= 10 && !japaneseStopWords.has(token)) {
+          const hasKanji = /[\u4E00-\u9FAF]/.test(token);
+          const isKatakana = /^[\u30A0-\u30FF]+$/.test(token);
+          
+          if (hasKanji || isKatakana) {
+            wordCounts.set(token, (wordCounts.get(token) || 0) + 1.5);
+          }
+        }
+      } else {
+        // For English/alphanumeric tokens
+        if (lowerToken.length > 3 && !englishStopWords.has(lowerToken)) {
+          wordCounts.set(lowerToken, (wordCounts.get(lowerToken) || 0) + 1);
+        }
+      }
+    }
+    
+    // Extract special patterns (URLs domains, mentions, technical terms)
+    const specialPatterns = [
+      /[a-zA-Z][a-zA-Z0-9_-]{3,}/g, // Technical identifiers
+      /[A-Z]{2,}/g, // Acronyms
+    ];
+    
+    for (const pattern of specialPatterns) {
+      const matches = cleanedText.match(pattern) || [];
+      for (const match of matches) {
+        const lowerMatch = match.toLowerCase();
+        if (!englishStopWords.has(lowerMatch) && match.length <= 20) {
+          wordCounts.set(match.toLowerCase(), (wordCounts.get(match.toLowerCase()) || 0) + 0.5);
+        }
+      }
+    }
+    
+    // Sort by frequency and return top keywords
     return Array.from(wordCounts.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
+      .slice(0, 20)
       .map(([word]) => word);
   }
 
@@ -2978,15 +3063,74 @@ export class SlackService {
            `📋 Decisions: ${summary.decisions_made.length}`;
   }
 
-  // Placeholder methods for complex features
+  // Helper methods for thread analysis
   private buildRelatedThreadSearchQueries(keywords: string[]): string[] {
-    // Don't add has:thread - we'll identify threads in the result processing
-    return [keywords.join(' ')]; // Return array of search query strings
+    // Build multiple search queries for better coverage
+    const queries: string[] = [];
+    
+    // Query 1: Top keywords as a phrase
+    if (keywords.length > 0) {
+      queries.push(keywords.slice(0, 5).join(' '));
+    }
+    
+    // Query 2: Individual important keywords (for Japanese n-grams and important terms)
+    if (keywords.length > 2) {
+      // Focus on longer keywords which are likely more specific
+      const importantKeywords = keywords.filter(k => k.length > 2).slice(0, 3);
+      if (importantKeywords.length > 0) {
+        queries.push(importantKeywords.join(' OR '));
+      }
+    }
+    
+    // Query 3: Combined query with most frequent terms
+    if (keywords.length > 5) {
+      queries.push(keywords.slice(0, 3).join(' ') + ' ' + keywords.slice(3, 6).join(' OR '));
+    }
+    
+    // Remove duplicate queries
+    return [...new Set(queries)].filter(q => q.length > 0);
   }
 
-  private calculateThreadSimilarity(): number {
-    // Simplified similarity calculation
-    return Math.random() * 0.8 + 0.2; // Placeholder
+  private calculateThreadSimilarity(sourceKeywords: string[], targetText: string): number {
+    // Extract keywords from target text using the same method
+    const targetMessages: SlackMessage[] = [{ text: targetText } as SlackMessage];
+    const targetKeywords = this.extractTopicsFromThread(targetMessages);
+    
+    // If either set is empty, return 0
+    if (sourceKeywords.length === 0 || targetKeywords.length === 0) {
+      return 0;
+    }
+    
+    // Create sets for comparison
+    const sourceSet = new Set(sourceKeywords.map(k => k.toLowerCase()));
+    const targetSet = new Set(targetKeywords.map(k => k.toLowerCase()));
+    
+    // Find intersection
+    const intersection = new Set([...sourceSet].filter(x => targetSet.has(x)));
+    
+    // Find union
+    const union = new Set([...sourceSet, ...targetSet]);
+    
+    // Calculate base Jaccard coefficient
+    if (union.size === 0) {
+      return 0;
+    }
+    
+    const jaccardCoefficient = intersection.size / union.size;
+    
+    // Bonus for matching high-priority keywords (those appearing early in the lists)
+    let priorityBonus = 0;
+    const topSourceKeywords = sourceKeywords.slice(0, 5).map(k => k.toLowerCase());
+    const topTargetKeywords = targetKeywords.slice(0, 5).map(k => k.toLowerCase());
+    
+    for (const keyword of topSourceKeywords) {
+      if (topTargetKeywords.includes(keyword)) {
+        priorityBonus += 0.05; // Add 5% bonus for each matching top keyword
+      }
+    }
+    
+    // Combine Jaccard coefficient with priority bonus (capped at 1.0)
+    return Math.min(jaccardCoefficient + priorityBonus, 1.0);
   }
 
   private removeDuplicateThreads(threads: RelatedThread[]): RelatedThread[] {
