@@ -1,18 +1,38 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { SlackService } from '../slack/slack-service.js';
+import { SlackService } from '../slack/slack-service';
 import { WebClient } from '@slack/web-api';
 
 jest.mock('@slack/web-api');
 
 // Mock the config module
-jest.mock('../config/index.js', () => ({
-  CONFIG: {
+jest.mock('../config/index', () => {
+  const mockConfig = {
     SLACK_BOT_TOKEN: 'xoxb-test-token',
     LOG_LEVEL: 'info',
     MCP_SERVER_NAME: 'test-server',
     MCP_SERVER_VERSION: '1.0.0',
     PORT: 3000,
+  };
+  return {
+    CONFIG: mockConfig,
+    getConfig: () => mockConfig,
+  };
+});
+
+// Mock the logger
+jest.mock('../utils/logger', () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
   },
+}));
+
+// Mock validation to pass through the input
+jest.mock('../utils/validation', () => ({
+  validateInput: jest.fn((schema, input) => input),
 }));
 
 describe('SlackService.getChannelInfo', () => {
@@ -25,9 +45,9 @@ describe('SlackService.getChannelInfo', () => {
       conversations: {
         info: jest.fn(),
       },
-    } as any;
+    } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
     
-    (WebClient as any).mockImplementation(() => mockWebClient);
+    (WebClient as any).mockImplementation(() => mockWebClient); // eslint-disable-line @typescript-eslint/no-explicit-any
     slackService = new SlackService();
   });
 

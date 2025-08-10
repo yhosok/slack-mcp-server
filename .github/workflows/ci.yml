@@ -30,10 +30,12 @@ jobs:
         run: npm run lint
       
       - name: Run tests
-        run: npm test || echo "Tests have some failures but continuing"
+        run: npm test
       
-      - name: Test CLI execution
+      - name: Test with coverage
+        run: npm test -- --coverage
+      
+      - name: Verify build output
         run: |
-          npm link || true
-          npx slack-mcp-server --help || echo "CLI test skipped - module import issue"
-          npm unlink slack-mcp-server || true
+          test -f dist/index.js
+          echo "Build output verified"

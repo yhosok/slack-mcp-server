@@ -57,7 +57,10 @@ class SlackMCPServer {
       const tools: Tool[] = ALL_TOOLS.map(tool => ({
         name: tool.name,
         description: tool.description,
-        inputSchema: tool.inputSchema as any,
+        inputSchema: {
+          ...tool.inputSchema,
+          type: 'object' as const
+        } as Tool['inputSchema'],
       }));
 
       return { tools };
@@ -183,7 +186,7 @@ class SlackMCPServer {
 
 // Start the server when this file is run
 // This works for both direct execution and npx
-const startServer = () => {
+const startServer = (): void => {
   const server = new SlackMCPServer();
   server.start().catch((error) => {
     logger.error('Failed to start server:', error);

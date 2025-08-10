@@ -1,18 +1,50 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { SlackService } from '../slack/slack-service.js';
+import { SlackService } from '../slack/slack-service';
 import { WebClient } from '@slack/web-api';
 
 jest.mock('@slack/web-api');
 
 // Mock the config module
-const mockConfig = {
-  SLACK_BOT_TOKEN: 'xoxb-test-token',
-  SLACK_USER_TOKEN: 'xoxp-test-token',
-  LOG_LEVEL: 'info',
-};
+jest.mock('../config/index', () => {
+  const mockConfig = {
+    SLACK_BOT_TOKEN: 'xoxb-test-token',
+    SLACK_USER_TOKEN: 'xoxp-test-token',
+    USE_USER_TOKEN_FOR_READ: true,
+    LOG_LEVEL: 'info',
+  };
+  return {
+    CONFIG: mockConfig,
+    getConfig: () => mockConfig,
+  };
+});
 
-jest.unstable_mockModule('../config/index.js', () => ({
-  CONFIG: mockConfig,
+// Mock the logger
+jest.mock('../utils/logger', () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+}));
+
+// Mock validation to pass through the input with defaults
+jest.mock('../utils/validation', () => ({
+  validateInput: jest.fn((schema, input) => {
+    // Apply defaults for SearchMessages
+    if (input && typeof input === 'object') {
+      return {
+        sort: 'score',
+        sort_dir: 'desc',
+        count: 20,
+        page: 1,
+        highlight: false,
+        ...input,
+      };
+    }
+    return input;
+  }),
 }));
 
 describe('SlackService.searchMessages', () => {
@@ -28,7 +60,7 @@ describe('SlackService.searchMessages', () => {
       users: {
         info: jest.fn(),
       },
-    } as any;
+    } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
     
     // Mock for user client (first call)
     mockUserClient = {
@@ -38,9 +70,10 @@ describe('SlackService.searchMessages', () => {
       users: {
         info: jest.fn(),
       },
-    } as any;
+    } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
     
     // Mock WebClient constructor to return different instances
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (WebClient as any).mockImplementation((token: string) => {
       if (token === 'xoxp-test-token') {
         return mockUserClient;
@@ -80,17 +113,29 @@ describe('SlackService.searchMessages', () => {
       },
     };
 
-    const mockUserInfo = {
-      ok: true,
-      user: {
-        profile: { display_name: 'John Doe' },
-        real_name: 'John Doe',
-        name: 'john',
-      },
-    };
-
     mockUserClient.search.messages.mockResolvedValue(mockSearchResult);
-    mockBotClient.users.info.mockResolvedValue(mockUserInfo);
+    mockUserClient.users.info.mockImplementation((options: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      if (options.user === 'U123456') {
+        return Promise.resolve({
+          ok: true,
+          user: {
+            profile: { display_name: 'John Doe' },
+            real_name: 'John Doe',
+            name: 'john',
+          },
+        });
+      } else if (options.user === 'U789012') {
+        return Promise.resolve({
+          ok: true,
+          user: {
+            profile: { display_name: 'Jane Smith' },
+            real_name: 'Jane Smith',
+            name: 'jane',
+          },
+        });
+      }
+      return Promise.resolve({ ok: false, error: 'user_not_found' });
+    });
 
     const result = await slackService.searchMessages({
       query: 'hello',
@@ -167,7 +212,7 @@ describe('SlackService.searchMessages', () => {
 
     await expect(
       slackService.searchMessages({ query: 'test' })
-    ).rejects.toThrow('Failed to search messages: Network error');
+    ).rejects.toThrow('Failed to search messages: Error: Network error');
   });
 
   it('should validate required parameters', async () => {

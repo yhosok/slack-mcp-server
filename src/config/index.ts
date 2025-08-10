@@ -21,7 +21,7 @@ const ConfigSchema = z.object({
 /**
  * Parse and validate environment variables
  */
-function parseConfig() {
+function parseConfig(): Config {
   try {
     return ConfigSchema.parse(process.env);
   } catch (error) {
@@ -48,7 +48,7 @@ export function getConfig(): Config {
 
 // For backward compatibility, export CONFIG as a getter
 export const CONFIG = new Proxy({} as Config, {
-  get(target, prop) {
+  get(target, prop): unknown {
     return getConfig()[prop as keyof Config];
   }
 });
