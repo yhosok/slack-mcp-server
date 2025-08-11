@@ -2,6 +2,8 @@
  * Helper utility functions for Slack operations
  */
 
+import type { MCPContent } from '../mcp/types.js';
+
 /**
  * Format a Slack timestamp to a human-readable date string
  */
@@ -132,4 +134,14 @@ export function formatDuration(seconds: number): string {
   } else {
     return `${secs}s`;
   }
+}
+
+/**
+ * Safely extract text content from MCPContent union type
+ */
+export function extractTextContent(content: MCPContent | undefined): string {
+  if (content?.type === 'text') {
+    return content.text;
+  }
+  return '';
 }

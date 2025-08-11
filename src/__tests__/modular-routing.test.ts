@@ -1,8 +1,74 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-// Simple test to verify modular routing is working
-describe('Modular Architecture Routing', () => {
+// Mock WebClient
+const createMockWebClient = (): any => ({
+  chat: {
+    postMessage: jest.fn(() => Promise.resolve({ ok: true, ts: '1234567890.123456' })),
+  },
+  conversations: {
+    list: jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        channels: [{ id: 'C123', name: 'general', is_member: true, is_archived: false }],
+      })
+    ),
+  },
+  users: {
+    info: jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        user: { id: 'U123', name: 'testuser', real_name: 'Test User' },
+      })
+    ),
+  },
+  on: jest.fn(),
+});
+
+let mockWebClientInstance = createMockWebClient();
+
+jest.mock('@slack/web-api', () => ({
+  WebClient: jest.fn().mockImplementation(() => mockWebClientInstance),
+  LogLevel: {
+    DEBUG: 'debug',
+    INFO: 'info',
+    WARN: 'warn',
+    ERROR: 'error',
+  },
+  WebClientEvent: {
+    RATE_LIMITED: 'rate_limited',
+  },
+}));
+
+// Mock config
+jest.mock('../config/index', () => {
+  const mockConfig = {
+    SLACK_BOT_TOKEN: 'xoxb-test-token',
+    SLACK_USER_TOKEN: 'xoxp-test-token',
+    USE_USER_TOKEN_FOR_READ: false,
+    LOG_LEVEL: 'error',
+    MCP_SERVER_NAME: 'test-server',
+    MCP_SERVER_VERSION: '1.0.0',
+    PORT: 3000,
+  };
+  return {
+    CONFIG: mockConfig,
+    getConfig: () => mockConfig,
+    loadConfig: () => mockConfig,
+  };
+});
+
+// Mock logger
+jest.mock('../utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+describe('SlackService Method Availability', () => {
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
@@ -10,6 +76,8 @@ describe('Modular Architecture Routing', () => {
     originalEnv = { ...process.env };
     // Clear module cache to ensure fresh config
     jest.resetModules();
+    jest.clearAllMocks();
+    mockWebClientInstance = createMockWebClient();
   });
 
   afterEach(() => {
@@ -17,8 +85,7 @@ describe('Modular Architecture Routing', () => {
     process.env = originalEnv;
   });
 
-  it('should use legacy implementation when USE_MODULAR_ARCHITECTURE is false', async () => {
-    process.env.USE_MODULAR_ARCHITECTURE = 'false';
+  it('should have SlackService available with all methods', async () => {
     process.env.SLACK_BOT_TOKEN = 'xoxb-test-token';
 
     const { SlackService } = await import('../slack/slack-service');
@@ -27,22 +94,11 @@ describe('Modular Architecture Routing', () => {
     // Check that service is created (basic smoke test)
     expect(service).toBeDefined();
     expect(typeof service.sendMessage).toBe('function');
+    expect(typeof service.listChannels).toBe('function');
+    expect(typeof service.getUserInfo).toBe('function');
   });
 
-  it('should use modular implementation when USE_MODULAR_ARCHITECTURE is true', async () => {
-    process.env.USE_MODULAR_ARCHITECTURE = 'true';
-    process.env.ENABLE_MODULAR_MESSAGES = 'true';
-    process.env.SLACK_BOT_TOKEN = 'xoxb-test-token';
-
-    const { SlackService } = await import('../slack/slack-service');
-    const service = new SlackService();
-
-    // Check that service is created with modular config
-    expect(service).toBeDefined();
-    expect(typeof service.sendMessage).toBe('function');
-  });
-
-  it('should have all 36 methods available in both modes', async () => {
+  it('should have all 36 methods available', async () => {
     const expectedMethods = [
       'sendMessage',
       'listChannels',
@@ -82,31 +138,42 @@ describe('Modular Architecture Routing', () => {
       'getServerHealth',
     ];
 
-    // Test legacy mode
-    process.env.USE_MODULAR_ARCHITECTURE = 'false';
     process.env.SLACK_BOT_TOKEN = 'xoxb-test-token';
 
-    const { SlackService: LegacyService } = await import('../slack/slack-service');
-    const legacyService = new LegacyService();
+    const { SlackService } = await import('../slack/slack-service');
+    const service = new SlackService();
 
     for (const method of expectedMethods) {
-      expect(typeof (legacyService as any)[method]).toBe('function');
+      expect(typeof (service as any)[method]).toBe('function');
     }
 
-    // Clear cache and test modular mode
-    jest.resetModules();
-    process.env.USE_MODULAR_ARCHITECTURE = 'true';
-    process.env.ENABLE_MODULAR_MESSAGES = 'true';
-    process.env.ENABLE_MODULAR_THREADS = 'true';
-    process.env.ENABLE_MODULAR_FILES = 'true';
-    process.env.ENABLE_MODULAR_REACTIONS = 'true';
-    process.env.ENABLE_MODULAR_WORKSPACE = 'true';
+    expect(expectedMethods).toHaveLength(36);
+  });
 
-    const { SlackService: ModularService } = await import('../slack/slack-service');
-    const modularService = new ModularService();
+  it('should be able to call methods successfully', async () => {
+    process.env.SLACK_BOT_TOKEN = 'xoxb-test-token';
 
-    for (const method of expectedMethods) {
-      expect(typeof (modularService as any)[method]).toBe('function');
-    }
+    const { SlackService } = await import('../slack/slack-service');
+    const service = new SlackService();
+
+    // Test a few core methods work
+    const messageResult = await service.sendMessage({
+      channel: 'C123456',
+      text: 'Test message',
+    });
+    expect(messageResult).toBeDefined();
+    expect(messageResult.content).toBeDefined();
+
+    const channelsResult = await service.listChannels({
+      exclude_archived: true,
+    });
+    expect(channelsResult).toBeDefined();
+    expect(channelsResult.content).toBeDefined();
+
+    const userResult = await service.getUserInfo({
+      user: 'U123456',
+    });
+    expect(userResult).toBeDefined();
+    expect(userResult.content).toBeDefined();
   });
 });

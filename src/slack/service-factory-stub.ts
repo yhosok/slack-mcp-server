@@ -7,22 +7,7 @@ import { createFileService } from './services/files/file-service.js';
 import { createReactionService } from './services/reactions/reaction-service.js';
 import { createWorkspaceService } from './services/workspace/workspace-service.js';
 
-/**
- * Configuration for the modular Slack service
- */
-export interface ModularSlackConfig {
-  // Feature flags for gradual rollout
-  useModularArchitecture: boolean;
-  enableModularMessages: boolean;
-  enableModularThreads: boolean;
-  enableModularFiles: boolean;
-  enableModularReactions: boolean;
-  enableModularWorkspace: boolean;
 
-  // Performance monitoring
-  enablePerformanceMetrics: boolean;
-  monitorLegacyComparison: boolean;
-}
 
 /**
  * Method registry mapping method names to service implementations
@@ -80,33 +65,14 @@ export interface ServiceMethodRegistry {
  */
 export interface SlackServiceRegistry {
   methods: ServiceMethodRegistry;
-  config: ModularSlackConfig;
 }
 
-/**
- * Parse modular configuration from CONFIG
- */
-export function parseModularConfig(): ModularSlackConfig {
-  return {
-    // Feature flags for gradual rollout
-    useModularArchitecture: CONFIG.USE_MODULAR_ARCHITECTURE,
-    enableModularMessages: CONFIG.ENABLE_MODULAR_MESSAGES,
-    enableModularThreads: CONFIG.ENABLE_MODULAR_THREADS,
-    enableModularFiles: CONFIG.ENABLE_MODULAR_FILES,
-    enableModularReactions: CONFIG.ENABLE_MODULAR_REACTIONS,
-    enableModularWorkspace: CONFIG.ENABLE_MODULAR_WORKSPACE,
 
-    // Performance monitoring
-    enablePerformanceMetrics: CONFIG.ENABLE_PERFORMANCE_METRICS,
-    monitorLegacyComparison: CONFIG.MONITOR_LEGACY_COMPARISON,
-  };
-}
 
 /**
  * Create complete service registry with real implementations
  */
-export function createSlackServiceRegistry(config?: ModularSlackConfig): SlackServiceRegistry {
-  const finalConfig = config || parseModularConfig();
+export function createSlackServiceRegistry(): SlackServiceRegistry {
 
   // Create infrastructure configuration from global CONFIG
   const infrastructureConfig = {
@@ -180,7 +146,6 @@ export function createSlackServiceRegistry(config?: ModularSlackConfig): SlackSe
 
   return {
     methods,
-    config: finalConfig,
   };
 }
 

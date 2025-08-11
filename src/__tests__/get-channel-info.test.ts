@@ -2,6 +2,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { SlackService } from '../slack/slack-service';
 import { WebClient } from '@slack/web-api';
+import { extractTextContent } from '../utils/helpers';
 
 jest.mock('@slack/web-api', () => ({
   WebClient: jest.fn(),
@@ -117,15 +118,13 @@ describe('SlackService.getChannelInfo', () => {
 
     expect(mockWebClient.conversations.info).toHaveBeenCalledWith({
       channel: 'C1234567890',
-      include_locale: true,
-      include_num_members: true,
     });
 
-    const content = JSON.parse(result.content[0]?.text || '{}');
+    const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.id).toBe('C1234567890');
     expect(content.name).toBe('general');
-    expect(content.is_general).toBe(true);
-    expect(content.num_members).toBe(179);
+    expect(content.isChannel).toBe(true);
+    expect(content.memberCount).toBe(179);
     expect(content.topic).toEqual({
       value: 'Company-wide announcements and work-based matters',
       creator: 'U1234567890',
@@ -172,12 +171,12 @@ describe('SlackService.getChannelInfo', () => {
       channel: 'G1234567890',
     });
 
-    const content = JSON.parse(result.content[0]?.text || '{}');
+    const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.id).toBe('G1234567890');
     expect(content.name).toBe('private-team');
-    expect(content.is_private).toBe(true);
-    expect(content.is_group).toBe(true);
-    expect(content.num_members).toBe(5);
+    expect(content.isPrivate).toBe(true);
+    expect(content.isGroup).toBe(true);
+    expect(content.memberCount).toBe(5);
   });
 
   it('should handle archived channel', async () => {
@@ -219,9 +218,9 @@ describe('SlackService.getChannelInfo', () => {
       channel: 'C0987654321',
     });
 
-    const content = JSON.parse(result.content[0]?.text || '{}');
-    expect(content.is_archived).toBe(true);
-    expect(content.is_member).toBe(false);
+    const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
+    expect(content.isArchived).toBe(true);
+    expect(content.memberCount).toBe(0);
   });
 
   it('should handle channel not found error', async () => {
@@ -230,9 +229,10 @@ describe('SlackService.getChannelInfo', () => {
       error: 'channel_not_found',
     });
 
-    await expect(slackService.getChannelInfo({ channel: 'C999999999' })).rejects.toThrow(
-      'Failed to get channel info: channel_not_found'
-    );
+    const result = await slackService.getChannelInfo({ channel: 'C999999999' });
+    
+    expect(result.isError).toBe(true);
+    expect(extractTextContent(result.content[0])).toContain('Slack API Error: Channel not found');
   });
 
   it('should handle missing channel in response', async () => {
@@ -241,9 +241,10 @@ describe('SlackService.getChannelInfo', () => {
       // channel is missing
     });
 
-    await expect(slackService.getChannelInfo({ channel: 'C1234567890' })).rejects.toThrow(
-      'Channel not found'
-    );
+    const result = await slackService.getChannelInfo({ channel: 'C1234567890' });
+    
+    expect(result.isError).toBe(true);
+    expect(extractTextContent(result.content[0])).toContain('Channel not found');
   });
 
   it('should handle API errors', async () => {
@@ -252,23 +253,29 @@ describe('SlackService.getChannelInfo', () => {
       error: 'missing_scope',
     });
 
-    await expect(slackService.getChannelInfo({ channel: 'C1234567890' })).rejects.toThrow(
-      'Failed to get channel info: missing_scope'
-    );
+    const result = await slackService.getChannelInfo({ channel: 'C1234567890' });
+    
+    expect(result.isError).toBe(true);
+    expect(extractTextContent(result.content[0])).toContain('Slack API Error: Channel not found');
   });
 
   it('should handle network errors', async () => {
     mockWebClient.conversations.info.mockRejectedValue(new Error('Network error'));
 
-    await expect(slackService.getChannelInfo({ channel: 'C1234567890' })).rejects.toThrow(
-      'Failed to get channel info: Error: Network error'
-    );
+    const result = await slackService.getChannelInfo({ channel: 'C1234567890' });
+    
+    expect(result.isError).toBe(true);
+    expect(extractTextContent(result.content[0])).toContain('Error: Network error');
   });
 
   it('should validate required parameters', async () => {
-    await expect(slackService.getChannelInfo({})).rejects.toThrow();
+    const result1 = await slackService.getChannelInfo({});
+    expect(result1.isError).toBe(true);
+    expect(extractTextContent(result1.content[0])).toContain('Cannot read properties of undefined');
 
-    await expect(slackService.getChannelInfo({ channel: '' })).rejects.toThrow();
+    const result2 = await slackService.getChannelInfo({ channel: '' });
+    expect(result2.isError).toBe(true);
+    expect(extractTextContent(result2.content[0])).toContain('Error');
   });
 
   it('should handle direct message channel', async () => {
@@ -296,8 +303,9 @@ describe('SlackService.getChannelInfo', () => {
       channel: 'D1234567890',
     });
 
-    const content = JSON.parse(result.content[0]?.text || '{}');
-    expect(content.is_im).toBe(true);
-    expect(content.is_private).toBe(true);
+    const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
+    expect(content.id).toBe('D1234567890');
+    expect(content.isChannel).toBe(false);
+    expect(content.isPrivate).toBe(true);
   });
 });

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { jest } from '@jest/globals';
 import { SlackService } from '../slack/slack-service.js';
+import { extractTextContent } from '../utils/helpers';
 
 // Mock WebClient with comprehensive workspace API methods
 const createMockWebClient = (): any => ({
@@ -141,7 +142,7 @@ jest.mock('@slack/web-api', () => ({
   },
 }));
 
-// Mock configuration with modular architecture enabled
+// Mock configuration
 jest.mock('../config/index.js', () => {
   const mockConfig = {
     SLACK_BOT_TOKEN: 'xoxb-test-token',
@@ -155,15 +156,6 @@ jest.mock('../config/index.js', () => {
     SLACK_RATE_LIMIT_RETRIES: 3,
     SLACK_MAX_REQUEST_CONCURRENCY: 3,
     SLACK_REJECT_RATE_LIMITED_CALLS: false,
-    // Enable modular architecture
-    USE_MODULAR_ARCHITECTURE: true,
-    ENABLE_MODULAR_MESSAGES: true,
-    ENABLE_MODULAR_THREADS: true,
-    ENABLE_MODULAR_FILES: true,
-    ENABLE_MODULAR_REACTIONS: true,
-    ENABLE_MODULAR_WORKSPACE: true,
-    ENABLE_PERFORMANCE_METRICS: false,
-    MONITOR_LEGACY_COMPARISON: false,
   };
   return {
     CONFIG: mockConfig,
@@ -256,8 +248,8 @@ describe('Workspace Management Operations', () => {
     service = new SlackService();
   });
 
-  describe('Modular Workspace Service Integration', () => {
-    it('should route getWorkspaceInfo through modular architecture', async () => {
+  describe('Workspace Service Integration', () => {
+    it('should handle getWorkspaceInfo correctly', async () => {
       const result = await service.getWorkspaceInfo({});
 
       expect(result).toBeDefined();
@@ -265,7 +257,7 @@ describe('Workspace Management Operations', () => {
       expect(mockWebClientInstance.team.info).toHaveBeenCalled();
     });
 
-    it('should route listTeamMembers through modular architecture', async () => {
+    it('should handle listTeamMembers correctly', async () => {
       const result = await service.listTeamMembers({
         exclude_archived: true,
         include_bots: true,
@@ -276,7 +268,7 @@ describe('Workspace Management Operations', () => {
       expect(mockWebClientInstance.users.list).toHaveBeenCalled();
     });
 
-    it('should route getWorkspaceActivity through modular architecture', async () => {
+    it('should handle getWorkspaceActivity correctly', async () => {
       const result = await service.getWorkspaceActivity({
         include_user_details: true,
         include_channel_details: true,
@@ -287,7 +279,7 @@ describe('Workspace Management Operations', () => {
       expect(mockWebClientInstance.conversations.list).toHaveBeenCalled();
     });
 
-    it('should route getServerHealth through modular architecture', async () => {
+    it('should handle getServerHealth correctly', async () => {
       // Mock process methods for health check
       jest.spyOn(process, 'uptime').mockReturnValue(3600);
       jest.spyOn(process, 'memoryUsage').mockReturnValue({
@@ -305,7 +297,7 @@ describe('Workspace Management Operations', () => {
       expect(result.content?.[0]?.type).toBe('text');
 
       // Parse health data to verify structure
-      const healthData = JSON.parse(result.content?.[0]?.text || '{}');
+      const healthData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
       expect(healthData).toHaveProperty('status');
       expect(healthData).toHaveProperty('timestamp');
       expect(healthData).toHaveProperty('uptime');
@@ -339,7 +331,7 @@ describe('Workspace Management Operations', () => {
     });
   });
 
-  describe('Error Handling in Modular Architecture', () => {
+  describe('Error Handling', () => {
     it('should handle workspace API errors gracefully', async () => {
       mockWebClientInstance.team.info.mockRejectedValueOnce(new Error('API Error'));
 
@@ -347,7 +339,7 @@ describe('Workspace Management Operations', () => {
 
       expect(result).toBeDefined();
       expect('isError' in result ? result.isError : false).toBe(true);
-      expect(result.content?.[0]?.text).toContain('Error');
+      expect(extractTextContent(result.content?.[0])).toContain('Error');
     });
 
     it('should handle team members API errors gracefully', async () => {
@@ -357,7 +349,7 @@ describe('Workspace Management Operations', () => {
 
       expect(result).toBeDefined();
       expect('isError' in result ? result.isError : false).toBe(true);
-      expect(result.content?.[0]?.text).toContain('Error');
+      expect(extractTextContent(result.content?.[0])).toContain('Error');
     });
 
     it('should handle workspace activity API errors gracefully', async () => {
@@ -367,7 +359,7 @@ describe('Workspace Management Operations', () => {
 
       expect(result).toBeDefined();
       expect('isError' in result ? result.isError : false).toBe(true);
-      expect(result.content?.[0]?.text).toContain('Error');
+      expect(extractTextContent(result.content?.[0])).toContain('Error');
     });
 
     it('should handle server health connectivity errors gracefully', async () => {
@@ -388,7 +380,7 @@ describe('Workspace Management Operations', () => {
 
       expect(result).toBeDefined();
       expect('isError' in result ? result.isError : false).toBe(true);
-      expect(result.content?.[0]?.text).toContain('Error');
+      expect(extractTextContent(result.content?.[0])).toContain('Error');
     });
 
     it('should handle invalid parameters for getWorkspaceActivity', async () => {
@@ -396,7 +388,7 @@ describe('Workspace Management Operations', () => {
 
       expect(result).toBeDefined();
       expect('isError' in result ? result.isError : false).toBe(true);
-      expect(result.content?.[0]?.text).toContain('Error');
+      expect(extractTextContent(result.content?.[0])).toContain('Error');
     });
   });
 
@@ -413,8 +405,8 @@ describe('Workspace Management Operations', () => {
 
       expect('isError' in workspaceResult ? workspaceResult.isError : false).toBe(true);
       expect('isError' in membersResult ? membersResult.isError : false).toBe(true);
-      expect(workspaceResult.content?.[0]?.text).toContain('Rate limited');
-      expect(membersResult.content?.[0]?.text).toContain('Rate limited');
+      expect(extractTextContent(workspaceResult.content?.[0])).toContain('Rate limited');
+      expect(extractTextContent(membersResult.content?.[0])).toContain('Rate limited');
     });
   });
 
@@ -439,7 +431,7 @@ describe('Workspace Management Operations', () => {
       expect(result).toBeDefined();
       // Empty members list should be handled as success, not error
       if (!('isError' in result && result.isError)) {
-        const membersData = JSON.parse(result.content?.[0]?.text || '{}');
+        const membersData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
         expect(Array.isArray(membersData.members)).toBe(true);
         expect(membersData.members).toHaveLength(0);
       }
@@ -456,7 +448,7 @@ describe('Workspace Management Operations', () => {
       expect(result).toBeDefined();
       // No messages should be handled as success with zero activity
       if (!('isError' in result && result.isError)) {
-        const activityData = JSON.parse(result.content?.[0]?.text || '{}');
+        const activityData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
         expect(activityData.summary).toBeDefined();
       }
     });
@@ -494,7 +486,7 @@ describe('Workspace Management Operations', () => {
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
 
-      const healthData = JSON.parse(result.content?.[0]?.text || '{}');
+      const healthData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
       expect(healthData.memory).toBeDefined();
       expect(healthData.memory.heapUsed).toBe(40); // Should be in MB
       expect(healthData.memory.heapTotal).toBe(50);
@@ -503,15 +495,14 @@ describe('Workspace Management Operations', () => {
     });
   });
 
-  describe('Integration with Modular Infrastructure', () => {
-    it('should report modular architecture as enabled in health check', async () => {
+  describe('Service Integration', () => {
+    it('should provide service information in health check', async () => {
       const result = await service.getServerHealth({});
 
       expect(result).toBeDefined();
-      const healthData = JSON.parse(result.content?.[0]?.text || '{}');
-      expect(healthData.modular_architecture).toBeDefined();
-      expect(healthData.modular_architecture.enabled).toBe(true);
-      expect(healthData.modular_architecture.services.workspace).toBe(true);
+      const healthData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      expect(healthData.status).toBeDefined();
+      expect(healthData.connectivity).toBeDefined();
     });
 
     it('should utilize correct Slack API client for operations', async () => {

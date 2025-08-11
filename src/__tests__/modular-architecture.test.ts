@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { jest } from '@jest/globals';
 import { SlackService } from '../slack/slack-service';
+import { extractTextContent } from '../utils/helpers';
 
 // Mock WebClient
 const createMockWebClient = (): any => ({
@@ -41,7 +42,7 @@ jest.mock('@slack/web-api', () => ({
   },
 }));
 
-// Mock config with modular architecture enabled
+// Mock config
 jest.mock('../config/index', () => {
   const mockConfig = {
     SLACK_BOT_TOKEN: 'xoxb-test-token',
@@ -51,15 +52,6 @@ jest.mock('../config/index', () => {
     MCP_SERVER_NAME: 'test-server',
     MCP_SERVER_VERSION: '1.0.0',
     PORT: 3000,
-    // Modular architecture flags
-    USE_MODULAR_ARCHITECTURE: true,
-    ENABLE_MODULAR_MESSAGES: true,
-    ENABLE_MODULAR_THREADS: true,
-    ENABLE_MODULAR_FILES: true,
-    ENABLE_MODULAR_REACTIONS: true,
-    ENABLE_MODULAR_WORKSPACE: true,
-    ENABLE_PERFORMANCE_METRICS: false,
-    MONITOR_LEGACY_COMPARISON: false,
   };
   return {
     CONFIG: mockConfig,
@@ -78,7 +70,7 @@ jest.mock('../utils/logger', () => ({
   },
 }));
 
-describe('Modular Architecture Tests', () => {
+describe('SlackService Functionality Tests', () => {
   let service: SlackService;
 
   beforeEach(() => {
@@ -87,22 +79,22 @@ describe('Modular Architecture Tests', () => {
     service = new SlackService();
   });
 
-  describe('Modular Service Routing', () => {
-    it('should route sendMessage through modular architecture', async () => {
+  describe('Service Method Routing', () => {
+    it('should handle sendMessage correctly', async () => {
       const result = await service.sendMessage({
         channel: 'C123456',
-        text: 'Hello from modular!',
+        text: 'Hello World!',
       });
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
       expect(mockWebClientInstance.chat.postMessage).toHaveBeenCalledWith({
         channel: 'C123456',
-        text: 'Hello from modular!',
+        text: 'Hello World!',
       });
     });
 
-    it('should route listChannels through modular architecture', async () => {
+    it('should handle listChannels correctly', async () => {
       const result = await service.listChannels({
         exclude_archived: true,
       });
@@ -116,7 +108,7 @@ describe('Modular Architecture Tests', () => {
       });
     });
 
-    it('should route getUserInfo through modular architecture', async () => {
+    it('should handle getUserInfo correctly', async () => {
       const result = await service.getUserInfo({
         user: 'U123456',
       });
@@ -129,23 +121,23 @@ describe('Modular Architecture Tests', () => {
     });
   });
 
-  describe('Service Health with Modular Architecture', () => {
-    it('should report modular architecture status in health check', async () => {
+  describe('Service Health', () => {
+    it('should provide health check information', async () => {
       const result = await service.getServerHealth({});
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
       expect(result.content?.[0]?.type).toBe('text');
-      // Modular health check returns JSON object with health metrics
-      const healthData = JSON.parse(result.content?.[0]?.text || '{}');
+      // Health check returns JSON object with health metrics
+      const healthData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
       expect(healthData).toHaveProperty('status');
       expect(healthData).toHaveProperty('timestamp');
       expect(healthData).toHaveProperty('connectivity');
     });
   });
 
-  describe('Performance Monitoring', () => {
-    it('should not affect method execution when metrics disabled', async () => {
+  describe('Performance', () => {
+    it('should execute methods efficiently', async () => {
       const startTime = Date.now();
 
       await service.sendMessage({
@@ -161,11 +153,10 @@ describe('Modular Architecture Tests', () => {
     });
   });
 
-  describe('Error Handling in Modular Architecture', () => {
-    it('should handle API errors properly in modular architecture', async () => {
+  describe('Error Handling', () => {
+    it('should handle API errors properly', async () => {
       mockWebClientInstance.chat.postMessage.mockRejectedValueOnce(new Error('API Error'));
 
-      // Modular architecture should throw errors just like legacy
       let thrownError: any;
       try {
         await service.sendMessage({
@@ -180,8 +171,7 @@ describe('Modular Architecture Tests', () => {
       expect(thrownError.message).toContain('API Error');
     });
 
-    it('should handle validation errors in modular architecture', async () => {
-      // Modular architecture should throw validation errors just like legacy
+    it('should handle validation errors properly', async () => {
       let thrownError: any;
       try {
         await service.sendMessage({
@@ -198,49 +188,3 @@ describe('Modular Architecture Tests', () => {
   });
 });
 
-describe('Legacy vs Modular Comparison', () => {
-  it('should produce identical results between legacy and modular', async () => {
-    // Create two services with different configs
-    const mockConfigLegacy = {
-      SLACK_BOT_TOKEN: 'xoxb-test-token',
-      USE_MODULAR_ARCHITECTURE: false,
-      LOG_LEVEL: 'error',
-    };
-
-    const mockConfigModular = {
-      SLACK_BOT_TOKEN: 'xoxb-test-token',
-      USE_MODULAR_ARCHITECTURE: true,
-      ENABLE_MODULAR_MESSAGES: true,
-      LOG_LEVEL: 'error',
-    };
-
-    // Mock config to return different values
-    const getConfig = jest.fn();
-    getConfig.mockReturnValueOnce(mockConfigLegacy);
-    jest.doMock('../config/index', () => ({
-      CONFIG: mockConfigLegacy,
-      getConfig,
-    }));
-
-    const legacyService = new SlackService();
-
-    // Switch to modular config
-    getConfig.mockReturnValueOnce(mockConfigModular);
-    jest.doMock('../config/index', () => ({
-      CONFIG: mockConfigModular,
-      getConfig,
-    }));
-
-    const modularService = new SlackService();
-
-    // Both should produce same result structure
-    const input = { user: 'U123456' };
-
-    const legacyResult = await legacyService.getUserInfo(input);
-    const modularResult = await modularService.getUserInfo(input);
-
-    expect(legacyResult.content).toBeDefined();
-    expect(modularResult.content).toBeDefined();
-    expect(typeof legacyResult).toBe(typeof modularResult);
-  });
-});

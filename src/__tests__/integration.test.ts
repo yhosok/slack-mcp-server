@@ -1,20 +1,16 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import type { WebClient } from '@slack/web-api';
 import { SlackService } from '../slack/slack-service.js';
-import type { MCPToolResult } from '../mcp/types.js';
-import type { PerformanceMetrics } from '../slack/service-factory-stub.js';
 
 /**
- * Integration tests to validate modular vs legacy behavior parity
+ * Integration tests to validate SlackService functionality
  *
  * These tests ensure that:
- * 1. Legacy and modular implementations produce identical outputs for same inputs
- * 2. Token strategy routing works correctly in both modes
- * 3. Configuration switching behaves consistently
- * 4. Cross-domain operations work seamlessly
- * 5. Error handling is consistent across implementations
- * 6. Performance characteristics are comparable
+ * 1. Core operations work correctly
+ * 2. Token strategy routing works correctly
+ * 3. Cross-domain operations work seamlessly
+ * 4. Error handling is appropriate
+ * 5. Performance characteristics are acceptable
  */
 
 // Create a comprehensive mock WebClient following the existing test patterns
@@ -350,7 +346,7 @@ jest.mock('../utils/validation.js', () => {
   };
 });
 
-// Create a function to create mock config with different flags
+// Create a function to create mock config
 function createMockConfig(overrides: Record<string, any> = {}): any {
   const baseConfig = {
     SLACK_BOT_TOKEN: 'xoxb-test-token',
@@ -365,23 +361,13 @@ function createMockConfig(overrides: Record<string, any> = {}): any {
     SLACK_MAX_REQUEST_CONCURRENCY: 3,
     SLACK_REJECT_RATE_LIMITED_CALLS: false,
     SLACK_ENABLE_RATE_LIMIT_RETRY: true,
-    // Modular architecture flags
-    USE_MODULAR_ARCHITECTURE: false,
-    ENABLE_MODULAR_MESSAGES: false,
-    ENABLE_MODULAR_THREADS: false,
-    ENABLE_MODULAR_FILES: false,
-    ENABLE_MODULAR_REACTIONS: false,
-    ENABLE_MODULAR_WORKSPACE: false,
-    ENABLE_PERFORMANCE_METRICS: false,
-    MONITOR_LEGACY_COMPARISON: false,
     ...overrides,
   };
   return baseConfig;
 }
 
-describe('Integration Tests: Modular vs Legacy Parity', () => {
+describe('Integration Tests: SlackService Functionality', () => {
   let originalEnv: NodeJS.ProcessEnv;
-  let originalMockConfig: any;
 
   beforeEach(() => {
     // Save original environment
@@ -412,153 +398,85 @@ describe('Integration Tests: Modular vs Legacy Parity', () => {
     return new SlackService();
   };
 
-  describe('Behavior Parity Tests', () => {
+  describe('Core Functionality Tests', () => {
     /**
-     * Test that legacy and modular implementations produce identical results
+     * Test that core operations work correctly
      */
-    it('should produce identical results for sendMessage in both modes', async () => {
+    it('should handle sendMessage correctly', async () => {
       const testInput = {
         channel: 'C123456',
         text: 'Hello from integration test!',
       };
 
-      // Test legacy implementation
-      const legacyService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: false,
-      });
-      const legacyResult = await legacyService.sendMessage(testInput);
+      const service = await createServiceWithConfig({});
+      const result = await service.sendMessage(testInput);
 
-      // Reset mocks between calls
-      jest.clearAllMocks();
-      mockWebClientInstance = createMockWebClient();
-
-      // Test modular implementation
-      const modularService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_MESSAGES: true,
-      });
-      const modularResult = await modularService.sendMessage(testInput);
-
-      // Results should be structurally identical
-      expect(legacyResult).toEqual(modularResult);
-      expect(legacyResult.content).toEqual(modularResult.content);
+      expect(result).toBeDefined();
+      expect(result.content).toBeDefined();
+      expect(mockWebClientInstance.chat.postMessage).toHaveBeenCalledWith(testInput);
     });
 
-    it('should produce identical results for getChannelHistory in both modes', async () => {
+    it('should handle getChannelHistory correctly', async () => {
       const testInput = {
         channel: 'C123456',
         limit: 10,
       };
 
-      // Test legacy implementation
-      const legacyService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: false,
-      });
-      const legacyResult = await legacyService.getChannelHistory(testInput);
+      const service = await createServiceWithConfig({});
+      const result = await service.getChannelHistory(testInput);
 
-      // Reset mocks
-      jest.clearAllMocks();
-      mockWebClientInstance = createMockWebClient();
-
-      // Test modular implementation
-      const modularService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_MESSAGES: true,
-      });
-      const modularResult = await modularService.getChannelHistory(testInput);
-
-      // Results should be identical
-      expect(legacyResult).toEqual(modularResult);
+      expect(result).toBeDefined();
+      expect(result.content).toBeDefined();
+      expect(mockWebClientInstance.conversations.history).toHaveBeenCalled();
     });
 
-    it('should produce identical results for findThreadsInChannel in both modes', async () => {
+    it('should handle findThreadsInChannel correctly', async () => {
       const testInput = {
         channel: 'C123456',
         limit: 50,
       };
 
-      // Test legacy implementation
-      const legacyService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: false,
-      });
-      const legacyResult = await legacyService.findThreadsInChannel(testInput);
+      const service = await createServiceWithConfig({});
+      const result = await service.findThreadsInChannel(testInput);
 
-      // Reset mocks
-      jest.clearAllMocks();
-      mockWebClientInstance = createMockWebClient();
-
-      // Test modular implementation
-      const modularService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_THREADS: true,
-      });
-      const modularResult = await modularService.findThreadsInChannel(testInput);
-
-      // Results should be identical
-      expect(legacyResult).toEqual(modularResult);
+      expect(result).toBeDefined();
+      expect(result.content).toBeDefined();
+      expect(mockWebClientInstance.conversations.history).toHaveBeenCalled();
     });
   });
 
   describe('Token Strategy Testing', () => {
     /**
-     * Test that token strategy routing works correctly in both modes
+     * Test that token strategy routing works correctly
      */
-    it('should use correct token for read operations in both modes', async () => {
+    it('should use correct token for read operations', async () => {
       const testInput = {
         channel: 'C123456',
         limit: 10,
       };
 
-      // Test legacy mode with user token
-      const legacyService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: false,
+      const service = await createServiceWithConfig({
         USE_USER_TOKEN_FOR_READ: true,
       });
-      await legacyService.getChannelHistory(testInput);
+      await service.getChannelHistory(testInput);
 
-      // Reset mocks
-      jest.clearAllMocks();
-      mockWebClientInstance = createMockWebClient();
-
-      // Test modular mode with user token
-      const modularService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_MESSAGES: true,
-        USE_USER_TOKEN_FOR_READ: true,
-      });
-      await modularService.getChannelHistory(testInput);
-
-      // Both should make the same API call
       expect(mockWebClientInstance.conversations.history).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle search operations consistently in both modes', async () => {
+    it('should handle search operations correctly', async () => {
       const testInput = {
         query: 'test search',
         count: 20,
       };
 
-      // Legacy mode
-      const legacyService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: false,
+      const service = await createServiceWithConfig({
         USE_USER_TOKEN_FOR_READ: true,
       });
-      const legacyResult = await legacyService.searchMessages(testInput);
+      const result = await service.searchMessages(testInput);
 
-      // Reset mocks
-      jest.clearAllMocks();
-      mockWebClientInstance = createMockWebClient();
-
-      // Modular mode
-      const modularService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_MESSAGES: true,
-        USE_USER_TOKEN_FOR_READ: true,
-      });
-      const modularResult = await modularService.searchMessages(testInput);
-
-      // Results should be identical
-      expect(legacyResult).toEqual(modularResult);
+      expect(result).toBeDefined();
+      expect(result.content).toBeDefined();
+      expect(mockWebClientInstance.search.messages).toHaveBeenCalled();
     });
   });
 
@@ -566,229 +484,142 @@ describe('Integration Tests: Modular vs Legacy Parity', () => {
     /**
      * Test complex workflows that span multiple domains
      */
-    it('should handle thread → file → reaction workflow consistently', async () => {
-      const testWorkflow = async (service: SlackService) => {
-        // 1. Create a thread
-        const threadResult = await service.createThread({
-          channel: 'C123456',
-          text: 'Starting workflow thread',
-        });
-
-        // 2. Add reaction to the thread
-        const reactionResult = await service.addReaction({
-          channel: 'C123456',
-          message_ts: '1234567890.123456',
-          reaction_name: 'thumbsup',
-        });
-
-        return { threadResult, reactionResult };
-      };
-
-      // Test legacy implementation
-      const legacyService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: false,
-      });
-      const legacyWorkflowResult = await testWorkflow(legacyService);
-
-      // Reset mocks
-      jest.clearAllMocks();
-      mockWebClientInstance = createMockWebClient();
-
-      // Test modular implementation
-      const modularService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_THREADS: true,
-        ENABLE_MODULAR_REACTIONS: true,
-      });
-      const modularWorkflowResult = await testWorkflow(modularService);
-
-      // Workflow results should be identical
-      expect(legacyWorkflowResult.threadResult).toEqual(modularWorkflowResult.threadResult);
-      expect(legacyWorkflowResult.reactionResult).toEqual(modularWorkflowResult.reactionResult);
-    });
-  });
-
-  describe('Configuration Switching', () => {
-    /**
-     * Test configuration flag switching behavior
-     */
-    it('should handle partial modular enablement correctly', async () => {
-      const testInput = { channel: 'C123456', text: 'Test message' };
-
-      // Only enable messages modularly, keep others legacy
-      const service = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_MESSAGES: true,
-        ENABLE_MODULAR_THREADS: false,
-        ENABLE_MODULAR_FILES: false,
-        ENABLE_MODULAR_REACTIONS: false,
-        ENABLE_MODULAR_WORKSPACE: false,
+    it('should handle thread → reaction workflow correctly', async () => {
+      const service = await createServiceWithConfig({});
+      
+      // 1. Create a thread
+      const threadResult = await service.createThread({
+        channel: 'C123456',
+        text: 'Starting workflow thread',
       });
 
-      // Message operations should use modular
-      const messageResult = await service.sendMessage(testInput);
-      expect(messageResult).toBeDefined();
+      // 2. Add reaction to the thread
+      const reactionResult = await service.addReaction({
+        channel: 'C123456',
+        message_ts: '1234567890.123456',
+        reaction_name: 'thumbsup',
+      });
 
-      // Thread operations should use legacy (fallback)
-      const threadInput = { channel: 'C123456', limit: 10 };
-      const threadResult = await service.findThreadsInChannel(threadInput);
       expect(threadResult).toBeDefined();
-
-      // Both should work seamlessly
-      expect(messageResult.content).toBeDefined();
       expect(threadResult.content).toBeDefined();
-    });
-
-    it('should maintain performance monitoring across configurations', async () => {
-      const service = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_PERFORMANCE_METRICS: true,
-        MONITOR_LEGACY_COMPARISON: true,
-        ENABLE_MODULAR_MESSAGES: true,
-      });
-
-      const testInput = { channel: 'C123456', text: 'Performance test' };
-      await service.sendMessage(testInput);
-
-      // Performance metrics should be available
-      const stats = service.getPerformanceStats();
-      expect(stats).toBeDefined();
+      expect(reactionResult).toBeDefined();
+      expect(reactionResult.content).toBeDefined();
+      
+      expect(mockWebClientInstance.chat.postMessage).toHaveBeenCalled();
+      expect(mockWebClientInstance.reactions.add).toHaveBeenCalled();
     });
   });
 
-  describe('Error Handling Consistency', () => {
+  describe('Service Configuration', () => {
     /**
-     * Test that error handling is consistent across implementations
+     * Test service configuration behavior
      */
-    it('should handle API errors consistently in both modes', async () => {
+    it('should handle different operation types correctly', async () => {
+      const service = await createServiceWithConfig({});
+
+      // Test message operations
+      const messageResult = await service.sendMessage({ channel: 'C123456', text: 'Test message' });
+      expect(messageResult).toBeDefined();
+      expect(messageResult.content).toBeDefined();
+
+      // Test thread operations
+      const threadResult = await service.findThreadsInChannel({ channel: 'C123456', limit: 10 });
+      expect(threadResult).toBeDefined();
+      expect(threadResult.content).toBeDefined();
+
+      // Test file operations
+      const fileResult = await service.listFiles({});
+      expect(fileResult).toBeDefined();
+      expect(fileResult.content).toBeDefined();
+
+      // Test reaction operations
+      const reactionResult = await service.addReaction({
+        channel: 'C123456',
+        message_ts: '1234567890.123456',
+        reaction_name: 'thumbsup',
+      });
+      expect(reactionResult).toBeDefined();
+      expect(reactionResult.content).toBeDefined();
+
+      // Test workspace operations
+      const workspaceResult = await service.getWorkspaceInfo({});
+      expect(workspaceResult).toBeDefined();
+      expect(workspaceResult.content).toBeDefined();
+    });
+  });
+
+  describe('Error Handling', () => {
+    /**
+     * Test that error handling works correctly
+     */
+    it('should handle API errors properly', async () => {
       // Mock API error
       const apiError = new Error('channel_not_found');
       mockWebClientInstance.chat.postMessage.mockRejectedValue(apiError);
 
       const testInput = { channel: 'INVALID', text: 'Test message' };
+      const service = await createServiceWithConfig({});
 
-      // Test legacy error handling
-      const legacyService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: false,
-      });
-
-      let legacyError: any;
+      let thrownError: any;
       try {
-        await legacyService.sendMessage(testInput);
+        await service.sendMessage(testInput);
       } catch (error) {
-        legacyError = error;
+        thrownError = error;
       }
 
-      // Reset mocks
-      jest.clearAllMocks();
-      mockWebClientInstance = createMockWebClient();
-      mockWebClientInstance.chat.postMessage.mockRejectedValue(apiError);
-
-      // Test modular error handling
-      const modularService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_MESSAGES: true,
-      });
-
-      let modularError: any;
-      try {
-        await modularService.sendMessage(testInput);
-      } catch (error) {
-        modularError = error;
-      }
-
-      // Error handling should be consistent
-      expect(legacyError).toBeDefined();
-      expect(modularError).toBeDefined();
-      expect(legacyError.message).toEqual(modularError.message);
+      expect(thrownError).toBeDefined();
+      expect(thrownError.message).toContain('channel_not_found');
     });
 
-    it('should handle missing user token consistently for search operations', async () => {
+    it('should handle missing user token for search operations', async () => {
       const testInput = { query: 'test', count: 10 };
 
-      // Test legacy error handling (no user token)
-      const legacyService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: false,
+      const service = await createServiceWithConfig({
         USE_USER_TOKEN_FOR_READ: true,
         SLACK_USER_TOKEN: undefined, // No user token
       });
 
-      let legacyError: any;
+      let thrownError: any;
       try {
-        await legacyService.searchMessages(testInput);
+        await service.searchMessages(testInput);
       } catch (error) {
-        legacyError = error;
+        thrownError = error;
       }
 
-      // Test modular error handling (no user token)
-      const modularService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_MESSAGES: true,
-        USE_USER_TOKEN_FOR_READ: true,
-        SLACK_USER_TOKEN: undefined, // No user token
-      });
-
-      let modularError: any;
-      try {
-        await modularService.searchMessages(testInput);
-      } catch (error) {
-        modularError = error;
-      }
-
-      // Both should handle the missing token error consistently
-      expect(legacyError).toBeDefined();
-      expect(modularError).toBeDefined();
-      expect(legacyError.message).toContain('user token');
-      expect(modularError.message).toContain('user token');
+      expect(thrownError).toBeDefined();
+      expect(thrownError.message).toContain('user token');
     });
   });
 
-  describe('Performance Comparison', () => {
+  describe('Performance', () => {
     /**
-     * Test performance characteristics between implementations
+     * Test performance characteristics
      */
-    it('should handle concurrent operations similarly', async () => {
+    it('should handle concurrent operations correctly', async () => {
       const testInputs = [
         { channel: 'C123456', text: 'Message 1' },
         { channel: 'C123456', text: 'Message 2' },
         { channel: 'C123456', text: 'Message 3' },
       ];
 
-      // Test legacy concurrent operations
-      const legacyService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: false,
-      });
-
-      const legacyResults = await Promise.all(
-        testInputs.map((input) => legacyService.sendMessage(input))
+      const service = await createServiceWithConfig({});
+      const results = await Promise.all(
+        testInputs.map((input) => service.sendMessage(input))
       );
 
-      // Reset mocks
-      jest.clearAllMocks();
-      mockWebClientInstance = createMockWebClient();
-
-      // Test modular concurrent operations
-      const modularService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_MESSAGES: true,
+      expect(results).toHaveLength(3);
+      results.forEach((result) => {
+        expect(result).toBeDefined();
+        expect(result.content).toBeDefined();
       });
-
-      const modularResults = await Promise.all(
-        testInputs.map((input) => modularService.sendMessage(input))
-      );
-
-      // Results should be identical
-      expect(legacyResults).toEqual(modularResults);
-      expect(legacyResults).toHaveLength(3);
-      expect(modularResults).toHaveLength(3);
     });
   });
 
-  describe('Service Registry Validation', () => {
+  describe('Service Method Validation', () => {
     /**
-     * Test service registry behavior and method routing
+     * Test service method availability and routing
      */
-    it('should have all 36 methods available in both modes', async () => {
+    it('should have all 36 methods available', async () => {
       const expectedMethods = [
         // Core operations (6)
         'sendMessage',
@@ -837,44 +668,19 @@ describe('Integration Tests: Modular vs Legacy Parity', () => {
         'getServerHealth',
       ];
 
-      // Test legacy mode
-      const legacyService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: false,
-      });
+      const service = await createServiceWithConfig({});
 
       expectedMethods.forEach((methodName) => {
-        expect(typeof (legacyService as any)[methodName]).toBe('function');
-      });
-
-      // Test modular mode
-      const modularService = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_MESSAGES: true,
-        ENABLE_MODULAR_THREADS: true,
-        ENABLE_MODULAR_FILES: true,
-        ENABLE_MODULAR_REACTIONS: true,
-        ENABLE_MODULAR_WORKSPACE: true,
-      });
-
-      expectedMethods.forEach((methodName) => {
-        expect(typeof (modularService as any)[methodName]).toBe('function');
+        expect(typeof (service as any)[methodName]).toBe('function');
       });
 
       expect(expectedMethods).toHaveLength(36);
     });
 
-    it('should route methods correctly based on feature flags', async () => {
-      // Only enable messages modularly
-      const service = await createServiceWithConfig({
-        USE_MODULAR_ARCHITECTURE: true,
-        ENABLE_MODULAR_MESSAGES: true,
-        ENABLE_MODULAR_THREADS: false,
-        ENABLE_MODULAR_FILES: false,
-        ENABLE_MODULAR_REACTIONS: false,
-        ENABLE_MODULAR_WORKSPACE: false,
-      });
+    it('should be able to call methods from different domains', async () => {
+      const service = await createServiceWithConfig({});
 
-      // All methods should still be available
+      // All methods should be available and callable
       expect(typeof service.sendMessage).toBe('function');
       expect(typeof service.findThreadsInChannel).toBe('function');
       expect(typeof service.uploadFile).toBe('function');
@@ -887,12 +693,14 @@ describe('Integration Tests: Modular vs Legacy Parity', () => {
         text: 'Test message',
       });
       expect(messageResult).toBeDefined();
+      expect(messageResult.content).toBeDefined();
 
       const threadResult = await service.findThreadsInChannel({
         channel: 'C123456',
         limit: 10,
       });
       expect(threadResult).toBeDefined();
+      expect(threadResult.content).toBeDefined();
     });
   });
 });
