@@ -321,7 +321,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
    * Get MCP server health status and performance metrics
    */
   const getServerHealth = (args: unknown) =>
-    deps.requestHandler.handle(GetServerHealthSchema, args, async (input) => {
+    deps.requestHandler.handle(GetServerHealthSchema, args, async () => {
       // Get rate limiting metrics from the infrastructure
       const rateLimitMetrics = deps.rateLimitService.getMetrics();
 

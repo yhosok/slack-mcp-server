@@ -200,7 +200,6 @@ export function analyzePriority(
   text: string,
   config: ActionItemConfig['priorityKeywords']
 ): PriorityAnalysisResult {
-  const lowerText = text.toLowerCase();
   const highKeywords = findActionIndicators(text, config.high);
   const mediumKeywords = findActionIndicators(text, config.medium);
 

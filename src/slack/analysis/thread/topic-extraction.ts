@@ -225,7 +225,7 @@ export function tokenizeText(text: string): string[] {
   // Split on spaces and Japanese punctuation
   return text
     .split(
-      /[\s\u3000\u3001\u3002\uff01\uff1f\u300c\u300d\uff08\uff09\[\]\u3010\u3011\u3008\u3009\u300a\u300b\u3014\u3015\u300e\u300f\uff5b\uff5d]+/
+      /[\s\u3000\u3001\u3002\uff01\uff1f\u300c\u300d\uff08\uff09\u3010\u3011\u3008\u3009\u300a\u300b\u3014\u3015\u300e\u300f\uff5b\uff5d[\]]+/
     )
     .filter((token) => token && token.length > 0);
 }

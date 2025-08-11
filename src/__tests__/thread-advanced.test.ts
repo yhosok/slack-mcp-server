@@ -9,7 +9,7 @@
  */
 
 import { jest } from '@jest/globals';
-import type { SlackMessage, ThreadParticipant } from '../slack/types.js';
+import type { SlackMessage } from '../slack/types.js';
 import { SlackAPIError } from '../utils/errors.js';
 
 // Mock the logger to avoid console output during tests
@@ -140,24 +140,7 @@ describe('Advanced Thread Features', () => {
     },
   ];
 
-  const mockParticipants: ThreadParticipant[] = [
-    {
-      user_id: testUserId1,
-      username: 'alice',
-      real_name: 'Alice Smith',
-      message_count: 2,
-      first_message_ts: '1699564800.000100',
-      last_message_ts: '1699564920.000300',
-    },
-    {
-      user_id: testUserId2,
-      username: 'bob',
-      real_name: 'Bob Jones',
-      message_count: 1,
-      first_message_ts: '1699564860.000200',
-      last_message_ts: '1699564860.000200',
-    },
-  ];
+  // Mock participants for thread analysis - currently not used in these tests
 
   const mockUserInfo = {
     id: testUserId1,
@@ -593,7 +576,7 @@ describe('Advanced Thread Features', () => {
     });
 
     it('should filter by channel when provided', async () => {
-      const response = await threadService.getThreadsByParticipants({
+      await threadService.getThreadsByParticipants({
         participants: [testUserId1],
         channel: testChannel,
       });
@@ -607,7 +590,7 @@ describe('Advanced Thread Features', () => {
     });
 
     it('should apply date filters', async () => {
-      const response = await threadService.getThreadsByParticipants({
+      await threadService.getThreadsByParticipants({
         participants: [testUserId1],
         after: '2023-11-01',
         before: '2023-11-30',
@@ -622,7 +605,7 @@ describe('Advanced Thread Features', () => {
     });
 
     it('should respect limit parameter', async () => {
-      const response = await threadService.getThreadsByParticipants({
+      await threadService.getThreadsByParticipants({
         participants: [testUserId1],
         limit: 50,
       });

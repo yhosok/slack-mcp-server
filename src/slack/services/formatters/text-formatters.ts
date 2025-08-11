@@ -1,13 +1,12 @@
 /**
- * Legacy-compatible formatters to ensure parity between legacy and modular implementations
- * These formatters produce the exact same text output as the legacy SlackService methods
+ * Text formatters for consistent API response formatting across modular architecture
+ * These formatters ensure standard text-based output formats for all service methods
  */
 
 import type { MCPToolResult } from '../../../mcp/types.js';
-import type { SlackMessage } from '../../types.js';
 
 /**
- * Format sendMessage response to match legacy format
+ * Format sendMessage response for consistent text output
  */
 export const formatSendMessageResponse = (result: {
   success: boolean;
@@ -24,7 +23,7 @@ export const formatSendMessageResponse = (result: {
 });
 
 /**
- * Format getChannelHistory response to match legacy format
+ * Format getChannelHistory response for consistent text output
  */
 export const formatChannelHistoryResponse = async (
   result: {
@@ -58,7 +57,7 @@ export const formatChannelHistoryResponse = async (
 };
 
 /**
- * Format findThreadsInChannel response to match legacy format
+ * Format findThreadsInChannel response for consistent text output
  */
 export const formatFindThreadsResponse = (result: {
   threads: any[];
@@ -82,7 +81,7 @@ export const formatFindThreadsResponse = (result: {
 });
 
 /**
- * Format createThread response to match legacy format
+ * Format createThread response for consistent text output
  */
 export const formatCreateThreadResponse = (result: {
   success: boolean;
@@ -99,7 +98,7 @@ export const formatCreateThreadResponse = (result: {
 });
 
 /**
- * Format addReaction response to match legacy format
+ * Format addReaction response for consistent text output
  */
 export const formatAddReactionResponse = (result: {
   success: boolean;
@@ -118,7 +117,7 @@ export const formatAddReactionResponse = (result: {
 });
 
 /**
- * Format searchMessages response to match legacy format
+ * Format searchMessages response for consistent text output
  */
 export const formatSearchMessagesResponse = async (
   result: {

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { SlackService } from '../slack/slack-service.js';
 
 /**
  * Integration tests to validate SlackService functionality

@@ -111,7 +111,7 @@ describe('ReactionService - Reaction Operations', () => {
       clientManager: {
         getBotClient: () => mockWebClientInstance,
         getUserClient: () => mockWebClientInstance,
-        getClientForOperation: (operation: string) => mockWebClientInstance,
+        getClientForOperation: () => mockWebClientInstance,
         checkSearchApiAvailability: jest.fn(),
       },
       rateLimitService: {

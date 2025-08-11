@@ -12,7 +12,7 @@ import {
   formatSendMessageResponse,
   formatChannelHistoryResponse,
   formatSearchMessagesResponse,
-} from '../formatters/legacy-formatters.js';
+} from '../formatters/text-formatters.js';
 
 // Export types for external use
 export type { MessageService, MessageServiceDependencies } from './types.js';

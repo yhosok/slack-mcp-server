@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { jest } from '@jest/globals';
 import { SlackService } from '../slack/slack-service';
-import { SlackAPIError } from '../utils/errors';
 import { promises as fs } from 'fs';
 import { extractTextContent } from '../utils/helpers';
 
@@ -102,7 +101,7 @@ jest.mock('../utils/validation', () => {
 
 // Mock the file analysis formatter
 jest.mock('../slack/analysis/formatters/file-formatters', () => ({
-  formatFileAnalysis: jest.fn((analysis: any, options: any) => ({
+  formatFileAnalysis: jest.fn((analysis: any) => ({
     content: [
       {
         type: 'text',

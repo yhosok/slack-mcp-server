@@ -2,7 +2,7 @@
  * Types for formatting functions
  */
 
-import type { ThreadAnalysis, ThreadSummary, ThreadMetrics, FileAnalysis } from '../../types.js';
+// Types for formatter options - specific types are defined below
 
 /**
  * Formatter configuration options

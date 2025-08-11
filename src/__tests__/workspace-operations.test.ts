@@ -176,7 +176,7 @@ jest.mock('../utils/logger.js', () => ({
 
 // Mock the infrastructure services for modular architecture
 jest.mock('../slack/infrastructure/factory.js', () => ({
-  createInfrastructureServices: jest.fn((config) => ({
+  createInfrastructureServices: jest.fn(() => ({
     clientManager: {
       getClientForOperation: jest.fn(() => mockWebClientInstance),
       getBotClient: jest.fn(() => mockWebClientInstance),

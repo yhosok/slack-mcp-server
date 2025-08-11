@@ -19,27 +19,23 @@ import type { ThreadService, ThreadServiceDependencies } from './types.js';
 import {
   formatFindThreadsResponse,
   formatCreateThreadResponse,
-} from '../formatters/legacy-formatters.js';
+} from '../formatters/text-formatters.js';
 
 // Export types for external use
 export type { ThreadService, ThreadServiceDependencies } from './types.js';
 import { SlackAPIError } from '../../../utils/errors.js';
 import type {
   SlackMessage,
+  ThreadParticipant,
   ThreadAnalysis,
   ThreadSummary,
-  ThreadParticipant,
-  ThreadTimelineEvent,
-  ActionItem,
 } from '../../types.js';
 import {
   performComprehensiveAnalysis,
   performQuickAnalysis,
   formatThreadAnalysis,
   formatThreadSummary,
-  formatThreadMetrics,
   type ThreadSummaryFormatterOptions,
-  type TimelineEvent,
 } from '../../analysis/index.js';
 
 /**
@@ -707,14 +703,6 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           userInfoMap.set(userId, userInfo);
         }
       }
-
-      const exportOptions = {
-        format: input.format || 'markdown',
-        includeMetadata: input.include_metadata !== false,
-        includeReactions: input.include_reactions !== false,
-        includeUserProfiles: input.include_user_profiles || false,
-        dateFormat: input.date_format || 'ISO',
-      };
 
       // Basic export implementation - will be enhanced with proper formatters later
       const basicExport = {

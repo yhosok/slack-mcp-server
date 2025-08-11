@@ -8,7 +8,7 @@ import {
   FindMessagesByReactionsSchema,
 } from '../../../utils/validation.js';
 import type { ReactionService, ReactionServiceDependencies } from './types.js';
-import { formatAddReactionResponse } from '../formatters/legacy-formatters.js';
+import { formatAddReactionResponse } from '../formatters/text-formatters.js';
 
 // Export types for external use
 export type { ReactionService, ReactionServiceDependencies } from './types.js';
