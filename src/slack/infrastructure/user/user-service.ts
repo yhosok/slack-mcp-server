@@ -93,6 +93,20 @@ export const createUserService = (dependencies: UserServiceDependencies): UserSe
   };
 
   /**
+   * Get full user information for a user ID
+   */
+  const getUserInfo = async (userId: string): Promise<any> => {
+    try {
+      const client = dependencies.getClient();
+      const result = await client.users.info({ user: userId });
+      return result.user;
+    } catch (error) {
+      logger.debug(`Failed to get user info for ${userId}: ${error}`);
+      throw error;
+    }
+  };
+
+  /**
    * Clear the user cache
    */
   const clearCache = (): void => {
@@ -102,6 +116,7 @@ export const createUserService = (dependencies: UserServiceDependencies): UserSe
   return {
     getDisplayName,
     bulkGetDisplayNames,
+    getUserInfo,
     clearCache,
   };
 };

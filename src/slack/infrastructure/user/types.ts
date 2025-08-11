@@ -17,6 +17,13 @@ export interface UserService {
   bulkGetDisplayNames(userIds: string[]): Promise<ReadonlyMap<string, string>>;
 
   /**
+   * Get full user information for a user ID
+   * @param userId - The Slack user ID
+   * @returns Promise resolving to the user information
+   */
+  getUserInfo(userId: string): Promise<any>;
+
+  /**
    * Clear the user cache (useful for testing or when needed)
    */
   clearCache(): void;

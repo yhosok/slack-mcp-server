@@ -87,7 +87,9 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
       
       // Process user info if full details requested
       const processedReactions = await Promise.all(
-        reactions.map(async (reaction: { name: string; count: number; users?: string[] }) => {
+        reactions.map(async (reaction) => {
+          const name = reaction.name || '';
+          const count = reaction.count || 0;
           let users = reaction.users || [];
           
           if (input.full && users.length > 0) {
@@ -98,19 +100,19 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
                   const userInfo = await deps.userService.getUserInfo(userId);
                   return {
                     id: userId,
-                    name: userInfo.displayName,
+                    name: userInfo.real_name || userInfo.name || userId,
                   };
                 } catch {
                   return { id: userId, name: userId };
                 }
               })
             );
-            users = userDetails;
+            users = userDetails.map(u => u.name);
           }
           
           return {
-            name: reaction.name,
-            count: reaction.count,
+            name,
+            count,
             users,
           };
         })
@@ -145,7 +147,17 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           oldest: fromTime.toString(),
           limit: 1000,
         });
-        allMessages = historyResult.messages || [];
+        allMessages = (historyResult.messages || []).map(msg => ({
+          type: msg.type || '',
+          user: msg.user || '',
+          text: msg.text || '',
+          ts: msg.ts || '',
+          reactions: (msg.reactions || []).map(r => ({
+            name: r.name || '',
+            count: r.count || 0,
+            users: r.users || [],
+          })),
+        }));
       } else {
         // For workspace-wide stats, we need to check multiple channels
         // This is a simplified implementation - in practice, you'd want to
@@ -165,7 +177,18 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
                   oldest: fromTime.toString(),
                   limit: 100, // Reduced limit per channel
                 });
-                allMessages.push(...(historyResult.messages || []));
+                const messages = (historyResult.messages || []).map(msg => ({
+                  type: msg.type || '',
+                  user: msg.user || '',
+                  text: msg.text || '',
+                  ts: msg.ts || '',
+                  reactions: (msg.reactions || []).map(r => ({
+                    name: r.name || '',
+                    count: r.count || 0,
+                    users: r.users || [],
+                  })),
+                }));
+                allMessages.push(...messages);
               } catch {
                 // Skip channels we can't access
               }
@@ -221,7 +244,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           const totalMessageReactions = message.reactions.reduce((sum: number, r: { count?: number }) => sum + (r.count || 0), 0);
           if (totalMessageReactions > 2) { // Threshold for "popular" messages
             stats.topMessages.push({
-              text: message.text?.substring(0, 100) + (message.text?.length > 100 ? '...' : ''),
+              text: message.text ? (message.text.substring(0, 100) + (message.text.length > 100 ? '...' : '')) : 'No text',
               user: message.user,
               timestamp: message.ts,
               totalReactions: totalMessageReactions,
@@ -231,8 +254,13 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           
           // Daily trends
           if (input.include_trends && message.ts) {
-            const date = new Date(parseFloat(message.ts) * 1000).toISOString().split('T')[0];
-            stats.dailyTrends.set(date, (stats.dailyTrends.get(date) || 0) + totalMessageReactions);
+            try {
+              const date = new Date(parseFloat(message.ts || '0') * 1000).toISOString().split('T')[0];
+              const currentCount = stats.dailyTrends.get(date || '') || 0;
+              stats.dailyTrends.set(date || '', currentCount + totalMessageReactions);
+            } catch (error) {
+              // Skip invalid timestamps
+            }
           }
         }
       }
@@ -304,7 +332,17 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           oldest,
           latest,
         });
-        allMessages = historyResult.messages || [];
+        allMessages = (historyResult.messages || []).map(msg => ({
+          type: msg.type || '',
+          user: msg.user || '',
+          text: msg.text || '',
+          ts: msg.ts || '',
+          reactions: (msg.reactions || []).map(r => ({
+            name: r.name || '',
+            count: r.count || 0,
+            users: r.users || [],
+          })),
+        }));
       } else {
         // Search across accessible channels
         const channelsResult = await client.conversations.list({
@@ -324,8 +362,16 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
                   latest,
                 });
                 
-                const messagesWithChannel = (historyResult.messages || []).map((msg: SlackMessage) => ({
-                  ...msg,
+                const messagesWithChannel = (historyResult.messages || []).map((msg) => ({
+                  type: msg.type || '',
+                  user: msg.user || '',
+                  text: msg.text || '',
+                  ts: msg.ts || '',
+                  reactions: (msg.reactions || []).map(r => ({
+                    name: r.name || '',
+                    count: r.count || 0,
+                    users: r.users || [],
+                  })),
                   channel: channel.id,
                   channelName: channel.name,
                 }));

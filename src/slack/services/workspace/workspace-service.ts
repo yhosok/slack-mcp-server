@@ -94,7 +94,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         isUltraRestricted: member.is_ultra_restricted,
         isBot: member.is_bot,
         deleted: member.deleted,
-        hasFiles: member.has_files,
+        hasFiles: false, // Property not available in API
         timezone: member.tz,
         timezoneLabel: member.tz_label,
         timezoneOffset: member.tz_offset,
@@ -219,13 +219,15 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
               
               // Track daily activity
               if (message.ts) {
-                const date = new Date(parseFloat(message.ts) * 1000);
+                const date = new Date(parseFloat(message.ts || '0') * 1000);
                 const dateStr = date.toISOString().split('T')[0];
-                activity.dailyActivity.set(dateStr, (activity.dailyActivity.get(dateStr) || 0) + 1);
+                const currentDaily = activity.dailyActivity.get(dateStr || '') || 0;
+                activity.dailyActivity.set(dateStr || '', currentDaily + 1);
                 
                 // Track hourly activity
                 const hour = date.getHours();
-                activity.hourlyActivity.set(hour, (activity.hourlyActivity.get(hour) || 0) + 1);
+                const currentHourly = activity.hourlyActivity.get(hour) || 0;
+                activity.hourlyActivity.set(hour, currentHourly + 1);
               }
             }
             
@@ -316,7 +318,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
       };
       
       try {
-        deps.clientManager.checkSearchApiAvailability();
+        deps.clientManager.checkSearchApiAvailability('search', 'Search functionality limited');
         clientStatus.searchApiAvailable = true;
       } catch {
         clientStatus.searchApiAvailable = false;

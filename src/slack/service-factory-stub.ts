@@ -1,4 +1,11 @@
 import { CONFIG } from '../config/index.js';
+import type { MCPToolResult } from '../mcp/types.js';
+import { createInfrastructureServices } from './infrastructure/factory.js';
+import { createMessageService } from './services/messages/message-service.js';
+import { createThreadService } from './services/threads/thread-service.js';
+import { createFileService } from './services/files/file-service.js';
+import { createReactionService } from './services/reactions/reaction-service.js';
+import { createWorkspaceService } from './services/workspace/workspace-service.js';
 
 /**
  * Configuration for the modular Slack service
@@ -22,50 +29,50 @@ export interface ModularSlackConfig {
  */
 export interface ServiceMethodRegistry {
   // Message operations
-  sendMessage: (args: unknown) => Promise<any>;
-  listChannels: (args: unknown) => Promise<any>;
-  getChannelHistory: (args: unknown) => Promise<any>;
-  getUserInfo: (args: unknown) => Promise<any>;
-  searchMessages: (args: unknown) => Promise<any>;
-  getChannelInfo: (args: unknown) => Promise<any>;
+  sendMessage: (args: unknown) => Promise<MCPToolResult>;
+  listChannels: (args: unknown) => Promise<MCPToolResult>;
+  getChannelHistory: (args: unknown) => Promise<MCPToolResult>;
+  getUserInfo: (args: unknown) => Promise<MCPToolResult>;
+  searchMessages: (args: unknown) => Promise<MCPToolResult>;
+  getChannelInfo: (args: unknown) => Promise<MCPToolResult>;
 
   // Thread operations
-  findThreadsInChannel: (args: unknown) => Promise<any>;
-  getThreadReplies: (args: unknown) => Promise<any>;
-  searchThreads: (args: unknown) => Promise<any>;
-  analyzeThread: (args: unknown) => Promise<any>;
-  summarizeThread: (args: unknown) => Promise<any>;
-  extractActionItems: (args: unknown) => Promise<any>;
-  postThreadReply: (args: unknown) => Promise<any>;
-  createThread: (args: unknown) => Promise<any>;
-  markThreadImportant: (args: unknown) => Promise<any>;
-  identifyImportantThreads: (args: unknown) => Promise<any>;
-  exportThread: (args: unknown) => Promise<any>;
-  findRelatedThreads: (args: unknown) => Promise<any>;
-  getThreadMetrics: (args: unknown) => Promise<any>;
-  getThreadsByParticipants: (args: unknown) => Promise<any>;
+  findThreadsInChannel: (args: unknown) => Promise<MCPToolResult>;
+  getThreadReplies: (args: unknown) => Promise<MCPToolResult>;
+  searchThreads: (args: unknown) => Promise<MCPToolResult>;
+  analyzeThread: (args: unknown) => Promise<MCPToolResult>;
+  summarizeThread: (args: unknown) => Promise<MCPToolResult>;
+  extractActionItems: (args: unknown) => Promise<MCPToolResult>;
+  postThreadReply: (args: unknown) => Promise<MCPToolResult>;
+  createThread: (args: unknown) => Promise<MCPToolResult>;
+  markThreadImportant: (args: unknown) => Promise<MCPToolResult>;
+  identifyImportantThreads: (args: unknown) => Promise<MCPToolResult>;
+  exportThread: (args: unknown) => Promise<MCPToolResult>;
+  findRelatedThreads: (args: unknown) => Promise<MCPToolResult>;
+  getThreadMetrics: (args: unknown) => Promise<MCPToolResult>;
+  getThreadsByParticipants: (args: unknown) => Promise<MCPToolResult>;
 
   // File operations
-  uploadFile: (args: unknown) => Promise<any>;
-  listFiles: (args: unknown) => Promise<any>;
-  getFileInfo: (args: unknown) => Promise<any>;
-  deleteFile: (args: unknown) => Promise<any>;
-  shareFile: (args: unknown) => Promise<any>;
-  analyzeFiles: (args: unknown) => Promise<any>;
-  searchFiles: (args: unknown) => Promise<any>;
+  uploadFile: (args: unknown) => Promise<MCPToolResult>;
+  listFiles: (args: unknown) => Promise<MCPToolResult>;
+  getFileInfo: (args: unknown) => Promise<MCPToolResult>;
+  deleteFile: (args: unknown) => Promise<MCPToolResult>;
+  shareFile: (args: unknown) => Promise<MCPToolResult>;
+  analyzeFiles: (args: unknown) => Promise<MCPToolResult>;
+  searchFiles: (args: unknown) => Promise<MCPToolResult>;
 
   // Reaction operations
-  addReaction: (args: unknown) => Promise<any>;
-  removeReaction: (args: unknown) => Promise<any>;
-  getReactions: (args: unknown) => Promise<any>;
-  getReactionStatistics: (args: unknown) => Promise<any>;
-  findMessagesByReactions: (args: unknown) => Promise<any>;
+  addReaction: (args: unknown) => Promise<MCPToolResult>;
+  removeReaction: (args: unknown) => Promise<MCPToolResult>;
+  getReactions: (args: unknown) => Promise<MCPToolResult>;
+  getReactionStatistics: (args: unknown) => Promise<MCPToolResult>;
+  findMessagesByReactions: (args: unknown) => Promise<MCPToolResult>;
 
   // Workspace operations
-  getWorkspaceInfo: (args: unknown) => Promise<any>;
-  listTeamMembers: (args: unknown) => Promise<any>;
-  getWorkspaceActivity: (args: unknown) => Promise<any>;
-  getServerHealth: (args: unknown) => Promise<any>;
+  getWorkspaceInfo: (args: unknown) => Promise<MCPToolResult>;
+  listTeamMembers: (args: unknown) => Promise<MCPToolResult>;
+  getWorkspaceActivity: (args: unknown) => Promise<MCPToolResult>;
+  getServerHealth: (args: unknown) => Promise<MCPToolResult>;
 }
 
 /**
@@ -96,64 +103,79 @@ export function parseModularConfig(): ModularSlackConfig {
 }
 
 /**
- * Create stub service registry (Phase 4 - for integration purposes)
- * This allows the routing system to work while the modular services are being finalized
+ * Create complete service registry with real implementations
  */
 export function createSlackServiceRegistry(config?: ModularSlackConfig): SlackServiceRegistry {
   const finalConfig = config || parseModularConfig();
   
-  // Create stub methods that throw "not implemented" errors
-  // This allows the routing system to work but falls back to legacy
-  const stubMethod = (methodName: string) => async (args: unknown) => {
-    throw new Error(`Modular implementation for ${methodName} not yet available. Using legacy implementation.`);
+  // Create infrastructure configuration from global CONFIG
+  const infrastructureConfig = {
+    botToken: CONFIG.SLACK_BOT_TOKEN,
+    userToken: CONFIG.SLACK_USER_TOKEN,
+    useUserTokenForRead: CONFIG.USE_USER_TOKEN_FOR_READ,
+    enableRateLimit: CONFIG.SLACK_ENABLE_RATE_LIMIT_RETRY,
+    rateLimitRetries: CONFIG.SLACK_RATE_LIMIT_RETRIES,
+    maxRequestConcurrency: CONFIG.SLACK_MAX_REQUEST_CONCURRENCY,
+    rejectRateLimitedCalls: CONFIG.SLACK_REJECT_RATE_LIMITED_CALLS,
+    logLevel: CONFIG.LOG_LEVEL,
   };
+  
+  // Create infrastructure services
+  const infrastructure = createInfrastructureServices(infrastructureConfig);
+  
+  // Create domain services
+  const messageService = createMessageService(infrastructure);
+  const threadService = createThreadService(infrastructure);
+  const fileService = createFileService(infrastructure);
+  const reactionService = createReactionService(infrastructure);
+  const workspaceService = createWorkspaceService(infrastructure);
 
   const methods: ServiceMethodRegistry = {
     // Message operations
-    sendMessage: stubMethod('sendMessage'),
-    listChannels: stubMethod('listChannels'),
-    getChannelHistory: stubMethod('getChannelHistory'),
-    getUserInfo: stubMethod('getUserInfo'),
-    searchMessages: stubMethod('searchMessages'),
-    getChannelInfo: stubMethod('getChannelInfo'),
+    sendMessage: messageService.sendMessage,
+    listChannels: messageService.listChannels,
+    getChannelHistory: messageService.getChannelHistory,
+    getUserInfo: messageService.getUserInfo,
+    searchMessages: messageService.searchMessages,
+    getChannelInfo: messageService.getChannelInfo,
 
     // Thread operations
-    findThreadsInChannel: stubMethod('findThreadsInChannel'),
-    getThreadReplies: stubMethod('getThreadReplies'),
-    searchThreads: stubMethod('searchThreads'),
-    analyzeThread: stubMethod('analyzeThread'),
-    summarizeThread: stubMethod('summarizeThread'),
-    extractActionItems: stubMethod('extractActionItems'),
-    postThreadReply: stubMethod('postThreadReply'),
-    createThread: stubMethod('createThread'),
-    markThreadImportant: stubMethod('markThreadImportant'),
-    identifyImportantThreads: stubMethod('identifyImportantThreads'),
-    exportThread: stubMethod('exportThread'),
-    findRelatedThreads: stubMethod('findRelatedThreads'),
-    getThreadMetrics: stubMethod('getThreadMetrics'),
-    getThreadsByParticipants: stubMethod('getThreadsByParticipants'),
+    findThreadsInChannel: threadService.findThreadsInChannel,
+    getThreadReplies: threadService.getThreadReplies,
+    searchThreads: threadService.searchThreads,
+    analyzeThread: threadService.analyzeThread,
+    summarizeThread: threadService.summarizeThread,
+    extractActionItems: threadService.extractActionItems,
+    postThreadReply: threadService.postThreadReply,
+    createThread: threadService.createThread,
+    markThreadImportant: threadService.markThreadImportant,
+    identifyImportantThreads: threadService.identifyImportantThreads,
+    exportThread: threadService.exportThread,
+    findRelatedThreads: threadService.findRelatedThreads,
+    getThreadMetrics: threadService.getThreadMetrics,
+    getThreadsByParticipants: threadService.getThreadsByParticipants,
 
     // File operations
-    uploadFile: stubMethod('uploadFile'),
-    listFiles: stubMethod('listFiles'),
-    getFileInfo: stubMethod('getFileInfo'),
-    deleteFile: stubMethod('deleteFile'),
-    shareFile: stubMethod('shareFile'),
-    analyzeFiles: stubMethod('analyzeFiles'),
-    searchFiles: stubMethod('searchFiles'),
+    uploadFile: fileService.uploadFile,
+    listFiles: fileService.listFiles,
+    getFileInfo: fileService.getFileInfo,
+    deleteFile: fileService.deleteFile,
+    shareFile: fileService.shareFile,
+    analyzeFiles: fileService.analyzeFiles,
+    searchFiles: fileService.searchFiles,
 
     // Reaction operations
-    addReaction: stubMethod('addReaction'),
-    removeReaction: stubMethod('removeReaction'),
-    getReactions: stubMethod('getReactions'),
-    getReactionStatistics: stubMethod('getReactionStatistics'),
-    findMessagesByReactions: stubMethod('findMessagesByReactions'),
+    addReaction: reactionService.addReaction,
+    removeReaction: reactionService.removeReaction,
+    getReactions: reactionService.getReactions,
+    getReactionStatistics: reactionService.getReactionStatistics,
+    findMessagesByReactions: reactionService.findMessagesByReactions,
 
     // Workspace operations
-    getWorkspaceInfo: stubMethod('getWorkspaceInfo'),
-    listTeamMembers: stubMethod('listTeamMembers'),
-    getWorkspaceActivity: stubMethod('getWorkspaceActivity'),
-    getServerHealth: stubMethod('getServerHealth'),
+    getWorkspaceInfo: workspaceService.getWorkspaceInfo,
+    listTeamMembers: workspaceService.listTeamMembers,
+    getWorkspaceActivity: workspaceService.getWorkspaceActivity,
+    getServerHealth: workspaceService.getServerHealth,
   };
 
   return {

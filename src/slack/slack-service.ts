@@ -8,6 +8,7 @@ import {
   type ChatPostMessageArguments,
   type ReactionsGetArguments,
 } from '@slack/web-api';
+import type { MCPToolResult } from '../mcp/types.js';
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { CONFIG } from '../config/index.js';
 import { 
@@ -134,7 +135,7 @@ export class SlackService {
     const useModular = this.shouldUseModular(methodName, domainType);
     
     if (useModular) {
-      return this.executeModular(methodName, args, domainType);
+      return this.executeModular(methodName, args, domainType) as Promise<T>;
     } else {
       return this.executeLegacy(methodName, legacyImpl);
     }
@@ -169,11 +170,11 @@ export class SlackService {
   /**
    * Execute method using modular implementation
    */
-  private async executeModular<T>(
+  private async executeModular(
     methodName: string,
     args: unknown,
     domainType: string
-  ): Promise<T> {
+  ): Promise<MCPToolResult> {
     const startTime = Date.now();
     let success = true;
     let error: Error | undefined;

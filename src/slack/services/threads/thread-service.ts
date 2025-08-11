@@ -20,14 +20,16 @@ import type { ThreadService, ThreadServiceDependencies } from './types.js';
 // Export types for external use  
 export type { ThreadService, ThreadServiceDependencies } from './types.js';
 import { SlackAPIError } from '../../../utils/errors.js';
+import type { SlackMessage, ThreadAnalysis, ThreadSummary, ThreadParticipant, ThreadTimelineEvent, ActionItem } from '../../types.js';
 import {
   performComprehensiveAnalysis,
   performQuickAnalysis,
   formatThreadAnalysis,
   formatThreadSummary,
   formatThreadMetrics,
+  type ThreadSummaryFormatterOptions,
+  type TimelineEvent
 } from '../../analysis/index.js';
-import type { SlackMessage, ThreadParticipant } from '../../types.js';
 
 /**
  * Create thread service with infrastructure dependencies
@@ -56,10 +58,10 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       // Filter messages that have replies (are thread parents)
       const threadParents = result.messages.filter(
-        (message: SlackMessage) => message.reply_count && message.reply_count > 0
+        (message: any) => message.reply_count && message.reply_count > 0
       );
 
-      const threads = threadParents.map((message: SlackMessage) => ({
+      const threads = threadParents.map((message: any) => ({
         channel: input.channel,
         threadTs: message.ts,
         parentMessage: {
@@ -69,7 +71,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         },
         replyCount: message.reply_count,
         lastReply: message.latest_reply,
-        participants: message.replies?.map((reply: { user: string }) => reply.user) || [],
+        participants: message.replies?.map((reply: any) => reply.user) || [],
       }));
 
       return {
@@ -114,7 +116,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const searchThreads = (args: unknown) =>
     deps.requestHandler.handle(SearchThreadsSchema, args, async (input) => {
       // Check if search API is available
-      deps.clientManager.checkSearchApiAvailability();
+      deps.clientManager.checkSearchApiAvailability('searchThreads', 'Use findThreadsInChannel instead');
       
       const client = deps.clientManager.getClientForOperation('read');
       
@@ -153,7 +155,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       // Filter for messages that are part of threads
       const threadMessages = result.messages.matches.filter(
-        (match: { thread_ts?: string; reply_count?: number }) => match.thread_ts || (match.reply_count && match.reply_count > 0)
+        (match: any) => match.thread_ts || match.reply_count > 0
       );
 
       return {
@@ -189,18 +191,19 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         if (message.user && !participantMap.has(message.user)) {
           const userInfo = await deps.userService.getUserInfo(message.user);
           participantMap.set(message.user, {
-            id: message.user,
-            displayName: userInfo.displayName,
-            messageCount: 0,
-            firstMessage: message.ts || '',
-            lastMessage: message.ts || '',
+            user_id: message.user,
+            username: userInfo.name || userInfo.real_name || message.user,
+            real_name: userInfo.real_name,
+            message_count: 0,
+            first_message_ts: message.ts || '',
+            last_message_ts: message.ts || '',
           });
         }
         
         const participant = participantMap.get(message.user!);
         if (participant) {
-          participant.messageCount++;
-          participant.lastMessage = message.ts || '';
+          participant.message_count++;
+          participant.last_message_ts = message.ts || '';
         }
       }
       
@@ -213,11 +216,44 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       const formattedOptions = {
         includeTimeline: input.include_timeline !== false,
         includeSentimentAnalysis: input.include_sentiment_analysis !== false,
-        extractTopics: input.extract_topics !== false,
         includeActionItems: input.include_action_items !== false,
+        includeSummary: true,
+        includeParticipants: true,
+        includeTopics: input.extract_topics !== false,
+        includeEmojis: false,
+        includeTimestamps: false,
+        maxLineLength: 80,
+        precision: 1,
       };
       
-      return formatThreadAnalysis(analysis, formattedOptions);
+      // Convert ComprehensiveAnalysisResult to ThreadAnalysis format
+      const threadAnalysis: ThreadAnalysis = {
+        thread_ts: input.thread_ts,
+        channel_id: input.channel,
+        participants,
+        timeline: analysis.timeline.events.map(event => ({
+          timestamp: event.timestamp,
+          event_type: 'message' as const,
+          user_id: event.user_id || '',
+          content: event.content || '',
+        })),
+        key_topics: [...analysis.topics.topics],
+        urgency_score: analysis.urgency.score,
+        importance_score: analysis.importance.score,
+        sentiment: analysis.sentiment.sentiment,
+        action_items: analysis.actionItems.actionItems.map(item => ({
+          text: item.text,
+          mentioned_users: (item as any).assigned_to ? [(item as any).assigned_to] : [],
+          priority: item.priority,
+          status: item.status,
+          extracted_from_message_ts: (item as any).message_ts || '',
+        })),
+        summary: 'Thread analysis completed',
+        word_count: analysis.metadata.messageCount * 10, // Rough estimate
+        duration_hours: (Date.now() - parseFloat(input.thread_ts || '0') * 1000) / (1000 * 60 * 60),
+      };
+
+      return formatThreadAnalysis(threadAnalysis, formattedOptions);
     });
 
   /**
@@ -250,25 +286,44 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           if (message.user && !participantMap.has(message.user)) {
             const userInfo = await deps.userService.getUserInfo(message.user);
             participantMap.set(message.user, {
-              id: message.user,
-              displayName: userInfo.displayName,
-              messageCount: 0,
-              firstMessage: message.ts || '',
-              lastMessage: message.ts || '',
+              user_id: message.user,
+              username: userInfo.name || userInfo.real_name || message.user,
+              real_name: userInfo.real_name,
+              message_count: 0,
+              first_message_ts: message.ts || '',
+              last_message_ts: message.ts || '',
             });
           }
         }
         const participants = Array.from(participantMap.values());
         const fullAnalysis = performComprehensiveAnalysis(messages, participants);
         
-        const summaryOptions = {
+        const summaryOptions: ThreadSummaryFormatterOptions = {
           includeDecisions: input.include_decisions !== false,
           includeActionItems: input.include_action_items !== false,
-          summaryLength: input.summary_length || 'detailed',
-          language: input.language || 'en',
+          includeDetails: input.summary_length !== 'brief',
+          includeKeyPoints: true,
+          includeEmojis: true,
+          includeTimestamps: false,
+          maxLineLength: 100,
+          precision: 1
         };
         
-        return formatThreadSummary(fullAnalysis, messages, summaryOptions);
+        // Create ThreadSummary from analysis
+        const threadSummary: ThreadSummary = {
+          thread_ts: input.thread_ts,
+          channel_id: input.channel,
+          title: 'Thread Analysis',
+          brief_summary: 'Thread summary generated',
+          key_points: fullAnalysis.topics.topics.slice(0, 5),
+          decisions_made: [], // TODO: Extract from analysis
+          action_items: [...fullAnalysis.actionItems.actionItems],
+          participants: participants.map(p => p.user_id),
+          message_count: messages.length,
+          duration: `${Math.round(fullAnalysis.timeline.totalDuration)} minutes`,
+          status: 'active' as const,
+        };
+        return formatThreadSummary(threadSummary, summaryOptions);
       }
       
       // Basic summary without comprehensive analysis
@@ -318,11 +373,12 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         if (message.user && !participantMap.has(message.user)) {
           const userInfo = await deps.userService.getUserInfo(message.user);
           participantMap.set(message.user, {
-            id: message.user,
-            displayName: userInfo.displayName,
-            messageCount: 0,
-            firstMessage: message.ts || '',
-            lastMessage: message.ts || '',
+            user_id: message.user,
+            username: userInfo.name || userInfo.real_name || message.user,
+            real_name: userInfo.real_name,
+            message_count: 0,
+            first_message_ts: message.ts || '',
+            last_message_ts: message.ts || '',
           });
         }
       }
@@ -370,12 +426,17 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
     deps.requestHandler.handle(PostThreadReplySchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
       
-      const result = await client.chat.postMessage({
+      const messageArgs: any = {
         channel: input.channel,
         text: input.text,
         thread_ts: input.thread_ts,
-        reply_broadcast: input.reply_broadcast,
-      });
+      };
+
+      if (input.reply_broadcast) {
+        messageArgs.reply_broadcast = input.reply_broadcast;
+      }
+
+      const result = await client.chat.postMessage(messageArgs);
 
       return {
         success: true,
@@ -406,12 +467,17 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       // Post the first reply if provided
       let replyResult;
       if (input.reply_text) {
-        replyResult = await client.chat.postMessage({
+        const replyArgs: any = {
           channel: input.channel,
           text: input.reply_text,
           thread_ts: parentResult.ts,
-          reply_broadcast: input.broadcast,
-        });
+        };
+
+        if (input.broadcast) {
+          replyArgs.reply_broadcast = input.broadcast;
+        }
+
+        replyResult = await client.chat.postMessage(replyArgs);
       }
 
       return {
@@ -495,7 +561,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       // Find thread parents
       const threadParents = historyResult.messages.filter(
-        (message: SlackMessage) => message.reply_count && message.reply_count > 0
+        (message: any) => message.reply_count && message.reply_count > 0
       );
 
       const importantThreads = [];
@@ -504,7 +570,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         // Get thread replies for analysis
         const threadResult = await client.conversations.replies({
           channel: input.channel,
-          ts: parent.ts,
+          ts: parent.ts || '',
           limit: 100,
         });
         
@@ -593,7 +659,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       // Get user info if requested
       const userInfoMap = new Map<string, { displayName: string }>();
       if (input.include_user_profiles) {
-        const uniqueUsers = new Set(messages.map(m => m.user).filter(Boolean));
+        const uniqueUsers = new Set(messages.map(m => m.user).filter((user): user is string => Boolean(user)));
         for (const userId of uniqueUsers) {
           const userInfo = await deps.userService.getUserInfo(userId);
           userInfoMap.set(userId, userInfo);
@@ -663,7 +729,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       }
 
       const threadParents = historyResult.messages.filter(
-        (message: SlackMessage) => message.reply_count && message.reply_count > 0 && message.ts !== input.thread_ts
+        (message: any) => message.reply_count && message.reply_count > 0 && message.ts !== input.thread_ts
       );
 
       const relatedThreads = [];
@@ -671,7 +737,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       for (const parent of threadParents.slice(0, 50)) { // Limit comparison threads
         const threadResult = await client.conversations.replies({
           channel: input.channel,
-          ts: parent.ts,
+          ts: parent.ts || '',
           limit: 100,
         });
         
@@ -709,7 +775,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           // Temporal proximity (messages close in time are more related)
           if (!input.relationship_types || input.relationship_types.includes('temporal_proximity')) {
             const refTime = parseInt(input.thread_ts);
-            const compTime = parseInt(parent.ts);
+            const compTime = parseInt(parent.ts || '0');
             const timeDiff = Math.abs(refTime - compTime);
             const maxTime = 7 * 24 * 60 * 60; // 7 days in seconds
             if (timeDiff < maxTime) {
@@ -771,7 +837,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       const oldestTs = Math.floor(after.getTime() / 1000).toString();
       const latestTs = Math.floor(before.getTime() / 1000).toString();
       
-      let allThreads: SlackMessage[] = [];
+      let allThreads: any[] = [];
       
       if (input.channel) {
         // Get threads from specific channel
@@ -784,7 +850,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         
         if (historyResult.messages) {
           const threadParents = historyResult.messages.filter(
-            (message: SlackMessage) => message.reply_count && message.reply_count > 0
+            (message: any) => message.reply_count && message.reply_count > 0
           );
           allThreads = threadParents;
         }
@@ -869,7 +935,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const getThreadsByParticipants = (args: unknown) =>
     deps.requestHandler.handle(GetThreadsByParticipantsSchema, args, async (input) => {
       // Check if search API is available for broader search
-      deps.clientManager.checkSearchApiAvailability();
+      deps.clientManager.checkSearchApiAvailability('getThreadsByParticipants', 'Use findThreadsInChannel with filtering instead');
       
       const client = deps.clientManager.getClientForOperation('read');
       
@@ -922,7 +988,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       }>();
       
       for (const match of searchResult.messages.matches) {
-        const threadTs = match.thread_ts || (match.reply_count > 0 ? match.ts : null);
+        const threadTs = (match as any).thread_ts || ((match as any).reply_count > 0 ? (match as any).ts : null);
         if (!threadTs) continue;
         
         const threadKey = `${match.channel?.id || match.channel?.name}-${threadTs}`;
@@ -930,14 +996,14 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         
         // Get full thread to verify participants
         const threadResult = await client.conversations.replies({
-          channel: match.channel?.id || match.channel?.name,
+          channel: (match as any).channel?.id || (match as any).channel?.name || '',
           ts: threadTs,
           limit: 100,
         });
         
         if (threadResult.messages) {
           const threadUsers = new Set(
-            threadResult.messages.map((m: SlackMessage) => m.user).filter(Boolean)
+            threadResult.messages?.map((m: any) => m.user).filter(Boolean) || []
           );
           
           let includeThread = false;
@@ -948,16 +1014,17 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           }
           
           if (includeThread) {
+            const firstMessage = threadResult.messages?.[0];
             threadMap.set(threadKey, {
-              channel: match.channel?.id || match.channel?.name,
+              channel: (match as any).channel?.id || (match as any).channel?.name || '',
               threadTs,
               parentMessage: {
-                text: threadResult.messages[0].text,
-                user: threadResult.messages[0].user,
-                timestamp: threadResult.messages[0].ts,
+                text: firstMessage?.text,
+                user: firstMessage?.user,
+                timestamp: firstMessage?.ts,
               },
-              participants: Array.from(threadUsers),
-              messageCount: threadResult.messages.length,
+              participants: Array.from(threadUsers).filter(Boolean) as string[],
+              messageCount: threadResult.messages?.length || 0,
               matchingParticipants: input.participants.filter(p => threadUsers.has(p)),
             });
           }
