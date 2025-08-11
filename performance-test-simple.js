@@ -44,7 +44,7 @@ console.log(`Difference: ${initDiff}ms (${initDiff > 0 ? 'slower' : 'faster'})`)
 console.log('\n📊 METHOD ROUTING OVERHEAD (100 calls)\n');
 
 const iterations = 100;
-const testArgs = { user_id: 'U123456' };
+const testArgs = { user: 'U123456' };
 
 // Legacy routing
 const legacyRoutingStart = performance.now();

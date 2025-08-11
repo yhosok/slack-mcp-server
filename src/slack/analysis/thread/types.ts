@@ -3,11 +3,11 @@
  * These types are used by the pure analysis functions
  */
 
-import type { 
-  SlackMessage, 
-  ThreadParticipant, 
-  ThreadTimelineEvent, 
-  ActionItem 
+import type {
+  SlackMessage,
+  ThreadParticipant,
+  ThreadTimelineEvent,
+  ActionItem,
 } from '../../types.js';
 
 /**

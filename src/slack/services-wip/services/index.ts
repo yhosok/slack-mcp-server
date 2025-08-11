@@ -1,21 +1,29 @@
 /**
  * Domain Services Layer
- * 
+ *
  * This module provides high-level business logic services that compose
  * infrastructure and analysis layers. Each service encapsulates domain
  * operations and provides a clean, typed interface.
- * 
+ *
  * Services are created via factory functions that accept infrastructure
  * dependencies, following the dependency injection pattern.
  */
 
 // Message Services
 export { createMessageService } from './messages/message-service.js';
-export type { MessageService, MessageServiceDependencies, MessageServiceConfig } from './messages/types.js';
+export type {
+  MessageService,
+  MessageServiceDependencies,
+  MessageServiceConfig,
+} from './messages/types.js';
 
-// Thread Services  
+// Thread Services
 export { createThreadService } from './threads/thread-service.js';
-export type { ThreadService, ThreadServiceDependencies, ThreadServiceConfig } from './threads/types.js';
+export type {
+  ThreadService,
+  ThreadServiceDependencies,
+  ThreadServiceConfig,
+} from './threads/types.js';
 
 // File Services
 export { createFileService } from './files/file-service.js';
@@ -23,11 +31,19 @@ export type { FileService, FileServiceDependencies, FileServiceConfig } from './
 
 // Reaction Services
 export { createReactionService } from './reactions/reaction-service.js';
-export type { ReactionService, ReactionServiceDependencies, ReactionServiceConfig } from './reactions/types.js';
+export type {
+  ReactionService,
+  ReactionServiceDependencies,
+  ReactionServiceConfig,
+} from './reactions/types.js';
 
 // Workspace Services
 export { createWorkspaceService } from './workspace/workspace-service.js';
-export type { WorkspaceService, WorkspaceServiceDependencies, WorkspaceServiceConfig } from './workspace/types.js';
+export type {
+  WorkspaceService,
+  WorkspaceServiceDependencies,
+  WorkspaceServiceConfig,
+} from './workspace/types.js';
 
 // Re-export infrastructure types for convenience
 export type { InfrastructureServices } from '../infrastructure/factory.js';

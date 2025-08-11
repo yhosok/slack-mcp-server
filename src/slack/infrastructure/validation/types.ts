@@ -17,6 +17,20 @@ export interface RequestHandler {
     args: unknown,
     operation: (input: TInput) => Promise<TOutput>
   ): Promise<MCPToolResult>;
+
+  /**
+   * Handle an API request with validation and error handling, but custom response formatting
+   * This allows services to return their own MCPToolResult format directly
+   * @param schema - Zod schema for input validation
+   * @param args - Raw input arguments to validate
+   * @param operation - Async operation to perform that returns MCPToolResult directly
+   * @returns MCP tool response
+   */
+  handleWithCustomFormat<TInput>(
+    schema: ZodSchema<TInput>,
+    args: unknown,
+    operation: (input: TInput) => Promise<MCPToolResult>
+  ): Promise<MCPToolResult>;
 }
 
 /**

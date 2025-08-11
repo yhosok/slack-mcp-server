@@ -4,29 +4,57 @@
  */
 
 import type { SlackMessage } from '../../types.js';
-import type { 
-  SentimentScore, 
-  SentimentAnalysisResult, 
-  SentimentConfig 
-} from './types.js';
+import type { SentimentScore, SentimentAnalysisResult, SentimentConfig } from './types.js';
 
 /**
  * Default sentiment analysis configuration
  */
 export const DEFAULT_SENTIMENT_CONFIG: SentimentConfig = {
   positiveWords: [
-    'good', 'great', 'excellent', 'awesome', 'perfect', 
-    'love', 'like', 'happy', 'yes', 'agree', 'amazing',
-    'fantastic', 'wonderful', 'brilliant', 'outstanding',
-    'success', 'achieved', 'completed', 'solved', 'resolved'
+    'good',
+    'great',
+    'excellent',
+    'awesome',
+    'perfect',
+    'love',
+    'like',
+    'happy',
+    'yes',
+    'agree',
+    'amazing',
+    'fantastic',
+    'wonderful',
+    'brilliant',
+    'outstanding',
+    'success',
+    'achieved',
+    'completed',
+    'solved',
+    'resolved',
   ] as const,
   negativeWords: [
-    'bad', 'terrible', 'awful', 'hate', 'dislike', 
-    'angry', 'no', 'disagree', 'problem', 'issue',
-    'error', 'bug', 'broken', 'failed', 'wrong',
-    'difficult', 'hard', 'stuck', 'blocked', 'frustrated'
+    'bad',
+    'terrible',
+    'awful',
+    'hate',
+    'dislike',
+    'angry',
+    'no',
+    'disagree',
+    'problem',
+    'issue',
+    'error',
+    'bug',
+    'broken',
+    'failed',
+    'wrong',
+    'difficult',
+    'hard',
+    'stuck',
+    'blocked',
+    'frustrated',
   ] as const,
-  threshold: 1.2 // Ratio threshold for determining sentiment
+  threshold: 1.2, // Ratio threshold for determining sentiment
 } as const;
 
 /**
@@ -50,7 +78,7 @@ export function extractTextFromMessages(messages: readonly SlackMessage[]): stri
  */
 export function countWordOccurrences(text: string, words: readonly string[]): number {
   let count = 0;
-  
+
   for (const word of words) {
     const regex = new RegExp(`\\b${word.toLowerCase()}\\b`, 'g');
     const matches = text.match(regex);
@@ -58,7 +86,7 @@ export function countWordOccurrences(text: string, words: readonly string[]): nu
       count += matches.length;
     }
   }
-  
+
   return count;
 }
 
@@ -69,38 +97,38 @@ export function countWordOccurrences(text: string, words: readonly string[]): nu
  * @returns Detailed sentiment analysis result
  */
 export function analyzeSentiment(
-  messages: readonly SlackMessage[], 
+  messages: readonly SlackMessage[],
   config: SentimentConfig = DEFAULT_SENTIMENT_CONFIG
 ): SentimentAnalysisResult {
   const text = extractTextFromMessages(messages);
-  
+
   if (!text) {
     return {
       sentiment: 'neutral',
       positiveCount: 0,
       negativeCount: 0,
-      totalWords: 0
+      totalWords: 0,
     };
   }
-  
+
   const positiveCount = countWordOccurrences(text, config.positiveWords);
   const negativeCount = countWordOccurrences(text, config.negativeWords);
   const totalWords = text.split(/\s+/).length;
-  
+
   let sentiment: SentimentScore = 'neutral';
-  
+
   // Apply threshold-based sentiment determination
   if (positiveCount > negativeCount * config.threshold) {
     sentiment = 'positive';
   } else if (negativeCount > positiveCount * config.threshold) {
     sentiment = 'negative';
   }
-  
+
   return {
     sentiment,
     positiveCount,
     negativeCount,
-    totalWords
+    totalWords,
   };
 }
 
@@ -111,16 +139,16 @@ export function analyzeSentiment(
  */
 export function getSentimentScore(result: SentimentAnalysisResult): number {
   const { positiveCount, negativeCount, totalWords } = result;
-  
+
   if (totalWords === 0) return 0;
-  
+
   // Normalize by total words to get relative sentiment strength
   const positiveRatio = positiveCount / totalWords;
   const negativeRatio = negativeCount / totalWords;
-  
+
   // Calculate net sentiment
   const netSentiment = positiveRatio - negativeRatio;
-  
+
   // Clamp to [-1, 1] range
   return Math.max(-1, Math.min(1, netSentiment * 10));
 }
@@ -133,7 +161,7 @@ export function getSentimentScore(result: SentimentAnalysisResult): number {
 export function isSentimentReliable(result: SentimentAnalysisResult): boolean {
   const { positiveCount, negativeCount, totalWords } = result;
   const totalSentimentWords = positiveCount + negativeCount;
-  
+
   // Consider reliable if we have sentiment words and sufficient total text
   return totalSentimentWords >= 2 && totalWords >= 10;
 }
@@ -146,19 +174,21 @@ export function isSentimentReliable(result: SentimentAnalysisResult): boolean {
 export function explainSentiment(result: SentimentAnalysisResult): string {
   const { sentiment, positiveCount, negativeCount, totalWords } = result;
   const totalSentimentWords = positiveCount + negativeCount;
-  
+
   if (totalWords === 0) {
     return 'No text available for sentiment analysis.';
   }
-  
+
   if (totalSentimentWords === 0) {
     return `Neutral sentiment - no clear positive or negative indicators found in ${totalWords} words.`;
   }
-  
+
   const reliability = isSentimentReliable(result) ? 'reliable' : 'limited';
   const ratio = negativeCount > 0 ? (positiveCount / negativeCount).toFixed(1) : 'infinite';
-  
-  return `${sentiment.charAt(0).toUpperCase() + sentiment.slice(1)} sentiment (${reliability} analysis) - ` +
+
+  return (
+    `${sentiment.charAt(0).toUpperCase() + sentiment.slice(1)} sentiment (${reliability} analysis) - ` +
     `${positiveCount} positive vs ${negativeCount} negative indicators ` +
-    `(ratio: ${ratio}) in ${totalWords} total words.`;
+    `(ratio: ${ratio}) in ${totalWords} total words.`
+  );
 }

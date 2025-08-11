@@ -16,11 +16,22 @@ import {
   GetThreadsByParticipantsSchema,
 } from '../../../utils/validation.js';
 import type { ThreadService, ThreadServiceDependencies } from './types.js';
+import {
+  formatFindThreadsResponse,
+  formatCreateThreadResponse,
+} from '../formatters/legacy-formatters.js';
 
-// Export types for external use  
+// Export types for external use
 export type { ThreadService, ThreadServiceDependencies } from './types.js';
 import { SlackAPIError } from '../../../utils/errors.js';
-import type { SlackMessage, ThreadAnalysis, ThreadSummary, ThreadParticipant, ThreadTimelineEvent, ActionItem } from '../../types.js';
+import type {
+  SlackMessage,
+  ThreadAnalysis,
+  ThreadSummary,
+  ThreadParticipant,
+  ThreadTimelineEvent,
+  ActionItem,
+} from '../../types.js';
 import {
   performComprehensiveAnalysis,
   performQuickAnalysis,
@@ -28,7 +39,7 @@ import {
   formatThreadSummary,
   formatThreadMetrics,
   type ThreadSummaryFormatterOptions,
-  type TimelineEvent
+  type TimelineEvent,
 } from '../../analysis/index.js';
 
 /**
@@ -41,45 +52,63 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
    * Find all threads in a channel
    */
   const findThreadsInChannel = (args: unknown) =>
-    deps.requestHandler.handle(FindThreadsInChannelSchema, args, async (input) => {
+    deps.requestHandler.handleWithCustomFormat(FindThreadsInChannelSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       const result = await client.conversations.history({
         channel: input.channel,
         limit: input.limit || 100,
         cursor: input.cursor,
         oldest: input.oldest,
         latest: input.latest,
+        include_all_metadata: input.include_all_metadata,
       });
 
       if (!result.messages) {
-        return { threads: [], total: 0 };
+        return formatFindThreadsResponse({ threads: [], total: 0 });
       }
 
-      // Filter messages that have replies (are thread parents)
-      const threadParents = result.messages.filter(
-        (message: any) => message.reply_count && message.reply_count > 0
+      const messages = result.messages || [];
+
+      // Filter messages that have replies (threads) - match legacy logic exactly
+      const threadParents = messages.filter(
+        (msg: any) => msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
       );
 
-      const threads = threadParents.map((message: any) => ({
-        channel: input.channel,
-        threadTs: message.ts,
-        parentMessage: {
-          text: message.text,
-          user: message.user,
-          timestamp: message.ts,
-        },
-        replyCount: message.reply_count,
-        lastReply: message.latest_reply,
-        participants: message.replies?.map((reply: any) => reply.user) || [],
-      }));
+      const threads = [];
 
-      return {
+      for (const parentMsg of threadParents) {
+        // Get thread replies for each parent message (like legacy does)
+        const repliesResult = await client.conversations.replies({
+          channel: input.channel,
+          ts: parentMsg.ts!,
+          limit: 100,
+        });
+
+        if (repliesResult.ok && repliesResult.messages) {
+          const [parent, ...replies] = repliesResult.messages;
+
+          if (parent) {
+            threads.push({
+              threadTs: parent.ts,
+              parentMessage: {
+                text: parent.text,
+                user: parent.user,
+                timestamp: parent.ts,
+              },
+              replyCount: replies.length,
+              lastReply: replies[replies.length - 1]?.ts || parent.ts,
+              participants: [...new Set(replies.map((r: any) => r.user).filter(Boolean))],
+            });
+          }
+        }
+      }
+
+      return formatFindThreadsResponse({
         threads,
         total: threads.length,
         hasMore: result.has_more,
-        cursor: result.response_metadata?.next_cursor,
-      };
+      });
     });
 
   /**
@@ -88,7 +117,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const getThreadReplies = (args: unknown) =>
     deps.requestHandler.handle(GetThreadRepliesSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       const result = await client.conversations.replies({
         channel: input.channel,
         ts: input.thread_ts,
@@ -116,22 +145,25 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const searchThreads = (args: unknown) =>
     deps.requestHandler.handle(SearchThreadsSchema, args, async (input) => {
       // Check if search API is available
-      deps.clientManager.checkSearchApiAvailability('searchThreads', 'Use findThreadsInChannel instead');
-      
+      deps.clientManager.checkSearchApiAvailability(
+        'searchThreads',
+        'Use findThreadsInChannel instead'
+      );
+
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       let searchQuery = input.query;
-      
+
       // Add channel filter if specified
       if (input.channel) {
         searchQuery += ` in:#${input.channel}`;
       }
-      
+
       // Add user filter if specified
       if (input.user) {
         searchQuery += ` from:<@${input.user}>`;
       }
-      
+
       // Add date filters if specified
       if (input.after) {
         searchQuery += ` after:${input.after}`;
@@ -171,7 +203,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const analyzeThread = (args: unknown) =>
     deps.requestHandler.handle(AnalyzeThreadSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Get thread messages
       const threadResult = await client.conversations.replies({
         channel: input.channel,
@@ -184,7 +216,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       }
 
       const messages = threadResult.messages as SlackMessage[];
-      
+
       // Build participants list
       const participantMap = new Map<string, ThreadParticipant>();
       for (const message of messages) {
@@ -199,19 +231,19 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
             last_message_ts: message.ts || '',
           });
         }
-        
+
         const participant = participantMap.get(message.user!);
         if (participant) {
           participant.message_count++;
           participant.last_message_ts = message.ts || '';
         }
       }
-      
+
       const participants = Array.from(participantMap.values());
-      
+
       // Perform comprehensive analysis
       const analysis = performComprehensiveAnalysis(messages, participants);
-      
+
       // Format the analysis result
       const formattedOptions = {
         includeTimeline: input.include_timeline !== false,
@@ -225,13 +257,13 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         maxLineLength: 80,
         precision: 1,
       };
-      
+
       // Convert ComprehensiveAnalysisResult to ThreadAnalysis format
       const threadAnalysis: ThreadAnalysis = {
         thread_ts: input.thread_ts,
         channel_id: input.channel,
         participants,
-        timeline: analysis.timeline.events.map(event => ({
+        timeline: analysis.timeline.events.map((event) => ({
           timestamp: event.timestamp,
           event_type: 'message' as const,
           user_id: event.user_id || '',
@@ -241,7 +273,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         urgency_score: analysis.urgency.score,
         importance_score: analysis.importance.score,
         sentiment: analysis.sentiment.sentiment,
-        action_items: analysis.actionItems.actionItems.map(item => ({
+        action_items: analysis.actionItems.actionItems.map((item) => ({
           text: item.text,
           mentioned_users: (item as any).assigned_to ? [(item as any).assigned_to] : [],
           priority: item.priority,
@@ -262,7 +294,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const summarizeThread = (args: unknown) =>
     deps.requestHandler.handle(SummarizeThreadSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Get thread messages
       const threadResult = await client.conversations.replies({
         channel: input.channel,
@@ -275,10 +307,10 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       }
 
       const messages = threadResult.messages as SlackMessage[];
-      
+
       // Perform analysis for summary
       const analysis = performQuickAnalysis(messages);
-      
+
       // Build participants for comprehensive analysis if needed
       if (input.include_decisions || input.include_action_items) {
         const participantMap = new Map<string, ThreadParticipant>();
@@ -297,7 +329,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         }
         const participants = Array.from(participantMap.values());
         const fullAnalysis = performComprehensiveAnalysis(messages, participants);
-        
+
         const summaryOptions: ThreadSummaryFormatterOptions = {
           includeDecisions: input.include_decisions !== false,
           includeActionItems: input.include_action_items !== false,
@@ -306,9 +338,9 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           includeEmojis: true,
           includeTimestamps: false,
           maxLineLength: 100,
-          precision: 1
+          precision: 1,
         };
-        
+
         // Create ThreadSummary from analysis
         const threadSummary: ThreadSummary = {
           thread_ts: input.thread_ts,
@@ -318,14 +350,14 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           key_points: fullAnalysis.topics.topics.slice(0, 5),
           decisions_made: [], // TODO: Extract from analysis
           action_items: [...fullAnalysis.actionItems.actionItems],
-          participants: participants.map(p => p.user_id),
+          participants: participants.map((p) => p.user_id),
           message_count: messages.length,
           duration: `${Math.round(fullAnalysis.timeline.totalDuration)} minutes`,
           status: 'active' as const,
         };
         return formatThreadSummary(threadSummary, summaryOptions);
       }
-      
+
       // Basic summary without comprehensive analysis
       return {
         threadInfo: {
@@ -336,7 +368,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         },
         summary: {
           messageCount: messages.length,
-          participantCount: new Set(messages.map(m => m.user).filter(Boolean)).size,
+          participantCount: new Set(messages.map((m) => m.user).filter(Boolean)).size,
           duration: `${Math.round(analysis.duration / 60)} minutes`,
           urgencyLevel: analysis.urgencyLevel,
           actionItemCount: analysis.actionItemCount,
@@ -353,7 +385,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const extractActionItems = (args: unknown) =>
     deps.requestHandler.handle(ExtractActionItemsSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Get thread messages
       const threadResult = await client.conversations.replies({
         channel: input.channel,
@@ -366,7 +398,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       }
 
       const messages = threadResult.messages as SlackMessage[];
-      
+
       // Build participants
       const participantMap = new Map<string, ThreadParticipant>();
       for (const message of messages) {
@@ -383,23 +415,23 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         }
       }
       const participants = Array.from(participantMap.values());
-      
+
       // Perform comprehensive analysis
       const analysis = performComprehensiveAnalysis(messages, participants);
-      
+
       // Filter action items by priority if specified
       let actionItems = analysis.actionItems.actionItems;
       if (input.priority_threshold && input.priority_threshold !== 'low') {
         const priorities = ['low', 'medium', 'high'];
         const minPriorityIndex = priorities.indexOf(input.priority_threshold);
-        actionItems = actionItems.filter(item => 
-          priorities.indexOf(item.priority) >= minPriorityIndex
+        actionItems = actionItems.filter(
+          (item) => priorities.indexOf(item.priority) >= minPriorityIndex
         );
       }
-      
+
       // Filter completed items if not requested
       if (!input.include_completed) {
-        actionItems = actionItems.filter(item => item.status !== 'completed');
+        actionItems = actionItems.filter((item) => item.status !== 'completed');
       }
 
       return {
@@ -412,9 +444,9 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         },
         totalActionItems: actionItems.length,
         priorityBreakdown: {
-          high: actionItems.filter(item => item.priority === 'high').length,
-          medium: actionItems.filter(item => item.priority === 'medium').length,
-          low: actionItems.filter(item => item.priority === 'low').length,
+          high: actionItems.filter((item) => item.priority === 'high').length,
+          medium: actionItems.filter((item) => item.priority === 'medium').length,
+          low: actionItems.filter((item) => item.priority === 'low').length,
         },
       };
     });
@@ -425,7 +457,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const postThreadReply = (args: unknown) =>
     deps.requestHandler.handle(PostThreadReplySchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
-      
+
       const messageArgs: any = {
         channel: input.channel,
         text: input.text,
@@ -451,9 +483,9 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
    * Create a new thread by posting a parent message and optional first reply
    */
   const createThread = (args: unknown) =>
-    deps.requestHandler.handle(CreateThreadSchema, args, async (input) => {
+    deps.requestHandler.handleWithCustomFormat(CreateThreadSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
-      
+
       // Post the parent message
       const parentResult = await client.chat.postMessage({
         channel: input.channel,
@@ -480,7 +512,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         replyResult = await client.chat.postMessage(replyArgs);
       }
 
-      return {
+      return formatCreateThreadResponse({
         success: true,
         threadTs: parentResult.ts,
         parentMessage: {
@@ -488,11 +520,13 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           channel: parentResult.channel,
           message: parentResult.message,
         },
-        reply: replyResult ? {
-          timestamp: replyResult.ts,
-          message: replyResult.message,
-        } : null,
-      };
+        reply: replyResult
+          ? {
+              timestamp: replyResult.ts,
+              message: replyResult.message,
+            }
+          : null,
+      });
     });
 
   /**
@@ -501,7 +535,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const markThreadImportant = (args: unknown) =>
     deps.requestHandler.handle(MarkThreadImportantSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
-      
+
       // Add importance reaction based on level
       const reactionMap = {
         low: 'information_source',
@@ -509,9 +543,9 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         high: 'exclamation',
         critical: 'rotating_light',
       };
-      
+
       const reactionName = reactionMap[input.importance_level || 'high'];
-      
+
       await client.reactions.add({
         channel: input.channel,
         timestamp: input.thread_ts,
@@ -543,11 +577,11 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const identifyImportantThreads = (args: unknown) =>
     deps.requestHandler.handle(IdentifyImportantThreadsSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Calculate time range
       const hoursBack = input.time_range_hours || 168; // Default 1 week
       const oldestTimestamp = Math.floor((Date.now() - hoursBack * 60 * 60 * 1000) / 1000);
-      
+
       // Get channel history
       const historyResult = await client.conversations.history({
         channel: input.channel,
@@ -565,7 +599,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       );
 
       const importantThreads = [];
-      
+
       for (const parent of threadParents.slice(0, input.limit || 10)) {
         // Get thread replies for analysis
         const threadResult = await client.conversations.replies({
@@ -573,36 +607,42 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           ts: parent.ts || '',
           limit: 100,
         });
-        
+
         if (threadResult.messages) {
           const messages = threadResult.messages as SlackMessage[];
           const analysis = performQuickAnalysis(messages);
-          
+
           // Calculate importance score based on criteria
           let importanceScore = 0;
-          
+
           if (!input.criteria || input.criteria.includes('message_count')) {
             importanceScore += Math.min(messages.length / 20, 1) * 0.3;
           }
-          
+
           if (!input.criteria || input.criteria.includes('urgency_keywords')) {
-            importanceScore += analysis.urgencyLevel === 'critical' ? 0.4 : 
-                             analysis.urgencyLevel === 'high' ? 0.3 : 
-                             analysis.urgencyLevel === 'medium' ? 0.2 : 0.1;
+            importanceScore +=
+              analysis.urgencyLevel === 'critical'
+                ? 0.4
+                : analysis.urgencyLevel === 'high'
+                  ? 0.3
+                  : analysis.urgencyLevel === 'medium'
+                    ? 0.2
+                    : 0.1;
           }
-          
+
           if (!input.criteria || input.criteria.includes('participant_count')) {
-            const uniqueUsers = new Set(messages.map(m => m.user)).size;
+            const uniqueUsers = new Set(messages.map((m) => m.user)).size;
             importanceScore += Math.min(uniqueUsers / 10, 1) * 0.2;
           }
-          
+
           if (!input.criteria || input.criteria.includes('mention_frequency')) {
-            const mentionCount = messages.reduce((count, msg) => 
-              count + (msg.text?.match(/<@[UW][A-Z0-9]+>/g)?.length || 0), 0
+            const mentionCount = messages.reduce(
+              (count, msg) => count + (msg.text?.match(/<@[UW][A-Z0-9]+>/g)?.length || 0),
+              0
             );
             importanceScore += Math.min(mentionCount / 5, 1) * 0.1;
           }
-          
+
           if (importanceScore >= (input.importance_threshold || 0.7)) {
             importantThreads.push({
               channel: input.channel,
@@ -615,7 +655,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
               importanceScore,
               analysis: {
                 messageCount: messages.length,
-                participantCount: new Set(messages.map(m => m.user)).size,
+                participantCount: new Set(messages.map((m) => m.user)).size,
                 urgencyLevel: analysis.urgencyLevel,
                 actionItemCount: analysis.actionItemCount,
                 duration: analysis.duration,
@@ -624,7 +664,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           }
         }
       }
-      
+
       // Sort by importance score
       importantThreads.sort((a, b) => b.importanceScore - a.importanceScore);
 
@@ -642,7 +682,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const exportThread = (args: unknown) =>
     deps.requestHandler.handle(ExportThreadSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Get thread messages
       const threadResult = await client.conversations.replies({
         channel: input.channel,
@@ -655,17 +695,19 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       }
 
       const messages = threadResult.messages as SlackMessage[];
-      
+
       // Get user info if requested
       const userInfoMap = new Map<string, { displayName: string }>();
       if (input.include_user_profiles) {
-        const uniqueUsers = new Set(messages.map(m => m.user).filter((user): user is string => Boolean(user)));
+        const uniqueUsers = new Set(
+          messages.map((m) => m.user).filter((user): user is string => Boolean(user))
+        );
         for (const userId of uniqueUsers) {
           const userInfo = await deps.userService.getUserInfo(userId);
           userInfoMap.set(userId, userInfo);
         }
       }
-      
+
       const exportOptions = {
         format: input.format || 'markdown',
         includeMetadata: input.include_metadata !== false,
@@ -673,7 +715,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         includeUserProfiles: input.include_user_profiles || false,
         dateFormat: input.date_format || 'ISO',
       };
-      
+
       // Basic export implementation - will be enhanced with proper formatters later
       const basicExport = {
         format: input.format || 'markdown',
@@ -683,7 +725,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           messageCount: messages.length,
           exportedAt: new Date().toISOString(),
         },
-        messages: messages.map(message => ({
+        messages: messages.map((message) => ({
           user: message.user,
           text: message.text,
           timestamp: message.ts,
@@ -691,7 +733,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         })),
         userProfiles: input.include_user_profiles ? Object.fromEntries(userInfoMap) : undefined,
       };
-      
+
       return basicExport;
     });
 
@@ -701,7 +743,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const findRelatedThreads = (args: unknown) =>
     deps.requestHandler.handle(FindRelatedThreadsSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Get the reference thread
       const refThreadResult = await client.conversations.replies({
         channel: input.channel,
@@ -715,7 +757,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       const refMessages = refThreadResult.messages as SlackMessage[];
       const refAnalysis = performQuickAnalysis(refMessages);
-      
+
       // Get other threads in the channel (last 30 days for comparison)
       const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
       const historyResult = await client.conversations.history({
@@ -729,51 +771,65 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       }
 
       const threadParents = historyResult.messages.filter(
-        (message: any) => message.reply_count && message.reply_count > 0 && message.ts !== input.thread_ts
+        (message: any) =>
+          message.reply_count && message.reply_count > 0 && message.ts !== input.thread_ts
       );
 
       const relatedThreads = [];
-      
-      for (const parent of threadParents.slice(0, 50)) { // Limit comparison threads
+
+      for (const parent of threadParents.slice(0, 50)) {
+        // Limit comparison threads
         const threadResult = await client.conversations.replies({
           channel: input.channel,
           ts: parent.ts || '',
           limit: 100,
         });
-        
+
         if (threadResult.messages) {
           const messages = threadResult.messages as SlackMessage[];
           const analysis = performQuickAnalysis(messages);
-          
+
           let similarityScore = 0;
-          
+
           // Keyword overlap similarity
           if (!input.relationship_types || input.relationship_types.includes('keyword_overlap')) {
             // Simple keyword similarity (this could be enhanced with proper NLP)
-            const refText = refMessages.map(m => m.text || '').join(' ').toLowerCase();
-            const compText = messages.map(m => m.text || '').join(' ').toLowerCase();
-            const refWords = new Set(refText.split(/\s+/).filter(w => w.length > 3));
-            const compWords = new Set(compText.split(/\s+/).filter(w => w.length > 3));
-            const intersection = new Set([...refWords].filter(w => compWords.has(w)));
+            const refText = refMessages
+              .map((m) => m.text || '')
+              .join(' ')
+              .toLowerCase();
+            const compText = messages
+              .map((m) => m.text || '')
+              .join(' ')
+              .toLowerCase();
+            const refWords = new Set(refText.split(/\s+/).filter((w) => w.length > 3));
+            const compWords = new Set(compText.split(/\s+/).filter((w) => w.length > 3));
+            const intersection = new Set([...refWords].filter((w) => compWords.has(w)));
             const union = new Set([...refWords, ...compWords]);
             if (union.size > 0) {
               similarityScore += (intersection.size / union.size) * 0.4;
             }
           }
-          
+
           // Participant overlap
-          if (!input.relationship_types || input.relationship_types.includes('participant_overlap')) {
-            const refUsers = new Set(refMessages.map(m => m.user).filter(Boolean));
-            const compUsers = new Set(messages.map(m => m.user).filter(Boolean));
-            const userIntersection = new Set([...refUsers].filter(u => compUsers.has(u)));
+          if (
+            !input.relationship_types ||
+            input.relationship_types.includes('participant_overlap')
+          ) {
+            const refUsers = new Set(refMessages.map((m) => m.user).filter(Boolean));
+            const compUsers = new Set(messages.map((m) => m.user).filter(Boolean));
+            const userIntersection = new Set([...refUsers].filter((u) => compUsers.has(u)));
             const userUnion = new Set([...refUsers, ...compUsers]);
             if (userUnion.size > 0) {
               similarityScore += (userIntersection.size / userUnion.size) * 0.3;
             }
           }
-          
+
           // Temporal proximity (messages close in time are more related)
-          if (!input.relationship_types || input.relationship_types.includes('temporal_proximity')) {
+          if (
+            !input.relationship_types ||
+            input.relationship_types.includes('temporal_proximity')
+          ) {
             const refTime = parseInt(input.thread_ts);
             const compTime = parseInt(parent.ts || '0');
             const timeDiff = Math.abs(refTime - compTime);
@@ -782,14 +838,14 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
               similarityScore += (1 - timeDiff / maxTime) * 0.2;
             }
           }
-          
+
           // Topic similarity (basic implementation)
           if (!input.relationship_types || input.relationship_types.includes('topic_similarity')) {
             if (refAnalysis.urgencyLevel === analysis.urgencyLevel) {
               similarityScore += 0.1;
             }
           }
-          
+
           if (similarityScore >= (input.similarity_threshold || 0.3)) {
             relatedThreads.push({
               channel: input.channel,
@@ -800,7 +856,10 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
                 timestamp: parent.ts,
               },
               similarityScore,
-              relationshipTypes: input.relationship_types || ['keyword_overlap', 'participant_overlap'],
+              relationshipTypes: input.relationship_types || [
+                'keyword_overlap',
+                'participant_overlap',
+              ],
               analysis: {
                 messageCount: messages.length,
                 urgencyLevel: analysis.urgencyLevel,
@@ -810,7 +869,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           }
         }
       }
-      
+
       // Sort by similarity score
       relatedThreads.sort((a, b) => b.similarityScore - a.similarityScore);
 
@@ -828,17 +887,19 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const getThreadMetrics = (args: unknown) =>
     deps.requestHandler.handle(GetThreadMetricsSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Calculate time range
       const now = new Date();
-      const after = input.after ? new Date(input.after) : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const after = input.after
+        ? new Date(input.after)
+        : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       const before = input.before ? new Date(input.before) : now;
-      
+
       const oldestTs = Math.floor(after.getTime() / 1000).toString();
       const latestTs = Math.floor(before.getTime() / 1000).toString();
-      
+
       let allThreads: any[] = [];
-      
+
       if (input.channel) {
         // Get threads from specific channel
         const historyResult = await client.conversations.history({
@@ -847,7 +908,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           oldest: oldestTs,
           latest: latestTs,
         });
-        
+
         if (historyResult.messages) {
           const threadParents = historyResult.messages.filter(
             (message: any) => message.reply_count && message.reply_count > 0
@@ -855,7 +916,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           allThreads = threadParents;
         }
       }
-      
+
       // Analyze threads
       const metrics = {
         totalThreads: allThreads.length,
@@ -865,22 +926,23 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         timeDistribution: new Map<number, number>(),
         totalMessages: 0,
       };
-      
+
       if (allThreads.length > 0) {
         let totalReplies = 0;
-        
-        for (const thread of allThreads.slice(0, 100)) { // Limit for performance
+
+        for (const thread of allThreads.slice(0, 100)) {
+          // Limit for performance
           const threadResult = await client.conversations.replies({
             channel: input.channel || thread.channel,
             ts: thread.ts,
             limit: 100,
           });
-          
+
           if (threadResult.messages) {
             const messageCount = threadResult.messages.length;
             totalReplies += messageCount - 1; // Subtract parent message
             metrics.totalMessages += messageCount;
-            
+
             // Track participants
             for (const message of threadResult.messages) {
               if (message.user) {
@@ -890,19 +952,19 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
                 );
               }
             }
-            
+
             // Track time distribution (hour of day)
             const hour = new Date(parseFloat(thread.ts) * 1000).getHours();
             metrics.timeDistribution.set(hour, (metrics.timeDistribution.get(hour) || 0) + 1);
           }
         }
-        
+
         metrics.averageReplies = totalReplies / allThreads.length;
       }
-      
+
       // Convert Maps to arrays for JSON serialization
       const topParticipants = Array.from(metrics.participantStats.entries())
-        .sort(([,a], [,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 10)
         .map(([user, count]) => ({ user, messageCount: count }));
 
@@ -935,25 +997,28 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const getThreadsByParticipants = (args: unknown) =>
     deps.requestHandler.handle(GetThreadsByParticipantsSchema, args, async (input) => {
       // Check if search API is available for broader search
-      deps.clientManager.checkSearchApiAvailability('getThreadsByParticipants', 'Use findThreadsInChannel with filtering instead');
-      
+      deps.clientManager.checkSearchApiAvailability(
+        'getThreadsByParticipants',
+        'Use findThreadsInChannel with filtering instead'
+      );
+
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Build search query for participants
       let searchQuery = '';
       if (input.require_all_participants) {
         // All participants must be in thread
-        searchQuery = input.participants.map(p => `from:<@${p}>`).join(' ');
+        searchQuery = input.participants.map((p) => `from:<@${p}>`).join(' ');
       } else {
         // Any participant can be in thread
-        searchQuery = `(${input.participants.map(p => `from:<@${p}>`).join(' OR ')})`;
+        searchQuery = `(${input.participants.map((p) => `from:<@${p}>`).join(' OR ')})`;
       }
-      
+
       // Add channel filter if specified
       if (input.channel) {
         searchQuery += ` in:<#${input.channel}>`;
       }
-      
+
       // Add date filters
       if (input.after) {
         searchQuery += ` after:${input.after}`;
@@ -974,45 +1039,49 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       }
 
       // Filter for actual threads and verify participant requirements
-      const threadMap = new Map<string, {
-        channel: string;
-        threadTs: string;
-        parentMessage: {
-          text?: string;
-          user?: string;
-          timestamp?: string;
-        };
-        participants: string[];
-        messageCount: number;
-        matchingParticipants: string[];
-      }>();
-      
+      const threadMap = new Map<
+        string,
+        {
+          channel: string;
+          threadTs: string;
+          parentMessage: {
+            text?: string;
+            user?: string;
+            timestamp?: string;
+          };
+          participants: string[];
+          messageCount: number;
+          matchingParticipants: string[];
+        }
+      >();
+
       for (const match of searchResult.messages.matches) {
-        const threadTs = (match as any).thread_ts || ((match as any).reply_count > 0 ? (match as any).ts : null);
+        const threadTs =
+          (match as any).thread_ts || ((match as any).reply_count > 0 ? (match as any).ts : null);
         if (!threadTs) continue;
-        
+
         const threadKey = `${match.channel?.id || match.channel?.name}-${threadTs}`;
         if (threadMap.has(threadKey)) continue;
-        
+
         // Get full thread to verify participants
         const threadResult = await client.conversations.replies({
           channel: (match as any).channel?.id || (match as any).channel?.name || '',
           ts: threadTs,
           limit: 100,
         });
-        
+
         if (threadResult.messages) {
           const threadUsers = new Set(
             threadResult.messages?.map((m: any) => m.user).filter(Boolean) || []
           );
-          
+
           let includeThread = false;
           if (input.require_all_participants) {
-            includeThread = input.participants.every(p => threadUsers.has(p));
+            includeThread = input.participants.every((p) => threadUsers.has(p));
           } else {
-            includeThread = input.participants.some(p => threadUsers.has(p));
+            includeThread = input.participants.some((p) => threadUsers.has(p));
           }
-          
+
           if (includeThread) {
             const firstMessage = threadResult.messages?.[0];
             threadMap.set(threadKey, {
@@ -1025,14 +1094,14 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
               },
               participants: Array.from(threadUsers).filter(Boolean) as string[],
               messageCount: threadResult.messages?.length || 0,
-              matchingParticipants: input.participants.filter(p => threadUsers.has(p)),
+              matchingParticipants: input.participants.filter((p) => threadUsers.has(p)),
             });
           }
         }
       }
 
       const threads = Array.from(threadMap.values());
-      
+
       return {
         threads,
         total: threads.length,

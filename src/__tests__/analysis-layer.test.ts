@@ -2,7 +2,7 @@
  * Test suite for the analysis layer functions
  */
 
-import { 
+import {
   analyzeSentiment,
   extractTopicsFromThread,
   calculateUrgencyScore,
@@ -13,7 +13,7 @@ import {
   performQuickAnalysis,
   formatBytes,
   formatDuration,
-  formatThreadAnalysis
+  formatThreadAnalysis,
 } from '../slack/analysis/index.js';
 
 import type { SlackMessage, ThreadParticipant } from '../slack/types.js';
@@ -24,20 +24,20 @@ const mockMessages: SlackMessage[] = [
     type: 'message',
     user: 'user1',
     text: 'This is urgent! We need to fix the critical bug immediately.',
-    ts: '1699564800.000100' // Nov 9, 2023 16:00:00 GMT
+    ts: '1699564800.000100', // Nov 9, 2023 16:00:00 GMT
   },
   {
     type: 'message',
     user: 'user2',
     text: 'I agree, this is very important for the client launch.',
-    ts: '1699564860.000200' // Nov 9, 2023 16:01:00 GMT
+    ts: '1699564860.000200', // Nov 9, 2023 16:01:00 GMT
   },
   {
     type: 'message',
     user: 'user1',
     text: 'TODO: Need to update the database schema and test the new endpoint.',
-    ts: '1699564920.000300' // Nov 9, 2023 16:02:00 GMT
-  }
+    ts: '1699564920.000300', // Nov 9, 2023 16:02:00 GMT
+  },
 ];
 
 const mockParticipants: ThreadParticipant[] = [
@@ -46,26 +46,31 @@ const mockParticipants: ThreadParticipant[] = [
     username: 'alice',
     message_count: 2,
     first_message_ts: '1699564800.000100',
-    last_message_ts: '1699564920.000300'
+    last_message_ts: '1699564920.000300',
   },
   {
     user_id: 'user2',
     username: 'bob',
     message_count: 1,
     first_message_ts: '1699564860.000200',
-    last_message_ts: '1699564860.000200'
-  }
+    last_message_ts: '1699564860.000200',
+  },
 ];
 
 describe('Analysis Layer Functions', () => {
   describe('Sentiment Analysis', () => {
     test('should analyze positive sentiment correctly', () => {
       const positiveMessages: SlackMessage[] = [
-        { type: 'message', user: 'user1', text: 'Great job! This is excellent work.', ts: '1699564800.000100' }
+        {
+          type: 'message',
+          user: 'user1',
+          text: 'Great job! This is excellent work.',
+          ts: '1699564800.000100',
+        },
       ];
-      
+
       const result = analyzeSentiment(positiveMessages);
-      
+
       expect(result.sentiment).toBe('positive');
       expect(result.positiveCount).toBeGreaterThan(0);
       expect(result.totalWords).toBeGreaterThan(0);
@@ -73,18 +78,23 @@ describe('Analysis Layer Functions', () => {
 
     test('should analyze negative sentiment correctly', () => {
       const negativeMessages: SlackMessage[] = [
-        { type: 'message', user: 'user1', text: 'This is terrible and awful, I hate this bug.', ts: '1699564800.000100' }
+        {
+          type: 'message',
+          user: 'user1',
+          text: 'This is terrible and awful, I hate this bug.',
+          ts: '1699564800.000100',
+        },
       ];
-      
+
       const result = analyzeSentiment(negativeMessages);
-      
+
       expect(result.sentiment).toBe('negative');
       expect(result.negativeCount).toBeGreaterThan(0);
     });
 
     test('should handle empty messages', () => {
       const result = analyzeSentiment([]);
-      
+
       expect(result.sentiment).toBe('neutral');
       expect(result.totalWords).toBe(0);
     });
@@ -93,7 +103,7 @@ describe('Analysis Layer Functions', () => {
   describe('Topic Extraction', () => {
     test('should extract topics from messages', () => {
       const result = extractTopicsFromThread(mockMessages);
-      
+
       expect(result.topics).toBeDefined();
       expect(Array.isArray(result.topics)).toBe(true);
       expect(result.hasJapaneseContent).toBe(false);
@@ -102,11 +112,16 @@ describe('Analysis Layer Functions', () => {
 
     test('should handle multilingual content', () => {
       const multilingualMessages: SlackMessage[] = [
-        { type: 'message', user: 'user1', text: 'Hello world こんにちは世界', ts: '1699564800.000100' }
+        {
+          type: 'message',
+          user: 'user1',
+          text: 'Hello world こんにちは世界',
+          ts: '1699564800.000100',
+        },
       ];
-      
+
       const result = extractTopicsFromThread(multilingualMessages);
-      
+
       expect(result.hasJapaneseContent).toBe(true);
       expect(result.hasEnglishContent).toBe(true);
     });
@@ -115,7 +130,7 @@ describe('Analysis Layer Functions', () => {
   describe('Urgency Calculation', () => {
     test('should calculate urgency score correctly', () => {
       const result = calculateUrgencyScore(mockMessages);
-      
+
       expect(result.score).toBeGreaterThan(0);
       expect(result.urgentKeywords.length).toBeGreaterThan(0);
       expect(result.urgentKeywords).toContain('urgent');
@@ -123,11 +138,16 @@ describe('Analysis Layer Functions', () => {
 
     test('should handle low urgency messages', () => {
       const lowUrgencyMessages: SlackMessage[] = [
-        { type: 'message', user: 'user1', text: 'This is a regular update.', ts: '1699564800.000100' }
+        {
+          type: 'message',
+          user: 'user1',
+          text: 'This is a regular update.',
+          ts: '1699564800.000100',
+        },
       ];
-      
+
       const result = calculateUrgencyScore(lowUrgencyMessages);
-      
+
       expect(result.score).toBeGreaterThanOrEqual(0);
       expect(result.urgentKeywords.length).toBe(0);
     });
@@ -136,7 +156,7 @@ describe('Analysis Layer Functions', () => {
   describe('Importance Calculation', () => {
     test('should calculate importance score correctly', () => {
       const result = calculateImportanceScore(mockMessages, mockParticipants);
-      
+
       expect(result.score).toBeGreaterThan(0);
       expect(result.participantFactor).toBeGreaterThan(0);
       expect(result.messageFactor).toBeGreaterThan(0);
@@ -146,10 +166,10 @@ describe('Analysis Layer Functions', () => {
   describe('Action Item Extraction', () => {
     test('should extract action items from messages', () => {
       const result = extractActionItemsFromMessages(mockMessages);
-      
+
       expect(result.actionItems.length).toBeGreaterThan(0);
       expect(result.actionIndicatorsFound.length).toBeGreaterThan(0);
-      
+
       const actionItem = result.actionItems[0];
       expect(actionItem).toBeDefined();
       if (actionItem) {
@@ -163,7 +183,7 @@ describe('Analysis Layer Functions', () => {
   describe('Timeline Building', () => {
     test('should build timeline from messages', () => {
       const result = buildThreadTimeline(mockMessages);
-      
+
       expect(result.events.length).toBe(mockMessages.length);
       expect(result.totalDuration).toBeGreaterThan(0);
       expect(result.messageVelocity).toBeGreaterThan(0);
@@ -173,7 +193,7 @@ describe('Analysis Layer Functions', () => {
   describe('Comprehensive Analysis', () => {
     test('should perform comprehensive analysis', () => {
       const result = performComprehensiveAnalysis(mockMessages, mockParticipants);
-      
+
       expect(result.sentiment).toBeDefined();
       expect(result.topics).toBeDefined();
       expect(result.urgency).toBeDefined();
@@ -186,7 +206,7 @@ describe('Analysis Layer Functions', () => {
 
     test('should perform quick analysis', () => {
       const result = performQuickAnalysis(mockMessages);
-      
+
       expect(result.sentiment).toBeDefined();
       expect(result.topicCount).toBeGreaterThanOrEqual(0);
       expect(['low', 'medium', 'high', 'critical']).toContain(result.urgencyLevel);
@@ -210,7 +230,7 @@ describe('Analysis Layer Functions', () => {
 
     test('should format thread analysis', () => {
       const comprehensiveResult = performComprehensiveAnalysis(mockMessages, mockParticipants);
-      
+
       // Create mock ThreadAnalysis object
       const mockAnalysis = {
         thread_ts: '1699564800.000100',
@@ -224,11 +244,11 @@ describe('Analysis Layer Functions', () => {
         action_items: [...comprehensiveResult.actionItems.actionItems], // Convert readonly array to mutable
         summary: 'Test thread analysis',
         word_count: 100,
-        duration_hours: comprehensiveResult.timeline.totalDuration / 60
+        duration_hours: comprehensiveResult.timeline.totalDuration / 60,
       };
-      
+
       const formatted = formatThreadAnalysis(mockAnalysis);
-      
+
       expect(formatted.content).toContain('Thread Analysis');
       expect(formatted.content).toContain('Overview');
       expect(formatted.content).toContain('Scores');
@@ -283,9 +303,9 @@ describe('Analysis Layer Functions', () => {
 
       // Test with malformed data
       const malformedMessages: SlackMessage[] = [
-        { type: 'message', user: undefined, text: undefined, ts: '' }
+        { type: 'message', user: undefined, text: undefined, ts: '' },
       ];
-      
+
       expect(() => analyzeSentiment(malformedMessages)).not.toThrow();
       expect(() => extractTopicsFromThread(malformedMessages)).not.toThrow();
       expect(() => buildThreadTimeline(malformedMessages)).not.toThrow();

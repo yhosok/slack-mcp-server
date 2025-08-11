@@ -2,12 +2,7 @@
  * Types for formatting functions
  */
 
-import type { 
-  ThreadAnalysis, 
-  ThreadSummary, 
-  ThreadMetrics,
-  FileAnalysis 
-} from '../../types.js';
+import type { ThreadAnalysis, ThreadSummary, ThreadMetrics, FileAnalysis } from '../../types.js';
 
 /**
  * Formatter configuration options
@@ -26,7 +21,7 @@ export const DEFAULT_FORMATTER_CONFIG: FormatterConfig = {
   includeEmojis: true,
   includeTimestamps: false,
   maxLineLength: 100,
-  precision: 1
+  precision: 1,
 } as const;
 
 /**
@@ -51,7 +46,7 @@ export interface ThreadAnalysisFormatterOptions extends FormatterConfig {
 }
 
 /**
- * Thread summary formatting options  
+ * Thread summary formatting options
  */
 export interface ThreadSummaryFormatterOptions extends FormatterConfig {
   readonly includeDetails: boolean;

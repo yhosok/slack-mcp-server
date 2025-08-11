@@ -5,21 +5,23 @@ import { SlackService } from '../slack/slack-service';
 // Mock WebClient
 const createMockWebClient = (): any => ({
   chat: {
-    postMessage: jest.fn().mockResolvedValue({ ok: true, ts: '1234567890.123456' }),
+    postMessage: jest.fn(() => Promise.resolve({ ok: true, ts: '1234567890.123456' })),
   },
   conversations: {
-    list: jest.fn().mockResolvedValue({
-      ok: true,
-      channels: [
-        { id: 'C123', name: 'general', is_member: true, is_archived: false },
-      ],
-    }),
+    list: jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        channels: [{ id: 'C123', name: 'general', is_member: true, is_archived: false }],
+      })
+    ),
   },
   users: {
-    info: jest.fn().mockResolvedValue({
-      ok: true,
-      user: { id: 'U123', name: 'testuser', real_name: 'Test User' },
-    }),
+    info: jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        user: { id: 'U123', name: 'testuser', real_name: 'Test User' },
+      })
+    ),
   },
   on: jest.fn(),
 });
@@ -116,7 +118,7 @@ describe('Modular Architecture Tests', () => {
 
     it('should route getUserInfo through modular architecture', async () => {
       const result = await service.getUserInfo({
-        user_id: 'U123456',
+        user: 'U123456',
       });
 
       expect(result).toBeDefined();
@@ -133,22 +135,27 @@ describe('Modular Architecture Tests', () => {
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      expect(result.content[0].text).toContain('Modular Architecture: Enabled');
+      expect(result.content?.[0]?.type).toBe('text');
+      // Modular health check returns JSON object with health metrics
+      const healthData = JSON.parse(result.content?.[0]?.text || '{}');
+      expect(healthData).toHaveProperty('status');
+      expect(healthData).toHaveProperty('timestamp');
+      expect(healthData).toHaveProperty('connectivity');
     });
   });
 
   describe('Performance Monitoring', () => {
     it('should not affect method execution when metrics disabled', async () => {
       const startTime = Date.now();
-      
+
       await service.sendMessage({
         channel: 'C123456',
         text: 'Performance test',
       });
-      
+
       const endTime = Date.now();
       const executionTime = endTime - startTime;
-      
+
       // Should execute quickly (under 100ms for mocked call)
       expect(executionTime).toBeLessThan(100);
     });
@@ -156,25 +163,37 @@ describe('Modular Architecture Tests', () => {
 
   describe('Error Handling in Modular Architecture', () => {
     it('should handle API errors properly in modular architecture', async () => {
-      mockWebClientInstance.chat.postMessage.mockRejectedValueOnce(
-        new Error('API Error')
-      );
+      mockWebClientInstance.chat.postMessage.mockRejectedValueOnce(new Error('API Error'));
 
-      await expect(
-        service.sendMessage({
+      // Modular architecture should throw errors just like legacy
+      let thrownError: any;
+      try {
+        await service.sendMessage({
           channel: 'C123456',
           text: 'This will fail',
-        })
-      ).rejects.toThrow('API Error');
+        });
+      } catch (error) {
+        thrownError = error;
+      }
+
+      expect(thrownError).toBeDefined();
+      expect(thrownError.message).toContain('API Error');
     });
 
     it('should handle validation errors in modular architecture', async () => {
-      await expect(
-        service.sendMessage({
+      // Modular architecture should throw validation errors just like legacy
+      let thrownError: any;
+      try {
+        await service.sendMessage({
           // Missing required 'text' field
           channel: 'C123456',
-        })
-      ).rejects.toThrow();
+        } as any);
+      } catch (error) {
+        thrownError = error;
+      }
+
+      expect(thrownError).toBeDefined();
+      expect(thrownError.message).toContain('text');
     });
   });
 });
@@ -187,7 +206,7 @@ describe('Legacy vs Modular Comparison', () => {
       USE_MODULAR_ARCHITECTURE: false,
       LOG_LEVEL: 'error',
     };
-    
+
     const mockConfigModular = {
       SLACK_BOT_TOKEN: 'xoxb-test-token',
       USE_MODULAR_ARCHITECTURE: true,
@@ -202,24 +221,24 @@ describe('Legacy vs Modular Comparison', () => {
       CONFIG: mockConfigLegacy,
       getConfig,
     }));
-    
+
     const legacyService = new SlackService();
-    
+
     // Switch to modular config
     getConfig.mockReturnValueOnce(mockConfigModular);
     jest.doMock('../config/index', () => ({
       CONFIG: mockConfigModular,
       getConfig,
     }));
-    
+
     const modularService = new SlackService();
 
     // Both should produce same result structure
-    const input = { user_id: 'U123456' };
-    
+    const input = { user: 'U123456' };
+
     const legacyResult = await legacyService.getUserInfo(input);
     const modularResult = await modularService.getUserInfo(input);
-    
+
     expect(legacyResult.content).toBeDefined();
     expect(modularResult.content).toBeDefined();
     expect(typeof legacyResult).toBe(typeof modularResult);

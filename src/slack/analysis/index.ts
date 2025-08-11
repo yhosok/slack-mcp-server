@@ -1,12 +1,12 @@
 /**
  * Slack Analysis Layer - Pure Functional Analysis Functions
- * 
+ *
  * This module provides a comprehensive set of pure functions for analyzing Slack data.
  * All functions are side-effect free, immutable, and fully testable.
- * 
+ *
  * Key Features:
  * - Sentiment analysis with multilingual support
- * - Topic extraction with Japanese/English processing  
+ * - Topic extraction with Japanese/English processing
  * - Urgency and importance scoring
  * - Action item extraction and prioritization
  * - Timeline analysis and event processing
@@ -35,7 +35,7 @@ export type {
   UrgencyScore,
   ImportanceScore,
   ActionItemExtractionResult,
-  TimelineAnalysisResult
+  TimelineAnalysisResult,
 } from './thread/types.js';
 
 export type {
@@ -44,7 +44,7 @@ export type {
   ThreadSummaryFormatterOptions,
   ThreadMetricsFormatterOptions,
   FileAnalysisFormatterOptions,
-  FormattedResult
+  FormattedResult,
 } from './formatters/types.js';
 
 /**
@@ -52,13 +52,13 @@ export type {
  */
 
 import type { SlackMessage, ThreadParticipant } from '../types.js';
-import type { 
+import type {
   SentimentAnalysisResult,
   TopicExtractionResult,
   UrgencyScore,
   ImportanceScore,
   ActionItemExtractionResult,
-  TimelineAnalysisResult
+  TimelineAnalysisResult,
 } from './thread/types.js';
 
 import { analyzeSentiment } from './thread/sentiment-analysis.js';
@@ -101,7 +101,7 @@ export function performComprehensiveAnalysis(
   const importance = calculateImportanceScore(messages, participants);
   const actionItems = extractActionItemsFromMessages(messages);
   const timeline = buildThreadTimeline(messages);
-  
+
   return {
     sentiment,
     topics,
@@ -113,8 +113,8 @@ export function performComprehensiveAnalysis(
       analysisTimestamp: Date.now(),
       messageCount: messages.length,
       participantCount: participants.length,
-      hasMultilingualContent: topics.hasJapaneseContent && topics.hasEnglishContent
-    }
+      hasMultilingualContent: topics.hasJapaneseContent && topics.hasEnglishContent,
+    },
   };
 }
 
@@ -123,9 +123,7 @@ export function performComprehensiveAnalysis(
  * @param messages - Array of Slack messages
  * @returns Basic analysis result
  */
-export function performQuickAnalysis(
-  messages: readonly SlackMessage[]
-): {
+export function performQuickAnalysis(messages: readonly SlackMessage[]): {
   readonly sentiment: SentimentAnalysisResult;
   readonly topicCount: number;
   readonly urgencyLevel: 'low' | 'medium' | 'high' | 'critical';
@@ -137,18 +135,18 @@ export function performQuickAnalysis(
   const urgency = calculateUrgencyScore(messages);
   const actionItems = extractActionItemsFromMessages(messages);
   const timeline = buildThreadTimeline(messages);
-  
+
   // Determine urgency level
   let urgencyLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
   if (urgency.score >= 0.8) urgencyLevel = 'critical';
   else if (urgency.score >= 0.6) urgencyLevel = 'high';
   else if (urgency.score >= 0.3) urgencyLevel = 'medium';
-  
+
   return {
     sentiment,
     topicCount: topics.topics.length,
     urgencyLevel,
     actionItemCount: actionItems.actionItems.length,
-    duration: timeline.totalDuration
+    duration: timeline.totalDuration,
   };
 }

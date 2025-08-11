@@ -26,7 +26,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
   const sendMessage = (args: unknown) =>
     deps.requestHandler.handle(SendMessageSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
-      
+
       const result = await client.chat.postMessage({
         channel: input.channel,
         text: input.text,
@@ -47,7 +47,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
   const listChannels = (args: unknown) =>
     deps.requestHandler.handle(ListChannelsSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       const result = await client.conversations.list({
         types: input.types,
         exclude_archived: input.exclude_archived,
@@ -59,7 +59,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       }
 
       return {
-        channels: result.channels.map(channel => ({
+        channels: result.channels.map((channel) => ({
           id: channel.id,
           name: channel.name,
           isPrivate: channel.is_private,
@@ -79,7 +79,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
   const getChannelHistory = (args: unknown) =>
     deps.requestHandler.handle(GetChannelHistorySchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       const result = await client.conversations.history({
         channel: input.channel,
         limit: input.limit,
@@ -93,7 +93,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       }
 
       return {
-        messages: result.messages.map(message => ({
+        messages: result.messages.map((message) => ({
           type: message.type,
           user: message.user,
           text: message.text,
@@ -115,10 +115,10 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
   const getUserInfo = (args: unknown) =>
     deps.requestHandler.handle(GetUserInfoSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Get user display name from cache or API
       const displayName = await deps.userService.getDisplayName(input.user);
-      
+
       // Get detailed user info from API
       const result = await client.users.info({
         user: input.user,
@@ -158,10 +158,13 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
   const searchMessages = (args: unknown) =>
     deps.requestHandler.handle(SearchMessagesSchema, args, async (input) => {
       // Check if search API is available
-      deps.clientManager.checkSearchApiAvailability('searchMessages', 'Use channel history or conversation search');
-      
+      deps.clientManager.checkSearchApiAvailability(
+        'searchMessages',
+        'Use channel history or conversation search'
+      );
+
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       const searchArgs: SearchAllArguments = {
         query: input.query,
         sort: input.sort,
@@ -170,7 +173,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         page: input.page,
         highlight: input.highlight,
       };
-      
+
       const result = await client.search.all(searchArgs);
 
       if (!result.messages) {
@@ -195,7 +198,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
   const getChannelInfo = (args: unknown) =>
     deps.requestHandler.handle(GetChannelInfoSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       const result = await client.conversations.info({
         channel: input.channel,
       });

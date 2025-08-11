@@ -4,11 +4,11 @@
  */
 
 import type { SlackMessage, ActionItem } from '../../types.js';
-import type { 
+import type {
   ActionItemExtractionResult,
   PriorityAnalysisResult,
   StatusAnalysisResult,
-  ActionItemConfig 
+  ActionItemConfig,
 } from './types.js';
 
 /**
@@ -16,36 +16,106 @@ import type {
  */
 export const DEFAULT_ACTION_ITEM_CONFIG: ActionItemConfig = {
   actionIndicators: [
-    'todo', 'action item', 'need to', 'should', 'will',
-    'task', 'follow up', 'next step', 'assign', 'assigned',
-    'do', 'implement', 'fix', 'update', 'create', 'add',
-    'remove', 'delete', 'check', 'verify', 'test', 'review',
-    'やる', 'する', 'しなければ', 'タスク', 'やること',
-    '対応', '作業', '実装', '修正', '確認', 'レビュー'
+    'todo',
+    'action item',
+    'need to',
+    'should',
+    'will',
+    'task',
+    'follow up',
+    'next step',
+    'assign',
+    'assigned',
+    'do',
+    'implement',
+    'fix',
+    'update',
+    'create',
+    'add',
+    'remove',
+    'delete',
+    'check',
+    'verify',
+    'test',
+    'review',
+    'やる',
+    'する',
+    'しなければ',
+    'タスク',
+    'やること',
+    '対応',
+    '作業',
+    '実装',
+    '修正',
+    '確認',
+    'レビュー',
   ] as const,
   priorityKeywords: {
     high: [
-      'urgent', 'critical', 'immediately', 'asap', 'priority',
-      'blocker', 'blocking', 'emergency', 'now', 'today',
-      '緊急', '至急', '重要', 'すぐ', '今すぐ'
+      'urgent',
+      'critical',
+      'immediately',
+      'asap',
+      'priority',
+      'blocker',
+      'blocking',
+      'emergency',
+      'now',
+      'today',
+      '緊急',
+      '至急',
+      '重要',
+      'すぐ',
+      '今すぐ',
     ] as const,
     medium: [
-      'important', 'soon', 'this week', 'by friday', 'deadline',
-      'schedule', 'planned', '今週', '重要', '期限'
-    ] as const
+      'important',
+      'soon',
+      'this week',
+      'by friday',
+      'deadline',
+      'schedule',
+      'planned',
+      '今週',
+      '重要',
+      '期限',
+    ] as const,
   },
   statusKeywords: {
     completed: [
-      'done', 'completed', 'finished', 'resolved', 'closed',
-      'fixed', 'solved', 'complete', 'ready', 'delivered',
-      '完了', '終了', '解決', '修正済み', '対応済み'
+      'done',
+      'completed',
+      'finished',
+      'resolved',
+      'closed',
+      'fixed',
+      'solved',
+      'complete',
+      'ready',
+      'delivered',
+      '完了',
+      '終了',
+      '解決',
+      '修正済み',
+      '対応済み',
     ] as const,
     inProgress: [
-      'working on', 'in progress', 'started', 'began', 'ongoing',
-      'processing', 'handling', 'implementing', 'developing',
-      '作業中', '進行中', '実装中', '対応中', '開発中'
-    ] as const
-  }
+      'working on',
+      'in progress',
+      'started',
+      'began',
+      'ongoing',
+      'processing',
+      'handling',
+      'implementing',
+      'developing',
+      '作業中',
+      '進行中',
+      '実装中',
+      '対応中',
+      '開発中',
+    ] as const,
+  },
 } as const;
 
 /**
@@ -57,13 +127,13 @@ export function extractMentions(text: string): string[] {
   const mentionPattern = /<@(\w+)>/g;
   const mentions: string[] = [];
   let match;
-  
+
   while ((match = mentionPattern.exec(text)) !== null) {
     if (match[1]) {
       mentions.push(match[1]);
     }
   }
-  
+
   return mentions;
 }
 
@@ -75,12 +145,12 @@ export function extractMentions(text: string): string[] {
  */
 export function containsActionIndicators(line: string, indicators: readonly string[]): boolean {
   const lowerLine = line.toLowerCase();
-  return indicators.some(indicator => {
+  return indicators.some((indicator) => {
     const lowerIndicator = indicator.toLowerCase();
-    
+
     // For Japanese, use simple includes; for English, prefer word boundaries
     const isJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(indicator);
-    
+
     if (isJapanese) {
       return lowerLine.includes(lowerIndicator);
     } else {
@@ -100,11 +170,11 @@ export function containsActionIndicators(line: string, indicators: readonly stri
 export function findActionIndicators(text: string, indicators: readonly string[]): string[] {
   const lowerText = text.toLowerCase();
   const found: string[] = [];
-  
+
   for (const indicator of indicators) {
     const lowerIndicator = indicator.toLowerCase();
     const isJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(indicator);
-    
+
     if (isJapanese) {
       if (lowerText.includes(lowerIndicator)) {
         found.push(indicator);
@@ -116,7 +186,7 @@ export function findActionIndicators(text: string, indicators: readonly string[]
       }
     }
   }
-  
+
   return found;
 }
 
@@ -127,17 +197,17 @@ export function findActionIndicators(text: string, indicators: readonly string[]
  * @returns Priority analysis result
  */
 export function analyzePriority(
-  text: string, 
+  text: string,
   config: ActionItemConfig['priorityKeywords']
 ): PriorityAnalysisResult {
   const lowerText = text.toLowerCase();
   const highKeywords = findActionIndicators(text, config.high);
   const mediumKeywords = findActionIndicators(text, config.medium);
-  
+
   let priority: 'low' | 'medium' | 'high' = 'low';
   let priorityLevel = 0;
   const keywordsFound: string[] = [];
-  
+
   if (highKeywords.length > 0) {
     priority = 'high';
     priorityLevel = 3;
@@ -150,11 +220,11 @@ export function analyzePriority(
     priority = 'low';
     priorityLevel = 1;
   }
-  
+
   return {
     priority,
     keywordsFound,
-    priorityLevel
+    priorityLevel,
   };
 }
 
@@ -170,25 +240,25 @@ export function analyzeStatus(
 ): StatusAnalysisResult {
   const completedKeywords = findActionIndicators(text, config.completed);
   const inProgressKeywords = findActionIndicators(text, config.inProgress);
-  
+
   let status: 'open' | 'in_progress' | 'completed' = 'open';
   let confidence = 0.5; // Default confidence for open status
   const keywordsFound: string[] = [];
-  
+
   if (completedKeywords.length > 0) {
     status = 'completed';
-    confidence = Math.min(1.0, 0.7 + (completedKeywords.length * 0.1));
+    confidence = Math.min(1.0, 0.7 + completedKeywords.length * 0.1);
     keywordsFound.push(...completedKeywords);
   } else if (inProgressKeywords.length > 0) {
     status = 'in_progress';
-    confidence = Math.min(1.0, 0.6 + (inProgressKeywords.length * 0.1));
+    confidence = Math.min(1.0, 0.6 + inProgressKeywords.length * 0.1);
     keywordsFound.push(...inProgressKeywords);
   }
-  
+
   return {
     status,
     keywordsFound,
-    confidence
+    confidence,
   };
 }
 
@@ -217,29 +287,33 @@ export function extractActionItemsFromMessage(
   config: ActionItemConfig
 ): ActionItem[] {
   if (!message.text) return [];
-  
-  const lines = message.text.split('\n').map(line => line.trim()).filter(line => line);
+
+  const lines = message.text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line);
   const actionItems: ActionItem[] = [];
-  
+
   for (const line of lines) {
     if (containsActionIndicators(line, config.actionIndicators)) {
       const mentions = extractMentions(line);
       const priorityAnalysis = analyzePriority(line, config.priorityKeywords);
       const statusAnalysis = analyzeStatus(line, config.statusKeywords);
       const cleanedText = cleanActionItemText(line);
-      
-      if (cleanedText.length > 5) { // Minimum meaningful length
+
+      if (cleanedText.length > 5) {
+        // Minimum meaningful length
         actionItems.push({
           text: cleanedText,
           mentioned_users: mentions,
           priority: priorityAnalysis.priority,
           status: statusAnalysis.status,
-          extracted_from_message_ts: message.ts || ''
+          extracted_from_message_ts: message.ts || '',
         });
       }
     }
   }
-  
+
   return actionItems;
 }
 
@@ -255,22 +329,22 @@ export function extractActionItemsFromMessages(
 ): ActionItemExtractionResult {
   const allActionItems: ActionItem[] = [];
   const indicatorsFound = new Set<string>();
-  
+
   for (const message of messages) {
     const messageActionItems = extractActionItemsFromMessage(message, config);
     allActionItems.push(...messageActionItems);
-    
+
     // Track which indicators were found
     if (message.text) {
       const foundInMessage = findActionIndicators(message.text, config.actionIndicators);
-      foundInMessage.forEach(indicator => indicatorsFound.add(indicator));
+      foundInMessage.forEach((indicator) => indicatorsFound.add(indicator));
     }
   }
-  
+
   return {
     actionItems: allActionItems,
     totalActionIndicators: indicatorsFound.size,
-    actionIndicatorsFound: Array.from(indicatorsFound)
+    actionIndicatorsFound: Array.from(indicatorsFound),
   };
 }
 
@@ -285,9 +359,9 @@ export function groupActionItemsByPriority(actionItems: readonly ActionItem[]): 
   low: ActionItem[];
 } {
   return {
-    high: actionItems.filter(item => item.priority === 'high'),
-    medium: actionItems.filter(item => item.priority === 'medium'),
-    low: actionItems.filter(item => item.priority === 'low')
+    high: actionItems.filter((item) => item.priority === 'high'),
+    medium: actionItems.filter((item) => item.priority === 'medium'),
+    low: actionItems.filter((item) => item.priority === 'low'),
   };
 }
 
@@ -302,9 +376,9 @@ export function groupActionItemsByStatus(actionItems: readonly ActionItem[]): {
   completed: ActionItem[];
 } {
   return {
-    open: actionItems.filter(item => item.status === 'open'),
-    in_progress: actionItems.filter(item => item.status === 'in_progress'),
-    completed: actionItems.filter(item => item.status === 'completed')
+    open: actionItems.filter((item) => item.status === 'open'),
+    in_progress: actionItems.filter((item) => item.status === 'in_progress'),
+    completed: actionItems.filter((item) => item.status === 'completed'),
   };
 }
 
@@ -318,8 +392,8 @@ export function getActionItemsForUsers(
   actionItems: readonly ActionItem[],
   userIds: readonly string[]
 ): ActionItem[] {
-  return actionItems.filter(item =>
-    item.mentioned_users.some(userId => userIds.includes(userId))
+  return actionItems.filter((item) =>
+    item.mentioned_users.some((userId) => userIds.includes(userId))
   );
 }
 
@@ -338,28 +412,27 @@ export function getActionItemStatistics(actionItems: readonly ActionItem[]): {
 } {
   const priorityGroups = groupActionItemsByPriority(actionItems);
   const statusGroups = groupActionItemsByStatus(actionItems);
-  
-  const assignedCount = actionItems.filter(item => item.mentioned_users.length > 0).length;
+
+  const assignedCount = actionItems.filter((item) => item.mentioned_users.length > 0).length;
   const unassignedCount = actionItems.length - assignedCount;
-  const completionRate = actionItems.length > 0 
-    ? statusGroups.completed.length / actionItems.length 
-    : 0;
-  
+  const completionRate =
+    actionItems.length > 0 ? statusGroups.completed.length / actionItems.length : 0;
+
   return {
     total: actionItems.length,
     byPriority: {
       high: priorityGroups.high.length,
       medium: priorityGroups.medium.length,
-      low: priorityGroups.low.length
+      low: priorityGroups.low.length,
     },
     byStatus: {
       open: statusGroups.open.length,
       in_progress: statusGroups.in_progress.length,
-      completed: statusGroups.completed.length
+      completed: statusGroups.completed.length,
     },
     assignedCount,
     unassignedCount,
-    completionRate
+    completionRate,
   };
 }
 
@@ -375,8 +448,8 @@ export function filterActionItemsByPriority(
 ): ActionItem[] {
   const priorityOrder = { low: 1, medium: 2, high: 3 };
   const minLevel = priorityOrder[minPriority];
-  
-  return actionItems.filter(item => priorityOrder[item.priority] >= minLevel);
+
+  return actionItems.filter((item) => priorityOrder[item.priority] >= minLevel);
 }
 
 /**
@@ -385,7 +458,7 @@ export function filterActionItemsByPriority(
  * @returns Incomplete action items
  */
 export function getIncompleteActionItems(actionItems: readonly ActionItem[]): ActionItem[] {
-  return actionItems.filter(item => item.status !== 'completed');
+  return actionItems.filter((item) => item.status !== 'completed');
 }
 
 /**
@@ -395,7 +468,7 @@ export function getIncompleteActionItems(actionItems: readonly ActionItem[]): Ac
  */
 export function generateActionItemSummary(extraction: ActionItemExtractionResult): string {
   const stats = getActionItemStatistics(extraction.actionItems);
-  
+
   return `Action Items Summary:
 • Total: ${stats.total}
 • Priority Distribution: ${stats.byPriority.high} high, ${stats.byPriority.medium} medium, ${stats.byPriority.low} low

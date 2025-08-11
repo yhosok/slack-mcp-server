@@ -28,18 +28,20 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   const uploadFile = (args: unknown) =>
     deps.requestHandler.handle(UploadFileSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
-      
+
       // Read file content
       let fileContent: Buffer;
       try {
         fileContent = await fs.readFile(input.file_path);
       } catch (error) {
-        throw new SlackAPIError(`Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new SlackAPIError(
+          `Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
-      
+
       // Extract filename from path if not provided
       const filename = input.filename || input.file_path.split('/').pop() || 'uploaded-file';
-      
+
       const uploadOptions: any = {
         filename,
         file: fileContent,
@@ -58,7 +60,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       if (input.thread_ts) {
         uploadOptions.thread_ts = input.thread_ts;
       }
-      
+
       const result = await client.files.upload(uploadOptions);
 
       if (!result.file) {
@@ -86,7 +88,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   const listFiles = (args: unknown) =>
     deps.requestHandler.handle(ListFilesSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       const listArgs: FilesListArguments = {
         channel: input.channel,
         user: input.user,
@@ -96,7 +98,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         count: input.count || 100,
         page: input.page || 1,
       };
-      
+
       const result = await client.files.list(listArgs);
 
       if (!result.files) {
@@ -104,7 +106,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       }
 
       return {
-        files: result.files.map(file => ({
+        files: result.files.map((file) => ({
           id: file.id,
           name: file.name,
           title: file.title,
@@ -127,7 +129,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   const getFileInfo = (args: unknown) =>
     deps.requestHandler.handle(GetFileInfoSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       const result = await client.files.info({
         file: input.file_id,
       });
@@ -169,17 +171,17 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         isPublic: result.file.public_url_shared,
         isExternal: result.file.is_external,
         hasRichPreview: result.file.has_rich_preview,
-        comments: comments.length > 0 ? comments.map((comment: {
-          id: string;
-          user: string;
-          comment: string;
-          timestamp: number;
-        }) => ({
-          id: comment.id,
-          user: comment.user,
-          comment: comment.comment,
-          timestamp: comment.timestamp,
-        })) : [],
+        comments:
+          comments.length > 0
+            ? comments.map(
+                (comment: { id: string; user: string; comment: string; timestamp: number }) => ({
+                  id: comment.id,
+                  user: comment.user,
+                  comment: comment.comment,
+                  timestamp: comment.timestamp,
+                })
+              )
+            : [],
       };
     });
 
@@ -189,7 +191,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   const deleteFile = (args: unknown) =>
     deps.requestHandler.handle(DeleteFileSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
-      
+
       const result = await client.files.delete({
         file: input.file_id,
       });
@@ -207,7 +209,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   const shareFile = (args: unknown) =>
     deps.requestHandler.handle(ShareFileSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
-      
+
       // Note: files.share API method may not be available
       // Use alternative approach or skip this functionality for now
       const result = await client.chat.postMessage({
@@ -229,19 +231,19 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   const analyzeFiles = (args: unknown) =>
     deps.requestHandler.handle(AnalyzeFilesSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Calculate time range
       const now = new Date();
       const daysBack = input.days_back || 30;
       const fromTime = Math.floor((now.getTime() - daysBack * 24 * 60 * 60 * 1000) / 1000);
-      
+
       const listArgs: FilesListArguments = {
         ts_from: fromTime.toString(),
         channel: input.channel,
         user: input.user,
         count: 1000, // Get comprehensive data
       };
-      
+
       const result = await client.files.list(listArgs);
 
       if (!result.files) {
@@ -263,7 +265,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       for (const file of files) {
         const size = file.size || 0;
         analysis.total_size_bytes += size;
-        
+
         // Type breakdown
         const type = file.filetype || 'unknown';
         if (!analysis.by_type[type]) {
@@ -271,7 +273,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         }
         analysis.by_type[type].count++;
         analysis.by_type[type].size_bytes += size;
-        
+
         // User breakdown
         const userId = file.user || 'unknown';
         if (!analysis.by_user[userId]) {
@@ -279,7 +281,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         }
         analysis.by_user[userId].count++;
         analysis.by_user[userId].size_bytes += size;
-        
+
         // Large files
         const thresholdMB = input.size_threshold_mb || 10;
         const sizeMB = size / (1024 * 1024);
@@ -298,7 +300,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           });
         }
       }
-      
+
       analysis.large_files.sort((a, b) => (b.size || 0) - (a.size || 0));
 
       const formatOptions = {
@@ -322,29 +324,35 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   const searchFiles = (args: unknown) =>
     deps.requestHandler.handle(SearchFilesSchema, args, async (input) => {
       // Check if search API is available
-      deps.clientManager.checkSearchApiAvailability('searchFiles', 'Use file listing with filters instead');
-      
+      deps.clientManager.checkSearchApiAvailability(
+        'searchFiles',
+        'Use file listing with filters instead'
+      );
+
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Build search query
       let searchQuery = input.query;
-      
+
       // Add file type filter if specified
       if (input.types) {
-        const types = input.types.split(',').map(t => `filetype:${t.trim()}`).join(' OR ');
+        const types = input.types
+          .split(',')
+          .map((t) => `filetype:${t.trim()}`)
+          .join(' OR ');
         searchQuery += ` (${types})`;
       }
-      
+
       // Add channel filter if specified
       if (input.channel) {
         searchQuery += ` in:<#${input.channel}>`;
       }
-      
+
       // Add user filter if specified
       if (input.user) {
         searchQuery += ` from:<@${input.user}>`;
       }
-      
+
       // Add date filters if specified
       if (input.after) {
         searchQuery += ` after:${input.after}`;

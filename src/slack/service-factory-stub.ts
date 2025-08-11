@@ -18,7 +18,7 @@ export interface ModularSlackConfig {
   enableModularFiles: boolean;
   enableModularReactions: boolean;
   enableModularWorkspace: boolean;
-  
+
   // Performance monitoring
   enablePerformanceMetrics: boolean;
   monitorLegacyComparison: boolean;
@@ -95,7 +95,7 @@ export function parseModularConfig(): ModularSlackConfig {
     enableModularFiles: CONFIG.ENABLE_MODULAR_FILES,
     enableModularReactions: CONFIG.ENABLE_MODULAR_REACTIONS,
     enableModularWorkspace: CONFIG.ENABLE_MODULAR_WORKSPACE,
-    
+
     // Performance monitoring
     enablePerformanceMetrics: CONFIG.ENABLE_PERFORMANCE_METRICS,
     monitorLegacyComparison: CONFIG.MONITOR_LEGACY_COMPARISON,
@@ -107,7 +107,7 @@ export function parseModularConfig(): ModularSlackConfig {
  */
 export function createSlackServiceRegistry(config?: ModularSlackConfig): SlackServiceRegistry {
   const finalConfig = config || parseModularConfig();
-  
+
   // Create infrastructure configuration from global CONFIG
   const infrastructureConfig = {
     botToken: CONFIG.SLACK_BOT_TOKEN,
@@ -119,10 +119,10 @@ export function createSlackServiceRegistry(config?: ModularSlackConfig): SlackSe
     rejectRateLimitedCalls: CONFIG.SLACK_REJECT_RATE_LIMITED_CALLS,
     logLevel: CONFIG.LOG_LEVEL,
   };
-  
+
   // Create infrastructure services
   const infrastructure = createInfrastructureServices(infrastructureConfig);
-  
+
   // Create domain services
   const messageService = createMessageService(infrastructure);
   const threadService = createThreadService(infrastructure);
@@ -208,7 +208,7 @@ export class PerformanceMonitor {
    */
   record(metric: PerformanceMetrics): void {
     this.metrics.push(metric);
-    
+
     // Keep only the most recent metrics
     if (this.metrics.length > this.maxMetrics) {
       this.metrics = this.metrics.slice(-this.maxMetrics);
@@ -223,19 +223,19 @@ export class PerformanceMonitor {
     modular: { avgTime: number; successRate: number; count: number };
   } {
     const filteredMetrics = methodName
-      ? this.metrics.filter(m => m.methodName === methodName)
+      ? this.metrics.filter((m) => m.methodName === methodName)
       : this.metrics;
 
-    const legacyMetrics = filteredMetrics.filter(m => m.implementationType === 'legacy');
-    const modularMetrics = filteredMetrics.filter(m => m.implementationType === 'modular');
+    const legacyMetrics = filteredMetrics.filter((m) => m.implementationType === 'legacy');
+    const modularMetrics = filteredMetrics.filter((m) => m.implementationType === 'modular');
 
     const calculateStats = (metrics: PerformanceMetrics[]) => ({
-      avgTime: metrics.length > 0 
-        ? metrics.reduce((sum, m) => sum + m.executionTime, 0) / metrics.length 
-        : 0,
-      successRate: metrics.length > 0 
-        ? metrics.filter(m => m.success).length / metrics.length 
-        : 0,
+      avgTime:
+        metrics.length > 0
+          ? metrics.reduce((sum, m) => sum + m.executionTime, 0) / metrics.length
+          : 0,
+      successRate:
+        metrics.length > 0 ? metrics.filter((m) => m.success).length / metrics.length : 0,
       count: metrics.length,
     });
 

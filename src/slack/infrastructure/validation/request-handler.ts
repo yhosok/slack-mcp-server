@@ -40,8 +40,37 @@ export const createRequestHandler = (dependencies: RequestHandlerDependencies): 
     }
   };
 
+  /**
+   * Handle an API request with validation and error handling, but custom response formatting
+   * This allows services to return their own MCPToolResult format directly
+   */
+  const handleWithCustomFormat = async <TInput>(
+    schema: ZodSchema<TInput>,
+    args: unknown,
+    operation: (input: TInput) => Promise<MCPToolResult>
+  ): Promise<MCPToolResult> => {
+    try {
+      // Validate input
+      const input = dependencies.validateInput(schema, args);
+
+      // Perform operation (returns MCPToolResult directly)
+      return await operation(input);
+    } catch (error) {
+      // Log error for debugging
+      logger.error('Request handler error', {
+        error: error instanceof Error ? error.message : String(error),
+        args,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      // Re-throw the error to maintain compatibility with legacy error handling
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  };
+
   return {
     handle,
+    handleWithCustomFormat,
   };
 };
 
@@ -51,6 +80,20 @@ export const createRequestHandler = (dependencies: RequestHandlerDependencies): 
  * @returns Formatted MCP tool response
  */
 export const defaultResponseFormatter = (data: unknown): MCPToolResult => ({
+  content: [
+    {
+      type: 'text',
+      text: typeof data === 'string' ? data : JSON.stringify(data, null, 2),
+    },
+  ],
+});
+
+/**
+ * Legacy-compatible response formatter that matches the text format from legacy implementation
+ * @param data - The data to include in the response
+ * @returns Formatted MCP tool response with text format matching legacy
+ */
+export const legacyCompatibleFormatter = (data: unknown): MCPToolResult => ({
   content: [
     {
       type: 'text',

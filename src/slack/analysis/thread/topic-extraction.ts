@@ -4,37 +4,138 @@
  */
 
 import type { SlackMessage } from '../../types.js';
-import type { 
-  TopicExtractionResult, 
-  TopicExtractionConfig, 
+import type {
+  TopicExtractionResult,
+  TopicExtractionConfig,
   MultilingualContent,
-  KeywordAnalysis 
+  KeywordAnalysis,
 } from './types.js';
 
 /**
  * Japanese stop words (particles and common words)
  */
 export const JAPANESE_STOP_WORDS = new Set([
-  'の', 'に', 'は', 'を', 'た', 'が', 'で', 'て', 'と', 'し',
-  'れ', 'さ', 'ある', 'いる', 'も', 'する', 'から', 'な', 'こと',
-  'として', 'い', 'や', 'など', 'なり', 'へ', 'か', 'だ', 'これ',
-  'それ', 'あれ', 'この', 'その', 'もの', 'ため', 'なっ', 'なる',
-  'でも', 'です', 'ます', 'ました', 'でした'
+  'の',
+  'に',
+  'は',
+  'を',
+  'た',
+  'が',
+  'で',
+  'て',
+  'と',
+  'し',
+  'れ',
+  'さ',
+  'ある',
+  'いる',
+  'も',
+  'する',
+  'から',
+  'な',
+  'こと',
+  'として',
+  'い',
+  'や',
+  'など',
+  'なり',
+  'へ',
+  'か',
+  'だ',
+  'これ',
+  'それ',
+  'あれ',
+  'この',
+  'その',
+  'もの',
+  'ため',
+  'なっ',
+  'なる',
+  'でも',
+  'です',
+  'ます',
+  'ました',
+  'でした',
 ] as const);
 
 /**
  * English stop words
  */
 export const ENGLISH_STOP_WORDS = new Set([
-  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to',
-  'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be',
-  'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
-  'will', 'would', 'could', 'should', 'may', 'might', 'can', 'cannot',
-  'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it',
-  'we', 'they', 'what', 'which', 'who', 'when', 'where', 'why',
-  'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most',
-  'other', 'some', 'such', 'no', 'not', 'only', 'own', 'same',
-  'so', 'than', 'too', 'very', 'just', 'as'
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'but',
+  'in',
+  'on',
+  'at',
+  'to',
+  'for',
+  'of',
+  'with',
+  'by',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'been',
+  'being',
+  'have',
+  'has',
+  'had',
+  'do',
+  'does',
+  'did',
+  'will',
+  'would',
+  'could',
+  'should',
+  'may',
+  'might',
+  'can',
+  'cannot',
+  'this',
+  'that',
+  'these',
+  'those',
+  'i',
+  'you',
+  'he',
+  'she',
+  'it',
+  'we',
+  'they',
+  'what',
+  'which',
+  'who',
+  'when',
+  'where',
+  'why',
+  'how',
+  'all',
+  'each',
+  'every',
+  'both',
+  'few',
+  'more',
+  'most',
+  'other',
+  'some',
+  'such',
+  'no',
+  'not',
+  'only',
+  'own',
+  'same',
+  'so',
+  'than',
+  'too',
+  'very',
+  'just',
+  'as',
 ] as const);
 
 /**
@@ -46,7 +147,7 @@ export const DEFAULT_TOPIC_CONFIG: TopicExtractionConfig = {
   japaneseStopWords: JAPANESE_STOP_WORDS,
   englishStopWords: ENGLISH_STOP_WORDS,
   preferKanji: true,
-  preferKatakana: true
+  preferKatakana: true,
 } as const;
 
 /**
@@ -72,19 +173,19 @@ export function detectLanguageContent(text: string): MultilingualContent {
   const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text);
   const hasEnglish = /[a-zA-Z]/.test(text);
   const mixedLanguage = hasJapanese && hasEnglish;
-  
+
   let primaryLanguage: 'japanese' | 'english' | 'mixed' = 'mixed';
   if (hasJapanese && !hasEnglish) {
     primaryLanguage = 'japanese';
   } else if (hasEnglish && !hasJapanese) {
     primaryLanguage = 'english';
   }
-  
+
   return {
     hasJapanese,
     hasEnglish,
     mixedLanguage,
-    primaryLanguage
+    primaryLanguage,
   };
 }
 
@@ -123,8 +224,10 @@ export function isKatakana(text: string): boolean {
 export function tokenizeText(text: string): string[] {
   // Split on spaces and Japanese punctuation
   return text
-    .split(/[\s\u3000\u3001\u3002\uff01\uff1f\u300c\u300d\uff08\uff09\[\]\u3010\u3011\u3008\u3009\u300a\u300b\u3014\u3015\u300e\u300f\uff5b\uff5d]+/)
-    .filter(token => token && token.length > 0);
+    .split(
+      /[\s\u3000\u3001\u3002\uff01\uff1f\u300c\u300d\uff08\uff09\[\]\u3010\u3011\u3008\u3009\u300a\u300b\u3014\u3015\u300e\u300f\uff5b\uff5d]+/
+    )
+    .filter((token) => token && token.length > 0);
 }
 
 /**
@@ -134,53 +237,55 @@ export function tokenizeText(text: string): string[] {
  * @returns Array of processed segments
  */
 export function processJapaneseToken(
-  token: string, 
+  token: string,
   config: TopicExtractionConfig
 ): Array<{ segment: string; weight: number }> {
   const results: Array<{ segment: string; weight: number }> = [];
-  
+
   // Split by common particles but keep the segments
   const segments = token.split(
     /(?=[\u3092\u306b\u3067\u3068\u306f\u304c\u3082\u3084\u304b\u3089\u307e\u3067\u3078\u3088\u308a])|(?<=[\u3092\u306b\u3067\u3068\u306f\u304c\u3082\u3084\u304b\u3089\u307e\u3067\u3078\u3088\u308a])/
   );
-  
+
   for (const segment of segments) {
     if (segment.length >= config.minWordLength && !config.japaneseStopWords.has(segment)) {
       const segmentHasKanji = hasKanji(segment);
       const segmentIsKatakana = isKatakana(segment);
-      
+
       if (
         (segmentHasKanji && segment.length >= 2) ||
         (segmentIsKatakana && segment.length >= 2) ||
         segment.length >= 3
       ) {
         let weight = 1;
-        
+
         // Boost weight for preferred patterns
         if (segmentHasKanji && config.preferKanji) weight += 0.5;
         if (segmentIsKatakana && config.preferKatakana) weight += 0.5;
-        
+
         results.push({ segment, weight });
       }
     }
   }
-  
+
   // Also consider the whole token if it's meaningful
-  if (token.length >= config.minWordLength && 
-      token.length <= 10 && 
-      !config.japaneseStopWords.has(token)) {
+  if (
+    token.length >= config.minWordLength &&
+    token.length <= 10 &&
+    !config.japaneseStopWords.has(token)
+  ) {
     const tokenHasKanji = hasKanji(token);
     const tokenIsKatakana = isKatakana(token);
-    
+
     if (tokenHasKanji || tokenIsKatakana) {
       let weight = 1.5; // Whole words get higher weight
       if (tokenHasKanji && config.preferKanji) weight += 0.5;
       if (tokenIsKatakana && config.preferKatakana) weight += 0.5;
-      
+
       results.push({ segment: token, weight });
     }
   }
-  
+
   return results;
 }
 
@@ -195,13 +300,13 @@ export function extractKeywords(text: string, config: TopicExtractionConfig): Ke
   const languageContent = detectLanguageContent(cleanedText);
   const tokens = tokenizeText(cleanedText);
   const wordCounts = new Map<string, number>();
-  
+
   for (const token of tokens) {
     if (!token || token.length < config.minWordLength) continue;
-    
+
     const lowerToken = token.toLowerCase();
     const containsJapanese = isJapaneseChar(token);
-    
+
     if (containsJapanese) {
       // Process Japanese token
       const segments = processJapaneseToken(token, config);
@@ -215,13 +320,13 @@ export function extractKeywords(text: string, config: TopicExtractionConfig): Ke
       }
     }
   }
-  
+
   // Extract special patterns (technical identifiers, acronyms)
   const specialPatterns = [
     /[a-zA-Z][a-zA-Z0-9_-]{3,}/g, // Technical identifiers
     /[A-Z]{2,}/g, // Acronyms
   ];
-  
+
   for (const pattern of specialPatterns) {
     const matches = cleanedText.match(pattern) || [];
     for (const match of matches) {
@@ -231,18 +336,18 @@ export function extractKeywords(text: string, config: TopicExtractionConfig): Ke
       }
     }
   }
-  
+
   // Sort and limit keywords
   const keywords = Array.from(wordCounts.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, config.maxTopics)
     .map(([word]) => word);
-  
+
   return {
     keywords,
     frequency: new Map(wordCounts),
     normalizedText: cleanedText,
-    language: languageContent.primaryLanguage
+    language: languageContent.primaryLanguage,
   };
 }
 
@@ -253,30 +358,28 @@ export function extractKeywords(text: string, config: TopicExtractionConfig): Ke
  * @returns Topic extraction result
  */
 export function extractTopicsFromThread(
-  messages: readonly SlackMessage[], 
+  messages: readonly SlackMessage[],
   config: TopicExtractionConfig = DEFAULT_TOPIC_CONFIG
 ): TopicExtractionResult {
-  const text = messages
-    .map(message => message.text || '')
-    .join(' ');
-  
+  const text = messages.map((message) => message.text || '').join(' ');
+
   if (!text.trim()) {
     return {
       topics: [],
       wordCounts: new Map(),
       hasJapaneseContent: false,
-      hasEnglishContent: false
+      hasEnglishContent: false,
     };
   }
-  
+
   const keywordAnalysis = extractKeywords(text, config);
   const languageContent = detectLanguageContent(text);
-  
+
   return {
     topics: keywordAnalysis.keywords,
     wordCounts: keywordAnalysis.frequency,
     hasJapaneseContent: languageContent.hasJapanese,
-    hasEnglishContent: languageContent.hasEnglish
+    hasEnglishContent: languageContent.hasEnglish,
   };
 }
 
@@ -289,10 +392,10 @@ export function extractTopicsFromThread(
 export function getTopicRelevance(topic: string, analysis: TopicExtractionResult): number {
   const frequency = analysis.wordCounts.get(topic) || 0;
   if (frequency === 0) return 0;
-  
+
   const maxFrequency = Math.max(...Array.from(analysis.wordCounts.values()));
   if (maxFrequency === 0) return 0;
-  
+
   return frequency / maxFrequency;
 }
 
@@ -303,12 +406,10 @@ export function getTopicRelevance(topic: string, analysis: TopicExtractionResult
  * @returns Filtered topics array
  */
 export function filterTopicsByRelevance(
-  analysis: TopicExtractionResult, 
+  analysis: TopicExtractionResult,
   minRelevance: number = 0.1
 ): string[] {
-  return analysis.topics.filter(topic => 
-    getTopicRelevance(topic, analysis) >= minRelevance
-  );
+  return analysis.topics.filter((topic) => getTopicRelevance(topic, analysis) >= minRelevance);
 }
 
 /**
@@ -327,17 +428,19 @@ export function getTopicSummary(analysis: TopicExtractionResult): {
   };
 } {
   const totalTopics = analysis.topics.length;
-  const totalFrequency = Array.from(analysis.wordCounts.values())
-    .reduce((sum, count) => sum + count, 0);
-  
+  const totalFrequency = Array.from(analysis.wordCounts.values()).reduce(
+    (sum, count) => sum + count,
+    0
+  );
+
   let japaneseCount = 0;
   let englishCount = 0;
   let mixedCount = 0;
-  
+
   for (const topic of analysis.topics) {
     const hasJap = isJapaneseChar(topic);
     const hasEng = /[a-zA-Z]/.test(topic);
-    
+
     if (hasJap && hasEng) {
       mixedCount++;
     } else if (hasJap) {
@@ -346,13 +449,14 @@ export function getTopicSummary(analysis: TopicExtractionResult): {
       englishCount++;
     }
   }
-  
-  const averageRelevance = totalTopics > 0 
-    ? analysis.topics
-        .map(topic => getTopicRelevance(topic, analysis))
-        .reduce((sum, score) => sum + score, 0) / totalTopics
-    : 0;
-  
+
+  const averageRelevance =
+    totalTopics > 0
+      ? analysis.topics
+          .map((topic) => getTopicRelevance(topic, analysis))
+          .reduce((sum, score) => sum + score, 0) / totalTopics
+      : 0;
+
   return {
     totalTopics,
     totalFrequency,
@@ -360,7 +464,7 @@ export function getTopicSummary(analysis: TopicExtractionResult): {
     languageDistribution: {
       japanese: japaneseCount,
       english: englishCount,
-      mixed: mixedCount
-    }
+      mixed: mixedCount,
+    },
   };
 }

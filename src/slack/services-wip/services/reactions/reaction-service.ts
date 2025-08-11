@@ -26,7 +26,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
   const addReaction = (args: unknown) =>
     deps.requestHandler.handle(AddReactionSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
-      
+
       const result = await client.reactions.add({
         channel: input.channel,
         timestamp: input.message_ts,
@@ -48,7 +48,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
   const removeReaction = (args: unknown) =>
     deps.requestHandler.handle(RemoveReactionSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
-      
+
       const result = await client.reactions.remove({
         channel: input.channel,
         timestamp: input.message_ts,
@@ -70,13 +70,13 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
   const getReactions = (args: unknown) =>
     deps.requestHandler.handle(GetReactionsSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       const getArgs: ReactionsGetArguments = {
         channel: input.channel,
         timestamp: input.message_ts,
         full: input.full,
       };
-      
+
       const result = await client.reactions.get(getArgs);
 
       if (!result.message) {
@@ -84,12 +84,12 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
       }
 
       const reactions = result.message.reactions || [];
-      
+
       // Process user info if full details requested
       const processedReactions = await Promise.all(
         reactions.map(async (reaction: { name: string; count: number; users?: string[] }) => {
           let users = reaction.users || [];
-          
+
           if (input.full && users.length > 0) {
             // Get display names for users
             const userDetails = await Promise.all(
@@ -107,7 +107,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
             );
             users = userDetails;
           }
-          
+
           return {
             name: reaction.name,
             count: reaction.count,
@@ -130,14 +130,14 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
   const getReactionStatistics = (args: unknown) =>
     deps.requestHandler.handle(GetReactionStatisticsSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Calculate time range
       const now = new Date();
       const daysBack = input.days_back || 30;
       const fromTime = Math.floor((now.getTime() - daysBack * 24 * 60 * 60 * 1000) / 1000);
-      
+
       let allMessages: SlackMessage[] = [];
-      
+
       if (input.channel) {
         // Get messages from specific channel
         const historyResult = await client.conversations.history({
@@ -154,7 +154,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           exclude_archived: true,
           limit: 100,
         });
-        
+
         if (channelsResult.channels) {
           const channels = channelsResult.channels.slice(0, 10); // Limit for performance
           for (const channel of channels) {
@@ -173,12 +173,12 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           }
         }
       }
-      
+
       // Filter for user-specific stats if requested
       if (input.user) {
         allMessages = allMessages.filter((msg) => msg.user === input.user);
       }
-      
+
       // Collect reaction statistics
       const stats = {
         totalMessages: allMessages.length,
@@ -197,29 +197,36 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           reactions: Array<{ name: string; count: number; users?: string[] }>;
         }>,
       };
-      
+
       for (const message of allMessages) {
         if (message.reactions && message.reactions.length > 0) {
           stats.messagesWithReactions++;
-          
+
           for (const reaction of message.reactions) {
             const reactionName = reaction.name;
             const count = reaction.count || 0;
-            
+
             stats.totalReactions += count;
             stats.uniqueReactions.add(reactionName);
-            stats.reactionCounts.set(reactionName, (stats.reactionCounts.get(reactionName) || 0) + count);
-            
+            stats.reactionCounts.set(
+              reactionName,
+              (stats.reactionCounts.get(reactionName) || 0) + count
+            );
+
             // Track users who reacted
             for (const user of reaction.users || []) {
               stats.userReactionCounts.set(user, (stats.userReactionCounts.get(user) || 0) + 1);
               stats.topReactors.set(user, (stats.topReactors.get(user) || 0) + 1);
             }
           }
-          
+
           // Track messages with high reaction counts for "top messages"
-          const totalMessageReactions = message.reactions.reduce((sum: number, r: { count?: number }) => sum + (r.count || 0), 0);
-          if (totalMessageReactions > 2) { // Threshold for "popular" messages
+          const totalMessageReactions = message.reactions.reduce(
+            (sum: number, r: { count?: number }) => sum + (r.count || 0),
+            0
+          );
+          if (totalMessageReactions > 2) {
+            // Threshold for "popular" messages
             stats.topMessages.push({
               text: message.text?.substring(0, 100) + (message.text?.length > 100 ? '...' : ''),
               user: message.user,
@@ -228,7 +235,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
               reactions: message.reactions,
             });
           }
-          
+
           // Daily trends
           if (input.include_trends && message.ts) {
             const date = new Date(parseFloat(message.ts) * 1000).toISOString().split('T')[0];
@@ -236,23 +243,23 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           }
         }
       }
-      
+
       // Sort top messages by reaction count
       stats.topMessages.sort((a, b) => b.totalReactions - a.totalReactions);
       stats.topMessages = stats.topMessages.slice(0, input.top_count || 10);
 
       // Convert Maps to arrays for JSON serialization
       const topReactions = Array.from(stats.reactionCounts.entries())
-        .sort(([,a], [,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, input.top_count || 10)
         .map(([name, count]) => ({ name, count }));
 
       const topReactors = Array.from(stats.topReactors.entries())
-        .sort(([,a], [,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, input.top_count || 10)
         .map(([user, count]) => ({ user, count }));
 
-      const dailyTrends = input.include_trends 
+      const dailyTrends = input.include_trends
         ? Array.from(stats.dailyTrends.entries()).map(([date, count]) => ({ date, count }))
         : [];
 
@@ -262,7 +269,8 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           messagesWithReactions: stats.messagesWithReactions,
           totalReactions: stats.totalReactions,
           uniqueReactions: stats.uniqueReactions.size,
-          reactionRate: stats.totalMessages > 0 ? (stats.messagesWithReactions / stats.totalMessages) : 0,
+          reactionRate:
+            stats.totalMessages > 0 ? stats.messagesWithReactions / stats.totalMessages : 0,
         },
         topReactions,
         topReactors,
@@ -282,20 +290,20 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
   const findMessagesByReactions = (args: unknown) =>
     deps.requestHandler.handle(FindMessagesByReactionsSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Calculate time range if provided
       let oldest: string | undefined;
       let latest: string | undefined;
-      
+
       if (input.after) {
         oldest = Math.floor(new Date(input.after).getTime() / 1000).toString();
       }
       if (input.before) {
         latest = Math.floor(new Date(input.before).getTime() / 1000).toString();
       }
-      
+
       let allMessages: Array<SlackMessage & { channel?: string; channelName?: string }> = [];
-      
+
       if (input.channel) {
         // Search in specific channel
         const historyResult = await client.conversations.history({
@@ -311,7 +319,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           exclude_archived: true,
           limit: 50,
         });
-        
+
         if (channelsResult.channels) {
           const channels = channelsResult.channels.slice(0, 10); // Limit for performance
           for (const channel of channels) {
@@ -323,13 +331,15 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
                   oldest,
                   latest,
                 });
-                
-                const messagesWithChannel = (historyResult.messages || []).map((msg: SlackMessage) => ({
-                  ...msg,
-                  channel: channel.id,
-                  channelName: channel.name,
-                }));
-                
+
+                const messagesWithChannel = (historyResult.messages || []).map(
+                  (msg: SlackMessage) => ({
+                    ...msg,
+                    channel: channel.id,
+                    channelName: channel.name,
+                  })
+                );
+
                 allMessages.push(...messagesWithChannel);
               } catch {
                 // Skip channels we can't access
@@ -338,29 +348,32 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           }
         }
       }
-      
+
       // Filter messages that have the specified reactions
       const matchingMessages = [];
-      
+
       for (const message of allMessages) {
         if (!message.reactions || message.reactions.length === 0) continue;
-        
+
         const messageReactions = message.reactions.map((r: { name: string }) => r.name);
-        const totalReactionCount = message.reactions.reduce((sum: number, r: { count?: number }) => sum + (r.count || 0), 0);
-        
+        const totalReactionCount = message.reactions.reduce(
+          (sum: number, r: { count?: number }) => sum + (r.count || 0),
+          0
+        );
+
         // Check if message meets reaction count threshold
         if (totalReactionCount < (input.min_reaction_count || 1)) continue;
-        
+
         // Check reaction matching criteria
         let matches = false;
         if (input.match_type === 'all') {
           // All specified reactions must be present
-          matches = input.reactions.every(reaction => messageReactions.includes(reaction));
+          matches = input.reactions.every((reaction) => messageReactions.includes(reaction));
         } else {
           // Any of the specified reactions must be present (default)
-          matches = input.reactions.some(reaction => messageReactions.includes(reaction));
+          matches = input.reactions.some((reaction) => messageReactions.includes(reaction));
         }
-        
+
         if (matches) {
           // Get user display name
           let userName = message.user;
@@ -372,7 +385,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
               // Keep original user ID if lookup fails
             }
           }
-          
+
           matchingMessages.push({
             channel: message.channel || input.channel,
             channelName: message.channelName,
@@ -382,15 +395,15 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
             text: message.text,
             reactions: message.reactions,
             totalReactionCount,
-            matchingReactions: input.reactions.filter(r => messageReactions.includes(r)),
+            matchingReactions: input.reactions.filter((r) => messageReactions.includes(r)),
             timestamp: message.ts,
           });
         }
       }
-      
+
       // Sort by total reaction count (descending)
       matchingMessages.sort((a, b) => b.totalReactionCount - a.totalReactionCount);
-      
+
       // Limit results
       const limitedResults = matchingMessages.slice(0, input.limit || 20);
 

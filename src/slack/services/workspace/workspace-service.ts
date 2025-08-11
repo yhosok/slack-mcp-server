@@ -24,7 +24,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
   const getWorkspaceInfo = (args: unknown) =>
     deps.requestHandler.handle(GetWorkspaceInfoSchema, args, async () => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       const result = await client.team.info();
 
       if (!result.team) {
@@ -56,13 +56,13 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
   const listTeamMembers = (args: unknown) =>
     deps.requestHandler.handle(ListTeamMembersSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       const listArgs: UsersListArguments = {
         limit: input.limit || 100,
         cursor: input.cursor,
         include_locale: true,
       };
-      
+
       const result = await client.users.list(listArgs);
 
       if (!result.members) {
@@ -71,16 +71,16 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
 
       // Filter members based on input options
       let members = result.members;
-      
+
       if (!input.include_deleted) {
-        members = members.filter(member => !member.deleted);
+        members = members.filter((member) => !member.deleted);
       }
-      
+
       if (!input.include_bots) {
-        members = members.filter(member => !member.is_bot);
+        members = members.filter((member) => !member.is_bot);
       }
-      
-      const processedMembers = members.map(member => ({
+
+      const processedMembers = members.map((member) => ({
         id: member.id,
         name: member.name,
         realName: member.real_name,
@@ -129,25 +129,27 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
   const getWorkspaceActivity = (args: unknown) =>
     deps.requestHandler.handle(GetWorkspaceActivitySchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
-      
+
       // Calculate time range
       const now = new Date();
-      const startDate = input.start_date ? new Date(input.start_date) : new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const startDate = input.start_date
+        ? new Date(input.start_date)
+        : new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const endDate = input.end_date ? new Date(input.end_date) : now;
-      
+
       const oldestTs = Math.floor(startDate.getTime() / 1000).toString();
       const latestTs = Math.floor(endDate.getTime() / 1000).toString();
-      
+
       // Get list of channels
       const channelsResult = await client.conversations.list({
         exclude_archived: true,
         limit: 100,
       });
-      
+
       if (!channelsResult.channels) {
         throw new SlackAPIError('Failed to retrieve channels for activity report');
       }
-      
+
       const activity = {
         period: {
           start: startDate.toISOString(),
@@ -157,27 +159,33 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         totalMessages: 0,
         totalChannels: 0,
         activeChannels: 0,
-        channelActivity: new Map<string, {
-          name: string;
-          messages: number;
-          users: Set<string>;
-          threads: number;
-        }>(),
-        userActivity: new Map<string, {
-          messages: number;
-          channels: Set<string>;
-        }>(),
+        channelActivity: new Map<
+          string,
+          {
+            name: string;
+            messages: number;
+            users: Set<string>;
+            threads: number;
+          }
+        >(),
+        userActivity: new Map<
+          string,
+          {
+            messages: number;
+            channels: Set<string>;
+          }
+        >(),
         dailyActivity: new Map<string, number>(),
         hourlyActivity: new Map<number, number>(),
       };
-      
+
       // Analyze activity for each channel
       const channels = channelsResult.channels.slice(0, input.include_channel_details ? 50 : 20);
       activity.totalChannels = channels.length;
-      
+
       for (const channel of channels) {
         if (!channel.id || !channel.name) continue;
-        
+
         try {
           const historyResult = await client.conversations.history({
             channel: channel.id,
@@ -185,24 +193,24 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
             latest: latestTs,
             limit: 1000,
           });
-          
+
           if (historyResult.messages && historyResult.messages.length > 0) {
             activity.activeChannels++;
-            
+
             const channelStats = {
               name: channel.name,
               messages: historyResult.messages.length,
               users: new Set<string>(),
               threads: 0,
             };
-            
+
             for (const message of historyResult.messages) {
               activity.totalMessages++;
-              
+
               // Track user activity
               if (message.user) {
                 channelStats.users.add(message.user);
-                
+
                 const userStats = activity.userActivity.get(message.user) || {
                   messages: 0,
                   channels: new Set<string>(),
@@ -211,40 +219,40 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
                 userStats.channels.add(channel.id);
                 activity.userActivity.set(message.user, userStats);
               }
-              
+
               // Track threads
               if (message.reply_count && message.reply_count > 0) {
                 channelStats.threads++;
               }
-              
+
               // Track daily activity
               if (message.ts) {
                 const date = new Date(parseFloat(message.ts || '0') * 1000);
                 const dateStr = date.toISOString().split('T')[0];
                 const currentDaily = activity.dailyActivity.get(dateStr || '') || 0;
                 activity.dailyActivity.set(dateStr || '', currentDaily + 1);
-                
+
                 // Track hourly activity
                 const hour = date.getHours();
                 const currentHourly = activity.hourlyActivity.get(hour) || 0;
                 activity.hourlyActivity.set(hour, currentHourly + 1);
               }
             }
-            
+
             activity.channelActivity.set(channel.id, channelStats);
           }
         } catch {
           // Skip channels we can't access
         }
       }
-      
+
       // Get user details if requested
       const userDetails = new Map<string, { displayName: string }>();
       if (input.include_user_details) {
         const topUsers = Array.from(activity.userActivity.entries())
           .sort((a, b) => b[1].messages - a[1].messages)
           .slice(0, input.top_count || 10);
-        
+
         for (const [userId] of topUsers) {
           try {
             const userInfo = await deps.userService.getUserInfo(userId);
@@ -254,7 +262,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
           }
         }
       }
-      
+
       // Convert Maps to arrays for JSON serialization
       const channelActivity = Array.from(activity.channelActivity.entries()).map(([id, stats]) => ({
         id,
@@ -287,14 +295,21 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
           totalMessages: activity.totalMessages,
           totalChannels: activity.totalChannels,
           activeChannels: activity.activeChannels,
-          averageMessagesPerDay: activity.period.days > 0 ? Math.round(activity.totalMessages / activity.period.days) : 0,
+          averageMessagesPerDay:
+            activity.period.days > 0
+              ? Math.round(activity.totalMessages / activity.period.days)
+              : 0,
         },
-        channelActivity: input.include_channel_details !== false 
-          ? channelActivity.sort((a, b) => b.messages - a.messages).slice(0, input.top_count || 10)
-          : [],
-        userActivity: input.include_user_details !== false
-          ? userActivity.sort((a, b) => b.messages - a.messages).slice(0, input.top_count || 10)
-          : [],
+        channelActivity:
+          input.include_channel_details !== false
+            ? channelActivity
+                .sort((a, b) => b.messages - a.messages)
+                .slice(0, input.top_count || 10)
+            : [],
+        userActivity:
+          input.include_user_details !== false
+            ? userActivity.sort((a, b) => b.messages - a.messages).slice(0, input.top_count || 10)
+            : [],
         trends: {
           daily: dailyActivity.sort((a, b) => a.date.localeCompare(b.date)),
           hourly: hourlyActivity.sort((a, b) => a.hour - b.hour),
@@ -309,25 +324,25 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
     deps.requestHandler.handle(GetServerHealthSchema, args, async (input) => {
       // Get rate limiting metrics from the infrastructure
       const rateLimitMetrics = deps.rateLimitService.getMetrics();
-      
+
       // Get client manager status
       const clientStatus = {
         botTokenConfigured: !!deps.clientManager,
         userTokenConfigured: deps.clientManager.checkSearchApiAvailability !== undefined,
         searchApiAvailable: false,
       };
-      
+
       try {
         deps.clientManager.checkSearchApiAvailability('search', 'Search functionality limited');
         clientStatus.searchApiAvailable = true;
       } catch {
         clientStatus.searchApiAvailable = false;
       }
-      
+
       // Test basic connectivity
       let connectivityStatus = 'unknown';
       let lastApiCall: Date | null = null;
-      
+
       try {
         const client = deps.clientManager.getClientForOperation('read');
         const start = Date.now();
@@ -338,9 +353,10 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
       } catch (error) {
         connectivityStatus = 'error';
       }
-      
+
       const health = {
-        status: connectivityStatus === 'good' || connectivityStatus === 'fair' ? 'healthy' : 'unhealthy',
+        status:
+          connectivityStatus === 'good' || connectivityStatus === 'fair' ? 'healthy' : 'unhealthy',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         connectivity: {
@@ -354,16 +370,31 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         },
         memory: {
           usage: process.memoryUsage(),
-          heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100, // MB
-          heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024 * 100) / 100, // MB
+          heapUsed: Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100, // MB
+          heapTotal: Math.round((process.memoryUsage().heapTotal / 1024 / 1024) * 100) / 100, // MB
         },
         system: {
           nodeVersion: process.version,
           platform: process.platform,
           arch: process.arch,
         },
+        modular_architecture: {
+          enabled: true,
+          services: {
+            messages: true,
+            threads: true,
+            files: true,
+            reactions: true,
+            workspace: true,
+          },
+          performanceMetrics: {
+            enabled: false,
+            monitoring: false,
+            totalMetrics: 0,
+          },
+        },
       };
-      
+
       return {
         ...health,
         formattedUptime: {
@@ -373,8 +404,12 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         },
         recommendations: [
           ...(health.status === 'unhealthy' ? ['Check network connectivity to Slack API'] : []),
-          ...(health.memory.heapUsed > health.memory.heapTotal * 0.8 ? ['Consider increasing memory allocation'] : []),
-          ...(health.rateLimiting.metrics.rateLimitedRequests > 10 ? ['Review rate limiting configuration'] : []),
+          ...(health.memory.heapUsed > health.memory.heapTotal * 0.8
+            ? ['Consider increasing memory allocation']
+            : []),
+          ...(health.rateLimiting.metrics.rateLimitedRequests > 10
+            ? ['Review rate limiting configuration']
+            : []),
         ],
       };
     });

@@ -4,29 +4,40 @@
  */
 
 import type { SlackMessage, ThreadParticipant } from '../../types.js';
-import type { 
-  UrgencyScore, 
-  ImportanceScore, 
-  UrgencyConfig, 
-  ImportanceConfig 
-} from './types.js';
+import type { UrgencyScore, ImportanceScore, UrgencyConfig, ImportanceConfig } from './types.js';
 
 /**
  * Default urgency calculation configuration
  */
 export const DEFAULT_URGENCY_CONFIG: UrgencyConfig = {
   urgentKeywords: [
-    'urgent', 'asap', 'immediately', 'emergency', 'critical',
-    'now', 'today', 'deadline', 'blocker', 'blocking',
-    'priority', 'rush', 'fast', 'quick', 'hurry',
-    '緊急', '至急', '急ぎ', 'すぐ', '今すぐ' // Japanese urgent keywords
+    'urgent',
+    'asap',
+    'immediately',
+    'emergency',
+    'critical',
+    'now',
+    'today',
+    'deadline',
+    'blocker',
+    'blocking',
+    'priority',
+    'rush',
+    'fast',
+    'quick',
+    'hurry',
+    '緊急',
+    '至急',
+    '急ぎ',
+    'すぐ',
+    '今すぐ', // Japanese urgent keywords
   ] as const,
   keywordWeight: 0.2,
   messageCountThresholds: {
     medium: 10,
-    high: 20
+    high: 20,
   },
-  messageCountWeight: 0.3
+  messageCountWeight: 0.3,
 } as const;
 
 /**
@@ -34,18 +45,42 @@ export const DEFAULT_URGENCY_CONFIG: UrgencyConfig = {
  */
 export const DEFAULT_IMPORTANCE_CONFIG: ImportanceConfig = {
   importantKeywords: [
-    'decision', 'approve', 'budget', 'launch', 'release',
-    'client', 'customer', 'revenue', 'milestone', 'strategic',
-    'executive', 'board', 'ceo', 'director', 'manager',
-    'contract', 'agreement', 'legal', 'compliance', 'audit',
-    '決定', '承認', '予算', 'リリース', 'クライアント',
-    '顧客', '売上', 'マイルストーン', '戦略的', '重要'
+    'decision',
+    'approve',
+    'budget',
+    'launch',
+    'release',
+    'client',
+    'customer',
+    'revenue',
+    'milestone',
+    'strategic',
+    'executive',
+    'board',
+    'ceo',
+    'director',
+    'manager',
+    'contract',
+    'agreement',
+    'legal',
+    'compliance',
+    'audit',
+    '決定',
+    '承認',
+    '予算',
+    'リリース',
+    'クライアント',
+    '顧客',
+    '売上',
+    'マイルストーン',
+    '戦略的',
+    '重要',
   ] as const,
   participantWeight: 0.05,
   messageWeight: 0.02,
   keywordWeight: 0.1,
   maxParticipantScore: 0.3,
-  maxMessageScore: 0.4
+  maxMessageScore: 0.4,
 } as const;
 
 /**
@@ -55,7 +90,7 @@ export const DEFAULT_IMPORTANCE_CONFIG: ImportanceConfig = {
  */
 export function extractCombinedText(messages: readonly SlackMessage[]): string {
   return messages
-    .map(message => message.text || '')
+    .map((message) => message.text || '')
     .join(' ')
     .toLowerCase()
     .trim();
@@ -67,27 +102,24 @@ export function extractCombinedText(messages: readonly SlackMessage[]): string {
  * @param keywords - Keywords to count
  * @returns Map of keyword counts
  */
-export function countKeywords(
-  text: string, 
-  keywords: readonly string[]
-): Map<string, number> {
+export function countKeywords(text: string, keywords: readonly string[]): Map<string, number> {
   const counts = new Map<string, number>();
-  
+
   for (const keyword of keywords) {
     const lowerKeyword = keyword.toLowerCase();
-    
+
     // Use word boundary matching for English, character matching for Japanese
     const isJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(keyword);
-    const regex = isJapanese 
+    const regex = isJapanese
       ? new RegExp(lowerKeyword, 'g')
       : new RegExp(`\\b${lowerKeyword}\\b`, 'g');
-    
+
     const matches = text.match(regex);
     if (matches && matches.length > 0) {
       counts.set(keyword, matches.length);
     }
   }
-  
+
   return counts;
 }
 
@@ -97,10 +129,7 @@ export function countKeywords(
  * @param weight - Weight per keyword occurrence
  * @returns Total weighted score
  */
-export function calculateKeywordScore(
-  keywordCounts: Map<string, number>, 
-  weight: number
-): number {
+export function calculateKeywordScore(keywordCounts: Map<string, number>, weight: number): number {
   let score = 0;
   for (const count of keywordCounts.values()) {
     score += count * weight;
@@ -121,13 +150,13 @@ export function calculateMessageCountFactor(
   weight: number
 ): number {
   let factor = 0;
-  
+
   if (messageCount > thresholds.high) {
     factor += weight * 2; // High activity
   } else if (messageCount > thresholds.medium) {
     factor += weight; // Medium activity
   }
-  
+
   return factor;
 }
 
@@ -144,20 +173,20 @@ export function calculateUrgencyScore(
   const text = extractCombinedText(messages);
   const keywordCounts = countKeywords(text, config.urgentKeywords);
   const keywordScore = calculateKeywordScore(keywordCounts, config.keywordWeight);
-  
+
   const messageCountFactor = calculateMessageCountFactor(
     messages.length,
     config.messageCountThresholds,
     config.messageCountWeight
   );
-  
+
   const totalScore = Math.min(1, keywordScore + messageCountFactor);
   const urgentKeywords = Array.from(keywordCounts.keys());
-  
+
   return {
     score: totalScore,
     urgentKeywords,
-    messageCountFactor
+    messageCountFactor,
   };
 }
 
@@ -205,29 +234,29 @@ export function calculateImportanceScore(
 ): ImportanceScore {
   const text = extractCombinedText(messages);
   const keywordCounts = countKeywords(text, config.importantKeywords);
-  
+
   const participantFactor = calculateParticipantFactor(
     participants.length,
     config.participantWeight,
     config.maxParticipantScore
   );
-  
+
   const messageFactor = calculateMessageFactor(
     messages.length,
     config.messageWeight,
     config.maxMessageScore
   );
-  
+
   const keywordFactor = calculateKeywordScore(keywordCounts, config.keywordWeight);
   const totalScore = Math.min(1, participantFactor + messageFactor + keywordFactor);
   const importantKeywords = Array.from(keywordCounts.keys());
-  
+
   return {
     score: totalScore,
     participantFactor,
     messageFactor,
     keywordFactor,
-    importantKeywords
+    importantKeywords,
   };
 }
 
@@ -269,7 +298,7 @@ export function calculatePriorityScore(
   urgencyWeight: number = 0.6,
   importanceWeight: number = 0.4
 ): number {
-  return (urgencyScore.score * urgencyWeight) + (importanceScore.score * importanceWeight);
+  return urgencyScore.score * urgencyWeight + importanceScore.score * importanceWeight;
 }
 
 /**
@@ -285,23 +314,23 @@ export function explainPriorityAnalysis(
   const urgencyLevel = getUrgencyLevel(urgencyScore.score);
   const importanceLevel = getImportanceLevel(importanceScore.score);
   const priorityScore = calculatePriorityScore(urgencyScore, importanceScore);
-  
+
   let explanation = `Priority Analysis:\n`;
   explanation += `• Overall Priority: ${(priorityScore * 100).toFixed(1)}%\n`;
   explanation += `• Urgency: ${urgencyLevel} (${(urgencyScore.score * 100).toFixed(1)}%)\n`;
   explanation += `• Importance: ${importanceLevel} (${(importanceScore.score * 100).toFixed(1)}%)\n`;
-  
+
   if (urgencyScore.urgentKeywords.length > 0) {
     explanation += `• Urgent keywords found: ${urgencyScore.urgentKeywords.join(', ')}\n`;
   }
-  
+
   if (importanceScore.importantKeywords.length > 0) {
     explanation += `• Important keywords found: ${importanceScore.importantKeywords.join(', ')}\n`;
   }
-  
+
   explanation += `• Message activity factor: ${(urgencyScore.messageCountFactor * 100).toFixed(1)}%\n`;
   explanation += `• Participant factor: ${(importanceScore.participantFactor * 100).toFixed(1)}%`;
-  
+
   return explanation;
 }
 
@@ -321,7 +350,10 @@ export function isThreadUrgent(urgencyScore: UrgencyScore, threshold: number = 0
  * @param threshold - Minimum threshold (default 0.4)
  * @returns True if thread is considered important
  */
-export function isThreadImportant(importanceScore: ImportanceScore, threshold: number = 0.4): boolean {
+export function isThreadImportant(
+  importanceScore: ImportanceScore,
+  threshold: number = 0.4
+): boolean {
   return importanceScore.score >= threshold;
 }
 
@@ -338,7 +370,7 @@ export function getThreadPriority(
   const isUrgent = isThreadUrgent(urgencyScore);
   const isImportant = isThreadImportant(importanceScore);
   const priorityScore = calculatePriorityScore(urgencyScore, importanceScore);
-  
+
   if (priorityScore >= 0.8 || (isUrgent && isImportant)) return 'critical';
   if (priorityScore >= 0.6 || isUrgent || isImportant) return 'high';
   if (priorityScore >= 0.3) return 'normal';

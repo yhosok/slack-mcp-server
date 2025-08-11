@@ -11,13 +11,13 @@ import {
 import type { MCPToolResult } from '../mcp/types.js';
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { CONFIG } from '../config/index.js';
-import { 
+import {
   createSlackServiceRegistry,
   parseModularConfig,
   type SlackServiceRegistry,
   type ModularSlackConfig,
   PerformanceMonitor,
-  type PerformanceMetrics
+  type PerformanceMetrics,
 } from './service-factory-stub.js';
 import { logger } from '../utils/logger.js';
 import { SlackAPIError } from '../utils/errors.js';
@@ -133,7 +133,7 @@ export class SlackService {
   ): Promise<T> {
     // Determine which implementation to use
     const useModular = this.shouldUseModular(methodName, domainType);
-    
+
     if (useModular) {
       return this.executeModular(methodName, args, domainType) as Promise<T>;
     } else {
@@ -182,7 +182,7 @@ export class SlackService {
     try {
       const registry = this.getServiceRegistry();
       const method = registry.methods[methodName as keyof typeof registry.methods];
-      
+
       if (!method) {
         throw new Error(`Method ${methodName} not found in modular registry`);
       }
@@ -212,10 +212,7 @@ export class SlackService {
   /**
    * Execute method using legacy implementation
    */
-  private async executeLegacy<T>(
-    methodName: string,
-    legacyImpl: () => Promise<T>
-  ): Promise<T> {
+  private async executeLegacy<T>(methodName: string, legacyImpl: () => Promise<T>): Promise<T> {
     const startTime = Date.now();
     let success = true;
     let error: Error | undefined;
@@ -228,7 +225,10 @@ export class SlackService {
       throw e;
     } finally {
       // Record performance metrics if enabled and comparison is active
-      if (this.modularConfig.enablePerformanceMetrics && this.modularConfig.monitorLegacyComparison) {
+      if (
+        this.modularConfig.enablePerformanceMetrics &&
+        this.modularConfig.monitorLegacyComparison
+      ) {
         const executionTime = Date.now() - startTime;
         this.performanceMonitor.record({
           methodName,
@@ -904,81 +904,81 @@ export class SlackService {
         const input = validateInput(FindThreadsInChannelSchema, args);
 
         try {
-      logger.info(`Finding threads in channel: ${input.channel}`);
+          logger.info(`Finding threads in channel: ${input.channel}`);
 
-      // First, get channel history to find messages with replies
-      const result = await this.getClientForOperation('read').conversations.history({
-        channel: input.channel,
-        ...(input.limit && { limit: input.limit }),
-        ...(input.cursor && { cursor: input.cursor }),
-        ...(input.oldest && { oldest: input.oldest }),
-        ...(input.latest && { latest: input.latest }),
-        ...(input.include_all_metadata !== undefined && {
-          include_all_metadata: input.include_all_metadata,
-        }),
-      });
+          // First, get channel history to find messages with replies
+          const result = await this.getClientForOperation('read').conversations.history({
+            channel: input.channel,
+            ...(input.limit && { limit: input.limit }),
+            ...(input.cursor && { cursor: input.cursor }),
+            ...(input.oldest && { oldest: input.oldest }),
+            ...(input.latest && { latest: input.latest }),
+            ...(input.include_all_metadata !== undefined && {
+              include_all_metadata: input.include_all_metadata,
+            }),
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to get channel history: ${result.error}`);
-      }
-
-      const messages = result.messages || [];
-
-      // Filter messages that have replies (threads)
-      const threadParents = messages.filter(
-        (msg) => msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
-      );
-
-      const threads: SlackThread[] = [];
-
-      for (const parentMsg of threadParents) {
-        // Get thread replies for each parent message
-        const repliesResult = await this.getClientForOperation('read').conversations.replies({
-          channel: input.channel,
-          ts: parentMsg.ts!,
-          limit: 100,
-        });
-
-        if (repliesResult.ok && repliesResult.messages) {
-          const [parent, ...replies] = repliesResult.messages;
-
-          if (parent) {
-            threads.push({
-              parent_message: parent as unknown as SlackMessage,
-              replies: replies as unknown as SlackMessage[],
-              reply_count: replies.length,
-              reply_users: [...new Set(replies.map((r) => r.user).filter(Boolean))] as string[],
-              reply_users_count: new Set(replies.map((r) => r.user).filter(Boolean)).size,
-              latest_reply: replies[replies.length - 1]?.ts || parent.ts!,
-              thread_ts: parent.ts!,
-              channel_id: input.channel,
-            });
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to get channel history: ${result.error}`);
           }
-        }
-      }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Found ${threads.length} threads in channel:\n\n${threads
-              .map(
-                (thread, idx) =>
-                  `${idx + 1}. Thread ${thread.thread_ts}\n` +
-                  `   └─ ${thread.reply_count} replies from ${thread.reply_users_count} users\n` +
-                  `   └─ Last reply: ${thread.latest_reply}\n` +
-                  `   └─ Parent: ${thread.parent_message.text?.substring(0, 100)}...`
-              )
-              .join('\n\n')}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error finding threads:', error);
+          const messages = result.messages || [];
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          // Filter messages that have replies (threads)
+          const threadParents = messages.filter(
+            (msg) => msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
+          );
+
+          const threads: SlackThread[] = [];
+
+          for (const parentMsg of threadParents) {
+            // Get thread replies for each parent message
+            const repliesResult = await this.getClientForOperation('read').conversations.replies({
+              channel: input.channel,
+              ts: parentMsg.ts!,
+              limit: 100,
+            });
+
+            if (repliesResult.ok && repliesResult.messages) {
+              const [parent, ...replies] = repliesResult.messages;
+
+              if (parent) {
+                threads.push({
+                  parent_message: parent as unknown as SlackMessage,
+                  replies: replies as unknown as SlackMessage[],
+                  reply_count: replies.length,
+                  reply_users: [...new Set(replies.map((r) => r.user).filter(Boolean))] as string[],
+                  reply_users_count: new Set(replies.map((r) => r.user).filter(Boolean)).size,
+                  latest_reply: replies[replies.length - 1]?.ts || parent.ts!,
+                  thread_ts: parent.ts!,
+                  channel_id: input.channel,
+                });
+              }
+            }
+          }
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Found ${threads.length} threads in channel:\n\n${threads
+                  .map(
+                    (thread, idx) =>
+                      `${idx + 1}. Thread ${thread.thread_ts}\n` +
+                      `   └─ ${thread.reply_count} replies from ${thread.reply_users_count} users\n` +
+                      `   └─ Last reply: ${thread.latest_reply}\n` +
+                      `   └─ Parent: ${thread.parent_message.text?.substring(0, 100)}...`
+                  )
+                  .join('\n\n')}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error finding threads:', error);
+
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to find threads: ${error}`);
         }
@@ -999,57 +999,57 @@ export class SlackService {
         const input = validateInput(GetThreadRepliesSchema, args);
 
         try {
-      logger.info(`Getting thread replies: ${input.channel}/${input.thread_ts}`);
+          logger.info(`Getting thread replies: ${input.channel}/${input.thread_ts}`);
 
-      const result = await this.getClientForOperation('read').conversations.replies({
-        channel: input.channel,
-        ts: input.thread_ts,
-        ...(input.limit && { limit: input.limit }),
-        ...(input.cursor && { cursor: input.cursor }),
-        ...(input.oldest && { oldest: input.oldest }),
-        ...(input.latest && { latest: input.latest }),
-        ...(input.inclusive !== undefined && { inclusive: input.inclusive }),
-      });
+          const result = await this.getClientForOperation('read').conversations.replies({
+            channel: input.channel,
+            ts: input.thread_ts,
+            ...(input.limit && { limit: input.limit }),
+            ...(input.cursor && { cursor: input.cursor }),
+            ...(input.oldest && { oldest: input.oldest }),
+            ...(input.latest && { latest: input.latest }),
+            ...(input.inclusive !== undefined && { inclusive: input.inclusive }),
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to get thread replies: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to get thread replies: ${result.error}`);
+          }
 
-      const messages = result.messages || [];
-      const [parent, ...replies] = messages;
+          const messages = result.messages || [];
+          const [parent, ...replies] = messages;
 
-      const thread: SlackThread = {
-        parent_message: parent as unknown as SlackMessage,
-        replies: replies as unknown as SlackMessage[],
-        reply_count: replies.length,
-        reply_users: [...new Set(replies.map((r) => r.user).filter(Boolean))] as string[],
-        reply_users_count: new Set(replies.map((r) => r.user).filter(Boolean)).size,
-        latest_reply: replies[replies.length - 1]?.ts || parent?.ts || '',
-        thread_ts: input.thread_ts,
-        channel_id: input.channel,
-      };
+          const thread: SlackThread = {
+            parent_message: parent as unknown as SlackMessage,
+            replies: replies as unknown as SlackMessage[],
+            reply_count: replies.length,
+            reply_users: [...new Set(replies.map((r) => r.user).filter(Boolean))] as string[],
+            reply_users_count: new Set(replies.map((r) => r.user).filter(Boolean)).size,
+            latest_reply: replies[replies.length - 1]?.ts || parent?.ts || '',
+            thread_ts: input.thread_ts,
+            channel_id: input.channel,
+          };
 
-      const formattedMessages = await Promise.all(
-        messages.map(async (msg, idx) => {
-          const displayName = await this.getUserDisplayName(msg.user || 'unknown');
-          return `${idx === 0 ? '🧵' : '  ├─'} [${msg.ts}] ${displayName}: ${msg.text || ''}`;
-        })
-      );
+          const formattedMessages = await Promise.all(
+            messages.map(async (msg, idx) => {
+              const displayName = await this.getUserDisplayName(msg.user || 'unknown');
+              return `${idx === 0 ? '🧵' : '  ├─'} [${msg.ts}] ${displayName}: ${msg.text || ''}`;
+            })
+          );
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Thread ${input.thread_ts} (${replies.length} replies from ${thread.reply_users_count} users):\n\n${formattedMessages.join('\n')}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error getting thread replies:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Thread ${input.thread_ts} (${replies.length} replies from ${thread.reply_users_count} users):\n\n${formattedMessages.join('\n')}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error getting thread replies:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to get thread replies: ${error}`);
         }
@@ -1070,140 +1070,146 @@ export class SlackService {
         const input = validateInput(SearchThreadsSchema, args);
 
         try {
-      logger.info(`Searching threads with query: "${input.query}"`);
+          logger.info(`Searching threads with query: "${input.query}"`);
 
-      // Check if search API is available
-      this.checkSearchApiAvailability(
-        'Thread search',
-        'Use find_threads_in_channel for channel-specific thread discovery'
-      );
+          // Check if search API is available
+          this.checkSearchApiAvailability(
+            'Thread search',
+            'Use find_threads_in_channel for channel-specific thread discovery'
+          );
 
-      // Use Slack's search API to find messages
-      const searchQuery = this.buildThreadSearchQuery(input);
+          // Use Slack's search API to find messages
+          const searchQuery = this.buildThreadSearchQuery(input);
 
-      const searchArgs: SearchAllArguments = {
-        query: searchQuery,
-        sort: input.sort === 'relevance' ? 'score' : input.sort,
-        sort_dir: input.sort_dir,
-        ...(input.limit && { count: input.limit }),
-      };
+          const searchArgs: SearchAllArguments = {
+            query: searchQuery,
+            sort: input.sort === 'relevance' ? 'score' : input.sort,
+            sort_dir: input.sort_dir,
+            ...(input.limit && { count: input.limit }),
+          };
 
-      const result = await this.getClientForOperation('read').search.messages(searchArgs);
+          const result = await this.getClientForOperation('read').search.messages(searchArgs);
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to search messages: ${result.error}`);
-      }
-
-      const searchResults: ThreadSearchResult[] = [];
-      const messages = result.messages?.matches || [];
-      const processedThreads = new Set<string>(); // Track processed threads to avoid duplicates
-
-      for (const match of messages) {
-        const message = match;
-
-        // For search results, we need to check if the message is part of a thread
-        if (message.ts && message.channel?.id) {
-          // Determine the thread timestamp
-          // If it's a reply, use thread_ts; if it's a parent, use ts
-          const threadTs = (message as any).thread_ts || message.ts; // eslint-disable-line @typescript-eslint/no-explicit-any
-
-          // Skip if we've already processed this thread
-          const threadKey = `${message.channel.id}-${threadTs}`;
-          if (processedThreads.has(threadKey)) {
-            continue;
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to search messages: ${result.error}`);
           }
-          processedThreads.add(threadKey);
 
-          try {
-            // Try to get thread details using user client for broader access
-            // Note: User token has access to more channels and history
-            const threadResult = await this.getClientForOperation('read').conversations.replies({
-              channel: message.channel.id,
-              ts: threadTs,
-            });
+          const searchResults: ThreadSearchResult[] = [];
+          const messages = result.messages?.matches || [];
+          const processedThreads = new Set<string>(); // Track processed threads to avoid duplicates
 
-            // Process all messages, including those that are thread parents without replies
-            if (threadResult.ok && threadResult.messages && threadResult.messages.length >= 1) {
-              const [parent, ...replies] = threadResult.messages;
+          for (const match of messages) {
+            const message = match;
 
-              const thread: SlackThread = {
-                parent_message: parent as unknown as SlackMessage,
-                replies: replies as unknown as SlackMessage[],
-                reply_count: replies.length,
-                reply_users: [...new Set(replies.map((r) => r.user).filter(Boolean))] as string[],
-                reply_users_count: new Set(replies.map((r) => r.user).filter(Boolean)).size,
-                latest_reply:
-                  replies.length > 0 ? replies[replies.length - 1]?.ts || '' : parent?.ts || '',
-                thread_ts: threadTs,
-                channel_id: message.channel.id,
-              };
+            // For search results, we need to check if the message is part of a thread
+            if (message.ts && message.channel?.id) {
+              // Determine the thread timestamp
+              // If it's a reply, use thread_ts; if it's a parent, use ts
+              const threadTs = (message as any).thread_ts || message.ts; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-              searchResults.push({
-                thread,
-                relevance_score: match.score || 0,
-                matched_messages: threadResult.messages.filter((msg) =>
-                  msg.text?.toLowerCase().includes(input.query.toLowerCase())
-                ) as SlackMessage[],
-                match_reason: `Matched query "${input.query}"`,
-              });
+              // Skip if we've already processed this thread
+              const threadKey = `${message.channel.id}-${threadTs}`;
+              if (processedThreads.has(threadKey)) {
+                continue;
+              }
+              processedThreads.add(threadKey);
+
+              try {
+                // Try to get thread details using user client for broader access
+                // Note: User token has access to more channels and history
+                const threadResult = await this.getClientForOperation('read').conversations.replies(
+                  {
+                    channel: message.channel.id,
+                    ts: threadTs,
+                  }
+                );
+
+                // Process all messages, including those that are thread parents without replies
+                if (threadResult.ok && threadResult.messages && threadResult.messages.length >= 1) {
+                  const [parent, ...replies] = threadResult.messages;
+
+                  const thread: SlackThread = {
+                    parent_message: parent as unknown as SlackMessage,
+                    replies: replies as unknown as SlackMessage[],
+                    reply_count: replies.length,
+                    reply_users: [
+                      ...new Set(replies.map((r) => r.user).filter(Boolean)),
+                    ] as string[],
+                    reply_users_count: new Set(replies.map((r) => r.user).filter(Boolean)).size,
+                    latest_reply:
+                      replies.length > 0 ? replies[replies.length - 1]?.ts || '' : parent?.ts || '',
+                    thread_ts: threadTs,
+                    channel_id: message.channel.id,
+                  };
+
+                  searchResults.push({
+                    thread,
+                    relevance_score: match.score || 0,
+                    matched_messages: threadResult.messages.filter((msg) =>
+                      msg.text?.toLowerCase().includes(input.query.toLowerCase())
+                    ) as SlackMessage[],
+                    match_reason: `Matched query "${input.query}"`,
+                  });
+                }
+              } catch (threadError: unknown) {
+                // Log the error but continue processing other messages
+                const error = threadError as { data?: { error?: string } };
+                if (error?.data?.error === 'not_in_channel') {
+                  logger.warn(
+                    `Bot is not in channel ${message.channel.id}, skipping thread ${message.ts}`
+                  );
+                } else if (error?.data?.error === 'channel_not_found') {
+                  logger.warn(
+                    `Channel ${message.channel.id} not found, skipping thread ${message.ts}`
+                  );
+                } else {
+                  logger.warn(`Failed to get thread for message ${message.ts}:`, threadError);
+                }
+
+                // Still include the message in results even if we can't get full thread details
+                // This happens when the bot isn't in the channel where the message was found
+                searchResults.push({
+                  thread: {
+                    parent_message: message as SlackMessage,
+                    replies: [],
+                    reply_count: 0,
+                    reply_users: [],
+                    reply_users_count: 0,
+                    latest_reply: message.ts || '',
+                    thread_ts: threadTs,
+                    channel_id: message.channel.id,
+                  },
+                  relevance_score: match.score || 0,
+                  matched_messages: [message as SlackMessage],
+                  match_reason: `Matched query "${input.query}" (Note: Bot not in channel, limited details)`,
+                });
+              }
             }
-          } catch (threadError: unknown) {
-            // Log the error but continue processing other messages
-            const error = threadError as { data?: { error?: string } };
-            if (error?.data?.error === 'not_in_channel') {
-              logger.warn(
-                `Bot is not in channel ${message.channel.id}, skipping thread ${message.ts}`
-              );
-            } else if (error?.data?.error === 'channel_not_found') {
-              logger.warn(`Channel ${message.channel.id} not found, skipping thread ${message.ts}`);
-            } else {
-              logger.warn(`Failed to get thread for message ${message.ts}:`, threadError);
-            }
+          }
 
-            // Still include the message in results even if we can't get full thread details
-            // This happens when the bot isn't in the channel where the message was found
-            searchResults.push({
-              thread: {
-                parent_message: message as SlackMessage,
-                replies: [],
-                reply_count: 0,
-                reply_users: [],
-                reply_users_count: 0,
-                latest_reply: message.ts || '',
-                thread_ts: threadTs,
-                channel_id: message.channel.id,
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Found ${searchResults.length} threads matching "${input.query}":\n\n${searchResults
+                  .map(
+                    (result, idx) =>
+                      `${idx + 1}. Thread ${result.thread.thread_ts} (Score: ${result.relevance_score})\n` +
+                      `   └─ Channel: ${result.thread.channel_id}\n` +
+                      `   └─ ${result.thread.reply_count} replies\n` +
+                      `   └─ ${result.matched_messages.length} matching messages\n` +
+                      `   └─ Parent: ${result.thread.parent_message.text?.substring(0, 100)}...`
+                  )
+                  .join('\n\n')}`,
               },
-              relevance_score: match.score || 0,
-              matched_messages: [message as SlackMessage],
-              match_reason: `Matched query "${input.query}" (Note: Bot not in channel, limited details)`,
-            });
+            ],
+          };
+        } catch (error) {
+          logger.error('Error searching threads:', error);
+
+          if (error instanceof SlackAPIError) {
+            throw error;
           }
-        }
-      }
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Found ${searchResults.length} threads matching "${input.query}":\n\n${searchResults
-              .map(
-                (result, idx) =>
-                  `${idx + 1}. Thread ${result.thread.thread_ts} (Score: ${result.relevance_score})\n` +
-                  `   └─ Channel: ${result.thread.channel_id}\n` +
-                  `   └─ ${result.thread.reply_count} replies\n` +
-                  `   └─ ${result.matched_messages.length} matching messages\n` +
-                  `   └─ Parent: ${result.thread.parent_message.text?.substring(0, 100)}...`
-              )
-              .join('\n\n')}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error searching threads:', error);
-
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
 
           throw new SlackAPIError(`Failed to search threads: ${error}`);
         }
@@ -1228,33 +1234,33 @@ export class SlackService {
         const input = validateInput(PostThreadReplySchema, args);
 
         try {
-      logger.info(`Posting reply to thread: ${input.channel}/${input.thread_ts}`);
+          logger.info(`Posting reply to thread: ${input.channel}/${input.thread_ts}`);
 
-      const result = await this.getClientForOperation('write').chat.postMessage({
-        channel: input.channel,
-        text: input.text,
-        thread_ts: input.thread_ts,
-        reply_broadcast: input.reply_broadcast,
-      } as ChatPostMessageArguments);
+          const result = await this.getClientForOperation('write').chat.postMessage({
+            channel: input.channel,
+            text: input.text,
+            thread_ts: input.thread_ts,
+            reply_broadcast: input.reply_broadcast,
+          } as ChatPostMessageArguments);
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to post thread reply: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to post thread reply: ${result.error}`);
+          }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Reply posted successfully to thread ${input.thread_ts}. Message timestamp: ${result.ts}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error posting thread reply:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Reply posted successfully to thread ${input.thread_ts}. Message timestamp: ${result.ts}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error posting thread reply:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to post thread reply: ${error}`);
         }
@@ -1275,50 +1281,50 @@ export class SlackService {
         const input = validateInput(CreateThreadSchema, args);
 
         try {
-      logger.info(`Creating new thread in channel: ${input.channel}`);
+          logger.info(`Creating new thread in channel: ${input.channel}`);
 
-      // Post the initial message
-      const parentResult = await this.getClientForOperation('write').chat.postMessage({
-        channel: input.channel,
-        text: input.text,
-      });
+          // Post the initial message
+          const parentResult = await this.getClientForOperation('write').chat.postMessage({
+            channel: input.channel,
+            text: input.text,
+          });
 
-      if (!parentResult.ok) {
-        throw new SlackAPIError(`Failed to create thread parent: ${parentResult.error}`);
-      }
+          if (!parentResult.ok) {
+            throw new SlackAPIError(`Failed to create thread parent: ${parentResult.error}`);
+          }
 
-      let replyResult;
-      // If reply text is provided, post a reply to create the thread
-      if (input.reply_text) {
-        replyResult = await this.getClientForOperation('write').chat.postMessage({
-          channel: input.channel,
-          text: input.reply_text,
-          thread_ts: parentResult.ts!,
-          reply_broadcast: input.broadcast,
-        } as ChatPostMessageArguments);
+          let replyResult;
+          // If reply text is provided, post a reply to create the thread
+          if (input.reply_text) {
+            replyResult = await this.getClientForOperation('write').chat.postMessage({
+              channel: input.channel,
+              text: input.reply_text,
+              thread_ts: parentResult.ts!,
+              reply_broadcast: input.broadcast,
+            } as ChatPostMessageArguments);
 
-        if (!replyResult.ok) {
-          throw new SlackAPIError(`Failed to create thread reply: ${replyResult.error}`);
-        }
-      }
+            if (!replyResult.ok) {
+              throw new SlackAPIError(`Failed to create thread reply: ${replyResult.error}`);
+            }
+          }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text:
-              `Thread created successfully!\n` +
-              `Parent message: ${parentResult.ts}\n` +
-              `Channel: ${input.channel}${replyResult ? `\nReply: ${replyResult.ts}` : ''}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error creating thread:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  `Thread created successfully!\n` +
+                  `Parent message: ${parentResult.ts}\n` +
+                  `Channel: ${input.channel}${replyResult ? `\nReply: ${replyResult.ts}` : ''}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error creating thread:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to create thread: ${error}`);
         }
@@ -1339,52 +1345,54 @@ export class SlackService {
         const input = validateInput(MarkThreadImportantSchema, args);
 
         try {
-      logger.info(`Marking thread as important: ${input.channel}/${input.thread_ts}`);
+          logger.info(`Marking thread as important: ${input.channel}/${input.thread_ts}`);
 
-      // Add a bookmark or pin the message (if the bot has permissions)
-      // For now, we'll add a reaction and/or post a message
-      const reactionResult = await this.getClientForOperation('write').reactions.add({
-        channel: input.channel,
-        timestamp: input.thread_ts,
-        name: this.getImportanceReaction(input.importance_level || 'medium'),
-      });
+          // Add a bookmark or pin the message (if the bot has permissions)
+          // For now, we'll add a reaction and/or post a message
+          const reactionResult = await this.getClientForOperation('write').reactions.add({
+            channel: input.channel,
+            timestamp: input.thread_ts,
+            name: this.getImportanceReaction(input.importance_level || 'medium'),
+          });
 
-      if (!reactionResult.ok) {
-        logger.warn(`Failed to add importance reaction: ${reactionResult.error}`);
-      }
+          if (!reactionResult.ok) {
+            logger.warn(`Failed to add importance reaction: ${reactionResult.error}`);
+          }
 
-      // Post a message to the thread about its importance
-      const notificationText =
-        `📌 Thread marked as **${input.importance_level}** importance` +
-        (input.reason ? ` - ${input.reason}` : '');
+          // Post a message to the thread about its importance
+          const notificationText =
+            `📌 Thread marked as **${input.importance_level}** importance` +
+            (input.reason ? ` - ${input.reason}` : '');
 
-      const messageResult = await this.getClientForOperation('write').chat.postMessage({
-        channel: input.channel,
-        text: notificationText,
-        thread_ts: input.thread_ts,
-        reply_broadcast: input.notify_participants,
-      } as ChatPostMessageArguments);
+          const messageResult = await this.getClientForOperation('write').chat.postMessage({
+            channel: input.channel,
+            text: notificationText,
+            thread_ts: input.thread_ts,
+            reply_broadcast: input.notify_participants,
+          } as ChatPostMessageArguments);
 
-      if (!messageResult.ok) {
-        throw new SlackAPIError(`Failed to post importance notification: ${messageResult.error}`);
-      }
+          if (!messageResult.ok) {
+            throw new SlackAPIError(
+              `Failed to post importance notification: ${messageResult.error}`
+            );
+          }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text:
-              `Thread ${input.thread_ts} marked as ${input.importance_level} importance.\n` +
-              `Notification posted: ${messageResult.ts}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error marking thread as important:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  `Thread ${input.thread_ts} marked as ${input.importance_level} importance.\n` +
+                  `Notification posted: ${messageResult.ts}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error marking thread as important:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to mark thread as important: ${error}`);
         }
@@ -1409,87 +1417,87 @@ export class SlackService {
         const input = validateInput(AnalyzeThreadSchema, args);
 
         try {
-      logger.info(`Analyzing thread: ${input.channel}/${input.thread_ts}`);
+          logger.info(`Analyzing thread: ${input.channel}/${input.thread_ts}`);
 
-      // Get the full thread
-      const result = await this.getClientForOperation('read').conversations.replies({
-        channel: input.channel,
-        ts: input.thread_ts,
-        limit: 1000,
-      });
+          // Get the full thread
+          const result = await this.getClientForOperation('read').conversations.replies({
+            channel: input.channel,
+            ts: input.thread_ts,
+            limit: 1000,
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to get thread for analysis: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to get thread for analysis: ${result.error}`);
+          }
 
-      const rawMessages = result.messages || [];
-      const messages = rawMessages.map((msg) => this.convertMessageElementToSlackMessage(msg));
-      const [parent, ...replies] = messages;
+          const rawMessages = result.messages || [];
+          const messages = rawMessages.map((msg) => this.convertMessageElementToSlackMessage(msg));
+          const [parent, ...replies] = messages;
 
-      // Analyze participants
-      const participants = this.analyzeThreadParticipants(messages);
+          // Analyze participants
+          const participants = this.analyzeThreadParticipants(messages);
 
-      // Build timeline
-      const timeline = input.include_timeline ? this.buildThreadTimeline(messages) : [];
+          // Build timeline
+          const timeline = input.include_timeline ? this.buildThreadTimeline(messages) : [];
 
-      // Extract topics and keywords
-      const keyTopics = input.extract_topics ? this.extractTopicsFromThread(messages) : [];
+          // Extract topics and keywords
+          const keyTopics = input.extract_topics ? this.extractTopicsFromThread(messages) : [];
 
-      // Calculate scores
-      const urgencyScore = this.calculateUrgencyScore(messages);
-      const importanceScore = this.calculateImportanceScore(messages, participants);
+          // Calculate scores
+          const urgencyScore = this.calculateUrgencyScore(messages);
+          const importanceScore = this.calculateImportanceScore(messages, participants);
 
-      // Analyze sentiment
-      const sentiment = input.include_sentiment_analysis
-        ? this.analyzeSentiment(messages)
-        : 'neutral';
+          // Analyze sentiment
+          const sentiment = input.include_sentiment_analysis
+            ? this.analyzeSentiment(messages)
+            : 'neutral';
 
-      // Extract action items
-      const actionItems = input.include_action_items
-        ? this.extractActionItemsFromMessages(messages)
-        : [];
+          // Extract action items
+          const actionItems = input.include_action_items
+            ? this.extractActionItemsFromMessages(messages)
+            : [];
 
-      // Generate summary
-      const summary = this.generateThreadSummary(messages, participants, keyTopics);
+          // Generate summary
+          const summary = this.generateThreadSummary(messages, participants, keyTopics);
 
-      // Calculate metrics
-      const totalText = messages.map((m) => m.text || '').join(' ');
-      const wordCount = totalText.split(/\s+/).length;
-      const startTime = parseFloat(parent?.ts || '0');
-      const endTime = parseFloat(
-        (replies[replies.length - 1]?.ts as string) || (parent?.ts as string) || '0'
-      );
-      const durationHours = (endTime - startTime) / 3600;
+          // Calculate metrics
+          const totalText = messages.map((m) => m.text || '').join(' ');
+          const wordCount = totalText.split(/\s+/).length;
+          const startTime = parseFloat(parent?.ts || '0');
+          const endTime = parseFloat(
+            (replies[replies.length - 1]?.ts as string) || (parent?.ts as string) || '0'
+          );
+          const durationHours = (endTime - startTime) / 3600;
 
-      const analysis: ThreadAnalysis = {
-        thread_ts: input.thread_ts,
-        channel_id: input.channel,
-        participants,
-        timeline,
-        key_topics: keyTopics,
-        urgency_score: urgencyScore,
-        importance_score: importanceScore,
-        sentiment,
-        action_items: actionItems,
-        summary,
-        word_count: wordCount,
-        duration_hours: durationHours,
-      };
+          const analysis: ThreadAnalysis = {
+            thread_ts: input.thread_ts,
+            channel_id: input.channel,
+            participants,
+            timeline,
+            key_topics: keyTopics,
+            urgency_score: urgencyScore,
+            importance_score: importanceScore,
+            sentiment,
+            action_items: actionItems,
+            summary,
+            word_count: wordCount,
+            duration_hours: durationHours,
+          };
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: this.formatThreadAnalysis(analysis),
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error analyzing thread:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: this.formatThreadAnalysis(analysis),
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error analyzing thread:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to analyze thread: ${error}`);
         }
@@ -1510,55 +1518,55 @@ export class SlackService {
         const input = validateInput(SummarizeThreadSchema, args);
 
         try {
-      logger.info(`Summarizing thread: ${input.channel}/${input.thread_ts}`);
+          logger.info(`Summarizing thread: ${input.channel}/${input.thread_ts}`);
 
-      const result = await this.getClientForOperation('read').conversations.replies({
-        channel: input.channel,
-        ts: input.thread_ts,
-        limit: 1000,
-      });
+          const result = await this.getClientForOperation('read').conversations.replies({
+            channel: input.channel,
+            ts: input.thread_ts,
+            limit: 1000,
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to get thread for summary: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to get thread for summary: ${result.error}`);
+          }
 
-      const rawMessages = result.messages || [];
-      const messages = rawMessages.map((msg) => this.convertMessageElementToSlackMessage(msg));
-      const participants = this.analyzeThreadParticipants(messages);
-      // Topic extraction available via extractTopicsFromThread() method but not included in analysis output
-      const actionItems = input.include_action_items
-        ? this.extractActionItemsFromMessages(messages)
-        : [];
-      const decisions = input.include_decisions ? this.extractDecisions(messages) : [];
+          const rawMessages = result.messages || [];
+          const messages = rawMessages.map((msg) => this.convertMessageElementToSlackMessage(msg));
+          const participants = this.analyzeThreadParticipants(messages);
+          // Topic extraction available via extractTopicsFromThread() method but not included in analysis output
+          const actionItems = input.include_action_items
+            ? this.extractActionItemsFromMessages(messages)
+            : [];
+          const decisions = input.include_decisions ? this.extractDecisions(messages) : [];
 
-      const summary: ThreadSummary = {
-        thread_ts: input.thread_ts,
-        channel_id: input.channel,
-        title: this.generateThreadTitle(messages),
-        brief_summary: this.generateBriefSummary(messages, input.summary_length || 'medium'),
-        key_points: this.extractKeyPoints(messages),
-        decisions_made: decisions,
-        action_items: actionItems,
-        participants: participants.map((p) => p.user_id),
-        message_count: messages.length,
-        duration: this.formatDuration(messages),
-        status: this.determineThreadStatus(messages, actionItems),
-      };
+          const summary: ThreadSummary = {
+            thread_ts: input.thread_ts,
+            channel_id: input.channel,
+            title: this.generateThreadTitle(messages),
+            brief_summary: this.generateBriefSummary(messages, input.summary_length || 'medium'),
+            key_points: this.extractKeyPoints(messages),
+            decisions_made: decisions,
+            action_items: actionItems,
+            participants: participants.map((p) => p.user_id),
+            message_count: messages.length,
+            duration: this.formatDuration(messages),
+            status: this.determineThreadStatus(messages, actionItems),
+          };
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: this.formatThreadSummary(summary),
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error summarizing thread:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: this.formatThreadSummary(summary),
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error summarizing thread:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to summarize thread: ${error}`);
         }
@@ -1579,61 +1587,61 @@ export class SlackService {
         const input = validateInput(ExtractActionItemsSchema, args);
 
         try {
-      logger.info(`Extracting action items from thread: ${input.channel}/${input.thread_ts}`);
+          logger.info(`Extracting action items from thread: ${input.channel}/${input.thread_ts}`);
 
-      const result = await this.getClientForOperation('read').conversations.replies({
-        channel: input.channel,
-        ts: input.thread_ts,
-        limit: 1000,
-      });
+          const result = await this.getClientForOperation('read').conversations.replies({
+            channel: input.channel,
+            ts: input.thread_ts,
+            limit: 1000,
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to get thread for action items: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to get thread for action items: ${result.error}`);
+          }
 
-      const rawMessages = result.messages || [];
-      const messages = rawMessages.map((msg) => this.convertMessageElementToSlackMessage(msg));
-      const actionItems = this.extractActionItemsFromMessages(messages);
+          const rawMessages = result.messages || [];
+          const messages = rawMessages.map((msg) => this.convertMessageElementToSlackMessage(msg));
+          const actionItems = this.extractActionItemsFromMessages(messages);
 
-      const filteredItems = actionItems.filter((item) => {
-        if (!input.include_completed && item.status === 'completed') {
-          return false;
-        }
+          const filteredItems = actionItems.filter((item) => {
+            if (!input.include_completed && item.status === 'completed') {
+              return false;
+            }
 
-        const priorityLevels = ['low', 'medium', 'high'];
-        const thresholdIndex = priorityLevels.indexOf(input.priority_threshold || 'low');
-        const itemIndex = priorityLevels.indexOf(item.priority);
+            const priorityLevels = ['low', 'medium', 'high'];
+            const thresholdIndex = priorityLevels.indexOf(input.priority_threshold || 'low');
+            const itemIndex = priorityLevels.indexOf(item.priority);
 
-        return itemIndex >= thresholdIndex;
-      });
+            return itemIndex >= thresholdIndex;
+          });
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Action Items from Thread ${input.thread_ts}:\n\n${
-              filteredItems.length === 0
-                ? 'No action items found matching the criteria.'
-                : filteredItems
-                    .map(
-                      (item, idx) =>
-                        `${idx + 1}. ${item.text}\n` +
-                        `   └─ Priority: ${item.priority}\n` +
-                        `   └─ Status: ${item.status}\n` +
-                        `   └─ Mentioned: ${item.mentioned_users.join(', ') || 'None'}\n` +
-                        `   └─ From message: ${item.extracted_from_message_ts}`
-                    )
-                    .join('\n\n')
-            }`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error extracting action items:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Action Items from Thread ${input.thread_ts}:\n\n${
+                  filteredItems.length === 0
+                    ? 'No action items found matching the criteria.'
+                    : filteredItems
+                        .map(
+                          (item, idx) =>
+                            `${idx + 1}. ${item.text}\n` +
+                            `   └─ Priority: ${item.priority}\n` +
+                            `   └─ Status: ${item.status}\n` +
+                            `   └─ Mentioned: ${item.mentioned_users.join(', ') || 'None'}\n` +
+                            `   └─ From message: ${item.extracted_from_message_ts}`
+                        )
+                        .join('\n\n')
+                }`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error extracting action items:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to extract action items: ${error}`);
         }
@@ -1654,89 +1662,89 @@ export class SlackService {
         const input = validateInput(IdentifyImportantThreadsSchema, args);
 
         try {
-      logger.info(`Identifying important threads in channel: ${input.channel}`);
+          logger.info(`Identifying important threads in channel: ${input.channel}`);
 
-      const hoursAgo = input.time_range_hours || 24;
-      const oldestTime = (Date.now() / 1000 - hoursAgo * 3600).toString();
+          const hoursAgo = input.time_range_hours || 24;
+          const oldestTime = (Date.now() / 1000 - hoursAgo * 3600).toString();
 
-      // Get recent messages from the channel
-      const result = await this.getClientForOperation('read').conversations.history({
-        channel: input.channel,
-        oldest: oldestTime,
-        limit: 200,
-      });
-
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to get channel history: ${result.error}`);
-      }
-
-      const messages = result.messages || [];
-      const threadParents = messages.filter(
-        (msg) => msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
-      );
-
-      const scoredThreads = [];
-
-      for (const parentMsg of threadParents) {
-        try {
-          const repliesResult = await this.getClientForOperation('read').conversations.replies({
+          // Get recent messages from the channel
+          const result = await this.getClientForOperation('read').conversations.history({
             channel: input.channel,
-            ts: parentMsg.ts!,
+            oldest: oldestTime,
+            limit: 200,
           });
 
-          if (repliesResult.ok && repliesResult.messages) {
-            const rawThreadMessages = repliesResult.messages || [];
-            const threadMessages = rawThreadMessages.map((msg) =>
-              this.convertMessageElementToSlackMessage(msg)
-            );
-            const participants = this.analyzeThreadParticipants(threadMessages);
-            const importance = this.calculateImportanceScore(threadMessages, participants);
-            const urgency = this.calculateUrgencyScore(threadMessages);
-            const overallScore = (importance + urgency) / 2;
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to get channel history: ${result.error}`);
+          }
 
-            if (overallScore >= (input.importance_threshold || 0.5)) {
-              scoredThreads.push({
-                thread_ts: parentMsg.ts!,
-                parent_message: parentMsg as SlackMessage,
-                score: overallScore,
-                importance_score: importance,
-                urgency_score: urgency,
-                reply_count: threadMessages.length - 1,
-                participants: participants.length,
+          const messages = result.messages || [];
+          const threadParents = messages.filter(
+            (msg) => msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
+          );
+
+          const scoredThreads = [];
+
+          for (const parentMsg of threadParents) {
+            try {
+              const repliesResult = await this.getClientForOperation('read').conversations.replies({
+                channel: input.channel,
+                ts: parentMsg.ts!,
               });
+
+              if (repliesResult.ok && repliesResult.messages) {
+                const rawThreadMessages = repliesResult.messages || [];
+                const threadMessages = rawThreadMessages.map((msg) =>
+                  this.convertMessageElementToSlackMessage(msg)
+                );
+                const participants = this.analyzeThreadParticipants(threadMessages);
+                const importance = this.calculateImportanceScore(threadMessages, participants);
+                const urgency = this.calculateUrgencyScore(threadMessages);
+                const overallScore = (importance + urgency) / 2;
+
+                if (overallScore >= (input.importance_threshold || 0.5)) {
+                  scoredThreads.push({
+                    thread_ts: parentMsg.ts!,
+                    parent_message: parentMsg as SlackMessage,
+                    score: overallScore,
+                    importance_score: importance,
+                    urgency_score: urgency,
+                    reply_count: threadMessages.length - 1,
+                    participants: participants.length,
+                  });
+                }
+              }
+            } catch (threadError) {
+              logger.warn(`Failed to analyze thread ${parentMsg.ts}:`, threadError);
             }
           }
-        } catch (threadError) {
-          logger.warn(`Failed to analyze thread ${parentMsg.ts}:`, threadError);
-        }
-      }
 
-      // Sort by score and limit results
-      scoredThreads.sort((a, b) => b.score - a.score);
-      const topThreads = scoredThreads.slice(0, input.limit);
+          // Sort by score and limit results
+          scoredThreads.sort((a, b) => b.score - a.score);
+          const topThreads = scoredThreads.slice(0, input.limit);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Important threads found (${topThreads.length}):\n\n${topThreads
-              .map(
-                (thread, idx) =>
-                  `${idx + 1}. Thread ${thread.thread_ts} (Score: ${thread.score.toFixed(2)})\n` +
-                  `   └─ Importance: ${thread.importance_score.toFixed(2)}, Urgency: ${thread.urgency_score.toFixed(2)}\n` +
-                  `   └─ ${thread.reply_count} replies, ${thread.participants} participants\n` +
-                  `   └─ ${thread.parent_message.text?.substring(0, 100)}...`
-              )
-              .join('\n\n')}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error identifying important threads:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Important threads found (${topThreads.length}):\n\n${topThreads
+                  .map(
+                    (thread, idx) =>
+                      `${idx + 1}. Thread ${thread.thread_ts} (Score: ${thread.score.toFixed(2)})\n` +
+                      `   └─ Importance: ${thread.importance_score.toFixed(2)}, Urgency: ${thread.urgency_score.toFixed(2)}\n` +
+                      `   └─ ${thread.reply_count} replies, ${thread.participants} participants\n` +
+                      `   └─ ${thread.parent_message.text?.substring(0, 100)}...`
+                  )
+                  .join('\n\n')}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error identifying important threads:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to identify important threads: ${error}`);
         }
@@ -1761,53 +1769,57 @@ export class SlackService {
         const input = validateInput(ExportThreadSchema, args);
 
         try {
-      logger.info(`Exporting thread: ${input.channel}/${input.thread_ts} as ${input.format}`);
+          logger.info(`Exporting thread: ${input.channel}/${input.thread_ts} as ${input.format}`);
 
-      const result = await this.getClientForOperation('read').conversations.replies({
-        channel: input.channel,
-        ts: input.thread_ts,
-        limit: 1000,
-      });
+          const result = await this.getClientForOperation('read').conversations.replies({
+            channel: input.channel,
+            ts: input.thread_ts,
+            limit: 1000,
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to get thread for export: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to get thread for export: ${result.error}`);
+          }
 
-      const rawMessages = result.messages || [];
-      const messages = rawMessages.map((msg) => this.convertMessageElementToSlackMessage(msg));
-      const participants = input.include_user_profiles
-        ? this.analyzeThreadParticipants(messages)
-        : [];
+          const rawMessages = result.messages || [];
+          const messages = rawMessages.map((msg) => this.convertMessageElementToSlackMessage(msg));
+          const participants = input.include_user_profiles
+            ? this.analyzeThreadParticipants(messages)
+            : [];
 
-      const exportOptions: ThreadExportOptions = {
-        format: input.format || 'markdown',
-        include_metadata: input.include_metadata ?? true,
-        include_reactions: input.include_reactions ?? true,
-        include_user_profiles: input.include_user_profiles ?? false,
-        date_format: input.date_format,
-      };
+          const exportOptions: ThreadExportOptions = {
+            format: input.format || 'markdown',
+            include_metadata: input.include_metadata ?? true,
+            include_reactions: input.include_reactions ?? true,
+            include_user_profiles: input.include_user_profiles ?? false,
+            date_format: input.date_format,
+          };
 
-      const exportResult = await this.generateThreadExport(messages, participants, exportOptions);
+          const exportResult = await this.generateThreadExport(
+            messages,
+            participants,
+            exportOptions
+          );
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text:
-              `Thread exported successfully!\n\n` +
-              `Format: ${exportResult.format}\n` +
-              `Size: ${exportResult.size_bytes} bytes\n` +
-              `Filename: ${exportResult.filename}\n\n` +
-              `Content preview:\n${exportResult.content.substring(0, 500)}${exportResult.content.length > 500 ? '...' : ''}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error exporting thread:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  `Thread exported successfully!\n\n` +
+                  `Format: ${exportResult.format}\n` +
+                  `Size: ${exportResult.size_bytes} bytes\n` +
+                  `Filename: ${exportResult.filename}\n\n` +
+                  `Content preview:\n${exportResult.content.substring(0, 500)}${exportResult.content.length > 500 ? '...' : ''}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error exporting thread:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to export thread: ${error}`);
         }
@@ -1828,115 +1840,115 @@ export class SlackService {
         const input = validateInput(FindRelatedThreadsSchema, args);
 
         try {
-      logger.info(`Finding threads related to: ${input.channel}/${input.thread_ts}`);
+          logger.info(`Finding threads related to: ${input.channel}/${input.thread_ts}`);
 
-      // Get the source thread
-      const sourceResult = await this.getClientForOperation('read').conversations.replies({
-        channel: input.channel,
-        ts: input.thread_ts,
-        limit: 1000,
-      });
+          // Get the source thread
+          const sourceResult = await this.getClientForOperation('read').conversations.replies({
+            channel: input.channel,
+            ts: input.thread_ts,
+            limit: 1000,
+          });
 
-      if (!sourceResult.ok) {
-        throw new SlackAPIError(`Failed to get source thread: ${sourceResult.error}`);
-      }
+          if (!sourceResult.ok) {
+            throw new SlackAPIError(`Failed to get source thread: ${sourceResult.error}`);
+          }
 
-      const sourceMessages = sourceResult.messages || [];
-      const sourceKeywords = this.extractTopicsFromThread(sourceMessages as SlackMessage[]);
-      // Participant matching functionality available but not currently implemented in relationship scoring
+          const sourceMessages = sourceResult.messages || [];
+          const sourceKeywords = this.extractTopicsFromThread(sourceMessages as SlackMessage[]);
+          // Participant matching functionality available but not currently implemented in relationship scoring
 
-      const relatedThreads: RelatedThread[] = [];
+          const relatedThreads: RelatedThread[] = [];
 
-      // Check if search API is available
-      try {
-        this.checkSearchApiAvailability(
-          'Related thread search',
-          'Use find_threads_in_channel for channel-specific discovery'
-        );
-      } catch (error) {
-        logger.warn(
-          'Search API not available with bot token. Skipping search-based related thread discovery.'
-        );
-        if (error instanceof SlackAPIError) {
+          // Check if search API is available
+          try {
+            this.checkSearchApiAvailability(
+              'Related thread search',
+              'Use find_threads_in_channel for channel-specific discovery'
+            );
+          } catch (error) {
+            logger.warn(
+              'Search API not available with bot token. Skipping search-based related thread discovery.'
+            );
+            if (error instanceof SlackAPIError) {
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: error.message,
+                  },
+                ],
+              };
+            }
+            throw error;
+          }
+
+          // Search for related threads using various methods
+          const searchQueries = this.buildRelatedThreadSearchQueries(sourceKeywords);
+
+          for (const query of searchQueries) {
+            try {
+              const searchResult = await this.getClientForOperation('read').search.messages({
+                query: query,
+                count: 20,
+              });
+
+              if (searchResult.ok && searchResult.messages?.matches) {
+                for (const match of searchResult.messages.matches) {
+                  const message = match;
+
+                  if (message.channel?.id && message.ts && message.ts !== input.thread_ts) {
+                    const similarity = this.calculateThreadSimilarity(
+                      sourceKeywords,
+                      message.text || ''
+                    );
+
+                    if (similarity >= (input.similarity_threshold || 0.3)) {
+                      relatedThreads.push({
+                        thread_ts: (message as any).thread_ts || message.ts, // eslint-disable-line @typescript-eslint/no-explicit-any
+                        channel_id: message.channel.id,
+                        similarity_score: similarity,
+                        relationship_type: 'keyword_overlap',
+                        brief_summary: this.generateBriefSummary(
+                          [this.convertMatchToSearchMatch(message as any)],
+                          'brief'
+                        ), // eslint-disable-line @typescript-eslint/no-explicit-any
+                      });
+                    }
+                  }
+                }
+              }
+            } catch (searchError) {
+              logger.warn(`Search failed for query "${query}":`, searchError);
+            }
+          }
+
+          // Remove duplicates and sort by similarity
+          const uniqueThreads = this.removeDuplicateThreads(relatedThreads);
+          uniqueThreads.sort((a, b) => b.similarity_score - a.similarity_score);
+          const topThreads = uniqueThreads.slice(0, input.max_results);
+
           return {
             content: [
               {
                 type: 'text',
-                text: error.message,
+                text: `Found ${topThreads.length} related threads:\n\n${topThreads
+                  .map(
+                    (thread, idx) =>
+                      `${idx + 1}. Thread ${thread.thread_ts} (Similarity: ${(thread.similarity_score * 100).toFixed(1)}%)\n` +
+                      `   └─ Channel: ${thread.channel_id}\n` +
+                      `   └─ Relationship: ${thread.relationship_type}\n` +
+                      `   └─ Summary: ${thread.brief_summary}`
+                  )
+                  .join('\n\n')}`,
               },
             ],
           };
-        }
-        throw error;
-      }
+        } catch (error) {
+          logger.error('Error finding related threads:', error);
 
-      // Search for related threads using various methods
-      const searchQueries = this.buildRelatedThreadSearchQueries(sourceKeywords);
-
-      for (const query of searchQueries) {
-        try {
-          const searchResult = await this.getClientForOperation('read').search.messages({
-            query: query,
-            count: 20,
-          });
-
-          if (searchResult.ok && searchResult.messages?.matches) {
-            for (const match of searchResult.messages.matches) {
-              const message = match;
-
-              if (message.channel?.id && message.ts && message.ts !== input.thread_ts) {
-                const similarity = this.calculateThreadSimilarity(
-                  sourceKeywords,
-                  message.text || ''
-                );
-
-                if (similarity >= (input.similarity_threshold || 0.3)) {
-                  relatedThreads.push({
-                    thread_ts: (message as any).thread_ts || message.ts, // eslint-disable-line @typescript-eslint/no-explicit-any
-                    channel_id: message.channel.id,
-                    similarity_score: similarity,
-                    relationship_type: 'keyword_overlap',
-                    brief_summary: this.generateBriefSummary(
-                      [this.convertMatchToSearchMatch(message as any)],
-                      'brief'
-                    ), // eslint-disable-line @typescript-eslint/no-explicit-any
-                  });
-                }
-              }
-            }
+          if (error instanceof SlackAPIError) {
+            throw error;
           }
-        } catch (searchError) {
-          logger.warn(`Search failed for query "${query}":`, searchError);
-        }
-      }
-
-      // Remove duplicates and sort by similarity
-      const uniqueThreads = this.removeDuplicateThreads(relatedThreads);
-      uniqueThreads.sort((a, b) => b.similarity_score - a.similarity_score);
-      const topThreads = uniqueThreads.slice(0, input.max_results);
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Found ${topThreads.length} related threads:\n\n${topThreads
-              .map(
-                (thread, idx) =>
-                  `${idx + 1}. Thread ${thread.thread_ts} (Similarity: ${(thread.similarity_score * 100).toFixed(1)}%)\n` +
-                  `   └─ Channel: ${thread.channel_id}\n` +
-                  `   └─ Relationship: ${thread.relationship_type}\n` +
-                  `   └─ Summary: ${thread.brief_summary}`
-              )
-              .join('\n\n')}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error finding related threads:', error);
-
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
 
           throw new SlackAPIError(`Failed to find related threads: ${error}`);
         }
@@ -1957,36 +1969,36 @@ export class SlackService {
         const input = validateInput(GetThreadMetricsSchema, args);
 
         try {
-      logger.info(`Getting thread metrics for ${input.channel || 'all channels'}`);
+          logger.info(`Getting thread metrics for ${input.channel || 'all channels'}`);
 
-      // Time range filtering infrastructure available but not integrated with thread metrics collection
-      const allThreads: SlackThread[] = [];
+          // Time range filtering infrastructure available but not integrated with thread metrics collection
+          const allThreads: SlackThread[] = [];
 
-      if (input.channel) {
-        // Get threads from specific channel
-        // This would need to be implemented to return actual thread objects instead of formatted text
-        // Thread metrics collection requires iterating through channel history to identify and analyze threads
-      } else {
-        // This would require iterating through all channels the bot has access to
-        logger.warn('Getting metrics for all channels not yet implemented');
-      }
+          if (input.channel) {
+            // Get threads from specific channel
+            // This would need to be implemented to return actual thread objects instead of formatted text
+            // Thread metrics collection requires iterating through channel history to identify and analyze threads
+          } else {
+            // This would require iterating through all channels the bot has access to
+            logger.warn('Getting metrics for all channels not yet implemented');
+          }
 
-      const metrics = this.calculateThreadMetrics(allThreads);
+          const metrics = this.calculateThreadMetrics(allThreads);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: this.formatThreadMetrics(metrics),
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error getting thread metrics:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: this.formatThreadMetrics(metrics),
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error getting thread metrics:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to get thread metrics: ${error}`);
         }
@@ -2007,77 +2019,77 @@ export class SlackService {
         const input = validateInput(GetThreadsByParticipantsSchema, args);
 
         try {
-      logger.info(`Finding threads with participants: ${input.participants.join(', ')}`);
+          logger.info(`Finding threads with participants: ${input.participants.join(', ')}`);
 
-      const searchQuery = input.require_all_participants
-        ? input.participants.map((p) => `from:${p}`).join(' ')
-        : input.participants.map((p) => `from:${p}`).join(' OR ');
+          const searchQuery = input.require_all_participants
+            ? input.participants.map((p) => `from:${p}`).join(' ')
+            : input.participants.map((p) => `from:${p}`).join(' OR ');
 
-      // Check if search API is available
-      this.checkSearchApiAvailability(
-        'Participant search',
-        'Use get_channel_history with manual filtering as an alternative'
-      );
+          // Check if search API is available
+          this.checkSearchApiAvailability(
+            'Participant search',
+            'Use get_channel_history with manual filtering as an alternative'
+          );
 
-      // Don't add has:thread - we'll filter for threads in the result processing
-      const fullQuery =
-        searchQuery +
-        (input.channel ? ` in:${input.channel}` : '') +
-        (input.after ? ` after:${input.after}` : '') +
-        (input.before ? ` before:${input.before}` : '');
+          // Don't add has:thread - we'll filter for threads in the result processing
+          const fullQuery =
+            searchQuery +
+            (input.channel ? ` in:${input.channel}` : '') +
+            (input.after ? ` after:${input.after}` : '') +
+            (input.before ? ` before:${input.before}` : '');
 
-      const result = await this.getClientForOperation('read').search.messages({
-        query: fullQuery,
-        ...(input.limit && { count: input.limit }),
-      });
-
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to search for participant threads: ${result.error}`);
-      }
-
-      const threads: Array<{
-        thread_ts: string;
-        channel_id: string;
-        preview: string;
-        timestamp: string;
-        participants: string[];
-      }> = [];
-      const messages = result.messages?.matches || [];
-
-      for (const match of messages) {
-        const message = match;
-        if (message.channel?.id && message.ts) {
-          threads.push({
-            thread_ts: (message as any).thread_ts || message.ts, // eslint-disable-line @typescript-eslint/no-explicit-any
-            channel_id: message.channel.id,
-            preview: (message.text || '').substring(0, 100) + '...',
-            timestamp: message.ts,
-            participants: input.participants,
+          const result = await this.getClientForOperation('read').search.messages({
+            query: fullQuery,
+            ...(input.limit && { count: input.limit }),
           });
-        }
-      }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Found ${threads.length} threads with specified participants:\n\n${threads
-              .map(
-                (thread, idx) =>
-                  `${idx + 1}. Thread ${thread.thread_ts}\n` +
-                  `   └─ Channel: ${thread.channel_id}\n` +
-                  `   └─ Preview: ${thread.preview}`
-              )
-              .join('\n\n')}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error getting threads by participants:', error);
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to search for participant threads: ${result.error}`);
+          }
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          const threads: Array<{
+            thread_ts: string;
+            channel_id: string;
+            preview: string;
+            timestamp: string;
+            participants: string[];
+          }> = [];
+          const messages = result.messages?.matches || [];
+
+          for (const match of messages) {
+            const message = match;
+            if (message.channel?.id && message.ts) {
+              threads.push({
+                thread_ts: (message as any).thread_ts || message.ts, // eslint-disable-line @typescript-eslint/no-explicit-any
+                channel_id: message.channel.id,
+                preview: (message.text || '').substring(0, 100) + '...',
+                timestamp: message.ts,
+                participants: input.participants,
+              });
+            }
+          }
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Found ${threads.length} threads with specified participants:\n\n${threads
+                  .map(
+                    (thread, idx) =>
+                      `${idx + 1}. Thread ${thread.thread_ts}\n` +
+                      `   └─ Channel: ${thread.channel_id}\n` +
+                      `   └─ Preview: ${thread.preview}`
+                  )
+                  .join('\n\n')}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error getting threads by participants:', error);
+
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to get threads by participants: ${error}`);
         }
@@ -2102,55 +2114,55 @@ export class SlackService {
         const input = validateInput(UploadFileSchema, args);
 
         try {
-      logger.info(`Uploading file: ${input.file_path}`);
+          logger.info(`Uploading file: ${input.file_path}`);
 
-      // Read file from filesystem
-      const fs = await import('fs/promises');
-      const path = await import('path');
+          // Read file from filesystem
+          const fs = await import('fs/promises');
+          const path = await import('path');
 
-      const fileBuffer = await fs.readFile(input.file_path);
-      const filename = input.filename || path.basename(input.file_path);
+          const fileBuffer = await fs.readFile(input.file_path);
+          const filename = input.filename || path.basename(input.file_path);
 
-      const uploadArgs: any = {
-        // eslint-disable-line @typescript-eslint/no-explicit-any
-        file: fileBuffer,
-        filename: filename,
-        ...(input.title && { title: input.title }),
-        ...(input.initial_comment && { initial_comment: input.initial_comment }),
-        ...(input.channels && { channels: input.channels.join(',') }),
-        ...(input.thread_ts &&
-          input.channels &&
-          input.channels.length > 0 && { thread_ts: input.thread_ts }),
-      };
+          const uploadArgs: any = {
+            // eslint-disable-line @typescript-eslint/no-explicit-any
+            file: fileBuffer,
+            filename: filename,
+            ...(input.title && { title: input.title }),
+            ...(input.initial_comment && { initial_comment: input.initial_comment }),
+            ...(input.channels && { channels: input.channels.join(',') }),
+            ...(input.thread_ts &&
+              input.channels &&
+              input.channels.length > 0 && { thread_ts: input.thread_ts }),
+          };
 
-      const result = await this.getClientForOperation('write').files.upload(uploadArgs);
+          const result = await this.getClientForOperation('write').files.upload(uploadArgs);
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to upload file: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to upload file: ${result.error}`);
+          }
 
-      const file = result.file as SlackFile;
+          const file = result.file as SlackFile;
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text:
-              `File uploaded successfully!\n` +
-              `• File ID: ${file.id}\n` +
-              `• Name: ${file.name}\n` +
-              `• Size: ${file.size} bytes\n` +
-              `• Type: ${file.filetype}\n` +
-              `• URL: ${file.permalink}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error uploading file:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  `File uploaded successfully!\n` +
+                  `• File ID: ${file.id}\n` +
+                  `• Name: ${file.name}\n` +
+                  `• Size: ${file.size} bytes\n` +
+                  `• Type: ${file.filetype}\n` +
+                  `• URL: ${file.permalink}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error uploading file:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to upload file: ${error}`);
         }
@@ -2171,49 +2183,49 @@ export class SlackService {
         const input = validateInput(ListFilesSchema, args);
 
         try {
-      logger.info('Listing workspace files');
+          logger.info('Listing workspace files');
 
-      const listArgs: FilesListArguments = {
-        ...(input.user && { user: input.user }),
-        ...(input.channel && { channel: input.channel }),
-        ...(input.types && { types: input.types }),
-        ...(input.ts_from && { ts_from: input.ts_from }),
-        ...(input.ts_to && { ts_to: input.ts_to }),
-        ...(input.count && { count: input.count }),
-        ...(input.page && { page: input.page }),
-      };
+          const listArgs: FilesListArguments = {
+            ...(input.user && { user: input.user }),
+            ...(input.channel && { channel: input.channel }),
+            ...(input.types && { types: input.types }),
+            ...(input.ts_from && { ts_from: input.ts_from }),
+            ...(input.ts_to && { ts_to: input.ts_to }),
+            ...(input.count && { count: input.count }),
+            ...(input.page && { page: input.page }),
+          };
 
-      const result = await this.getClientForOperation('read').files.list(listArgs);
+          const result = await this.getClientForOperation('read').files.list(listArgs);
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to list files: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to list files: ${result.error}`);
+          }
 
-      const files = (result.files as SlackFile[]) || [];
-      const paging = result.paging || { count: 0, total: 0, page: 1, pages: 1 };
+          const files = (result.files as SlackFile[]) || [];
+          const paging = result.paging || { count: 0, total: 0, page: 1, pages: 1 };
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Found ${files.length} files (Page ${paging.page} of ${paging.pages}):\n\n${files
-              .map(
-                (file, idx) =>
-                  `${idx + 1}. ${file.name} (${file.id})\n` +
-                  `   └─ Size: ${file.size} bytes | Type: ${file.filetype}\n` +
-                  `   └─ Created: ${new Date(file.created * 1000).toLocaleString()}\n` +
-                  `   └─ By: ${file.username || file.user}`
-              )
-              .join('\n\n')}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error listing files:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Found ${files.length} files (Page ${paging.page} of ${paging.pages}):\n\n${files
+                  .map(
+                    (file, idx) =>
+                      `${idx + 1}. ${file.name} (${file.id})\n` +
+                      `   └─ Size: ${file.size} bytes | Type: ${file.filetype}\n` +
+                      `   └─ Created: ${new Date(file.created * 1000).toLocaleString()}\n` +
+                      `   └─ By: ${file.username || file.user}`
+                  )
+                  .join('\n\n')}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error listing files:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to list files: ${error}`);
         }
@@ -2234,59 +2246,59 @@ export class SlackService {
         const input = validateInput(GetFileInfoSchema, args);
 
         try {
-      logger.info(`Getting file info: ${input.file_id}`);
+          logger.info(`Getting file info: ${input.file_id}`);
 
-      const result = await this.getClientForOperation('read').files.info({
-        file: input.file_id,
-        ...(input.include_comments && { count: 100 }),
-      });
+          const result = await this.getClientForOperation('read').files.info({
+            file: input.file_id,
+            ...(input.include_comments && { count: 100 }),
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to get file info: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to get file info: ${result.error}`);
+          }
 
-      const file = result.file as SlackFile;
-      const comments = result.comments || [];
+          const file = result.file as SlackFile;
+          const comments = result.comments || [];
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text:
-              `File Information: ${file.name}\n\n` +
-              `📁 Details:\n` +
-              `• ID: ${file.id}\n` +
-              `• Title: ${file.title || 'N/A'}\n` +
-              `• Type: ${file.filetype} (${file.pretty_type})\n` +
-              `• Size: ${file.size} bytes\n` +
-              `• Created: ${new Date(file.created * 1000).toLocaleString()}\n` +
-              `• By: ${file.username || file.user}\n` +
-              `• Public: ${file.is_public}\n` +
-              `• Channels: ${file.channels?.length || 0}\n` +
-              `• Comments: ${file.comments_count}\n` +
-              `• Stars: ${file.num_stars || 0}\n\n` +
-              `🔗 Links:\n` +
-              `• Permalink: ${file.permalink}\n` +
-              `• Download: ${file.url_private_download}` +
-              (input.include_comments && comments.length > 0
-                ? `\n\n💬 Recent Comments:\n${comments
-                    .slice(0, 5)
-                    .map(
-                      (
-                        comment: any // eslint-disable-line @typescript-eslint/no-explicit-any
-                      ) => `• ${comment.user}: ${comment.comment.substring(0, 100)}...`
-                    )
-                    .join('\n')}`
-                : ''),
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error getting file info:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  `File Information: ${file.name}\n\n` +
+                  `📁 Details:\n` +
+                  `• ID: ${file.id}\n` +
+                  `• Title: ${file.title || 'N/A'}\n` +
+                  `• Type: ${file.filetype} (${file.pretty_type})\n` +
+                  `• Size: ${file.size} bytes\n` +
+                  `• Created: ${new Date(file.created * 1000).toLocaleString()}\n` +
+                  `• By: ${file.username || file.user}\n` +
+                  `• Public: ${file.is_public}\n` +
+                  `• Channels: ${file.channels?.length || 0}\n` +
+                  `• Comments: ${file.comments_count}\n` +
+                  `• Stars: ${file.num_stars || 0}\n\n` +
+                  `🔗 Links:\n` +
+                  `• Permalink: ${file.permalink}\n` +
+                  `• Download: ${file.url_private_download}` +
+                  (input.include_comments && comments.length > 0
+                    ? `\n\n💬 Recent Comments:\n${comments
+                        .slice(0, 5)
+                        .map(
+                          (
+                            comment: any // eslint-disable-line @typescript-eslint/no-explicit-any
+                          ) => `• ${comment.user}: ${comment.comment.substring(0, 100)}...`
+                        )
+                        .join('\n')}`
+                    : ''),
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error getting file info:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to get file info: ${error}`);
         }
@@ -2307,30 +2319,30 @@ export class SlackService {
         const input = validateInput(DeleteFileSchema, args);
 
         try {
-      logger.info(`Deleting file: ${input.file_id}`);
+          logger.info(`Deleting file: ${input.file_id}`);
 
-      const result = await this.getClientForOperation('write').files.delete({
-        file: input.file_id,
-      });
+          const result = await this.getClientForOperation('write').files.delete({
+            file: input.file_id,
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to delete file: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to delete file: ${result.error}`);
+          }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `File ${input.file_id} deleted successfully.`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error deleting file:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `File ${input.file_id} deleted successfully.`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error deleting file:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to delete file: ${error}`);
         }
@@ -2351,41 +2363,41 @@ export class SlackService {
         const input = validateInput(ShareFileSchema, args);
 
         try {
-      logger.info(`Sharing file ${input.file_id} to channel ${input.channel}`);
+          logger.info(`Sharing file ${input.file_id} to channel ${input.channel}`);
 
-      const result = await this.getClientForOperation('write').files.sharedPublicURL({
-        file: input.file_id,
-      });
+          const result = await this.getClientForOperation('write').files.sharedPublicURL({
+            file: input.file_id,
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to share file: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to share file: ${result.error}`);
+          }
 
-      // Post the file link to the channel
-      const shareResult = await this.getClientForOperation('write').chat.postMessage({
-        channel: input.channel,
-        text: `Shared file: ${result.file?.permalink}`,
-        unfurl_links: true,
-      });
+          // Post the file link to the channel
+          const shareResult = await this.getClientForOperation('write').chat.postMessage({
+            channel: input.channel,
+            text: `Shared file: ${result.file?.permalink}`,
+            unfurl_links: true,
+          });
 
-      if (!shareResult.ok) {
-        throw new SlackAPIError(`Failed to post file to channel: ${shareResult.error}`);
-      }
+          if (!shareResult.ok) {
+            throw new SlackAPIError(`Failed to post file to channel: ${shareResult.error}`);
+          }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `File ${input.file_id} shared successfully to channel ${input.channel}.`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error sharing file:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `File ${input.file_id} shared successfully to channel ${input.channel}.`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error sharing file:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to share file: ${error}`);
         }
@@ -2406,39 +2418,39 @@ export class SlackService {
         const input = validateInput(AnalyzeFilesSchema, args);
 
         try {
-      logger.info('Analyzing workspace files');
+          logger.info('Analyzing workspace files');
 
-      const daysAgo = input.days_back || 30;
-      const tsFrom = (Date.now() / 1000 - daysAgo * 24 * 3600).toString();
+          const daysAgo = input.days_back || 30;
+          const tsFrom = (Date.now() / 1000 - daysAgo * 24 * 3600).toString();
 
-      const result = await this.getClientForOperation('read').files.list({
-        ...(input.channel && { channel: input.channel }),
-        ...(input.user && { user: input.user }),
-        ts_from: tsFrom,
-        count: 1000,
-      });
+          const result = await this.getClientForOperation('read').files.list({
+            ...(input.channel && { channel: input.channel }),
+            ...(input.user && { user: input.user }),
+            ts_from: tsFrom,
+            count: 1000,
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to list files for analysis: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to list files for analysis: ${result.error}`);
+          }
 
-      const files = (result.files as SlackFile[]) || [];
-      const analysis = this.performFileAnalysis(files, input);
+          const files = (result.files as SlackFile[]) || [];
+          const analysis = this.performFileAnalysis(files, input);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: this.formatFileAnalysis(analysis),
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error analyzing files:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: this.formatFileAnalysis(analysis),
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error analyzing files:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to analyze files: ${error}`);
         }
@@ -2459,57 +2471,57 @@ export class SlackService {
         const input = validateInput(SearchFilesSchema, args);
 
         try {
-      logger.info(`Searching files with query: "${input.query}"`);
+          logger.info(`Searching files with query: "${input.query}"`);
 
-      // Check if search API is available
-      this.checkSearchApiAvailability(
-        'File search',
-        'Use list_files with filtering as an alternative'
-      );
+          // Check if search API is available
+          this.checkSearchApiAvailability(
+            'File search',
+            'Use list_files with filtering as an alternative'
+          );
 
-      // Build search query
-      let searchQuery = input.query;
-      if (input.types) searchQuery += ` filetype:${input.types}`;
-      if (input.user) searchQuery += ` from:${input.user}`;
-      if (input.channel) searchQuery += ` in:${input.channel}`;
-      if (input.after) searchQuery += ` after:${input.after}`;
-      if (input.before) searchQuery += ` before:${input.before}`;
+          // Build search query
+          let searchQuery = input.query;
+          if (input.types) searchQuery += ` filetype:${input.types}`;
+          if (input.user) searchQuery += ` from:${input.user}`;
+          if (input.channel) searchQuery += ` in:${input.channel}`;
+          if (input.after) searchQuery += ` after:${input.after}`;
+          if (input.before) searchQuery += ` before:${input.before}`;
 
-      const searchArgs: SearchAllArguments = {
-        query: searchQuery,
-        ...(input.count && { count: input.count }),
-      };
+          const searchArgs: SearchAllArguments = {
+            query: searchQuery,
+            ...(input.count && { count: input.count }),
+          };
 
-      const result = await this.getClientForOperation('read').search.files(searchArgs);
+          const result = await this.getClientForOperation('read').search.files(searchArgs);
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to search files: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to search files: ${result.error}`);
+          }
 
-      const files = (result.files?.matches as SlackFile[]) || [];
+          const files = (result.files?.matches as SlackFile[]) || [];
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Found ${files.length} files matching "${input.query}":\n\n${files
-              .map(
-                (file, idx) =>
-                  `${idx + 1}. ${file.name} (${file.id})\n` +
-                  `   └─ Type: ${file.filetype} | Size: ${file.size} bytes\n` +
-                  `   └─ Created: ${new Date(file.created * 1000).toLocaleDateString()}\n` +
-                  `   └─ By: ${file.username || file.user}`
-              )
-              .join('\n\n')}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error searching files:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Found ${files.length} files matching "${input.query}":\n\n${files
+                  .map(
+                    (file, idx) =>
+                      `${idx + 1}. ${file.name} (${file.id})\n` +
+                      `   └─ Type: ${file.filetype} | Size: ${file.size} bytes\n` +
+                      `   └─ Created: ${new Date(file.created * 1000).toLocaleDateString()}\n` +
+                      `   └─ By: ${file.username || file.user}`
+                  )
+                  .join('\n\n')}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error searching files:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to search files: ${error}`);
         }
@@ -2534,32 +2546,32 @@ export class SlackService {
         const input = validateInput(AddReactionSchema, args);
 
         try {
-      logger.info(`Adding reaction ${input.reaction_name} to message ${input.message_ts}`);
+          logger.info(`Adding reaction ${input.reaction_name} to message ${input.message_ts}`);
 
-      const result = await this.getClientForOperation('write').reactions.add({
-        channel: input.channel,
-        timestamp: input.message_ts,
-        name: input.reaction_name,
-      });
+          const result = await this.getClientForOperation('write').reactions.add({
+            channel: input.channel,
+            timestamp: input.message_ts,
+            name: input.reaction_name,
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to add reaction: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to add reaction: ${result.error}`);
+          }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Reaction :${input.reaction_name}: added successfully to message ${input.message_ts}.`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error adding reaction:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Reaction :${input.reaction_name}: added successfully to message ${input.message_ts}.`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error adding reaction:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to add reaction: ${error}`);
         }
@@ -2580,32 +2592,32 @@ export class SlackService {
         const input = validateInput(RemoveReactionSchema, args);
 
         try {
-      logger.info(`Removing reaction ${input.reaction_name} from message ${input.message_ts}`);
+          logger.info(`Removing reaction ${input.reaction_name} from message ${input.message_ts}`);
 
-      const result = await this.getClientForOperation('write').reactions.remove({
-        channel: input.channel,
-        timestamp: input.message_ts,
-        name: input.reaction_name,
-      });
+          const result = await this.getClientForOperation('write').reactions.remove({
+            channel: input.channel,
+            timestamp: input.message_ts,
+            name: input.reaction_name,
+          });
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to remove reaction: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to remove reaction: ${result.error}`);
+          }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Reaction :${input.reaction_name}: removed successfully from message ${input.message_ts}.`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error removing reaction:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Reaction :${input.reaction_name}: removed successfully from message ${input.message_ts}.`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error removing reaction:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to remove reaction: ${error}`);
         }
@@ -2626,50 +2638,50 @@ export class SlackService {
         const input = validateInput(GetReactionsSchema, args);
 
         try {
-      logger.info(`Getting reactions for message ${input.message_ts}`);
+          logger.info(`Getting reactions for message ${input.message_ts}`);
 
-      const getArgs: ReactionsGetArguments = {
-        channel: input.channel,
-        timestamp: input.message_ts,
-        ...(input.full !== undefined && { full: input.full }),
-      };
+          const getArgs: ReactionsGetArguments = {
+            channel: input.channel,
+            timestamp: input.message_ts,
+            ...(input.full !== undefined && { full: input.full }),
+          };
 
-      const result = await this.getClientForOperation('read').reactions.get(getArgs);
+          const result = await this.getClientForOperation('read').reactions.get(getArgs);
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to get reactions: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to get reactions: ${result.error}`);
+          }
 
-      const message = result.message as SlackMessage;
-      const reactions = message.reactions || [];
+          const message = result.message as SlackMessage;
+          const reactions = message.reactions || [];
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Reactions on message ${input.message_ts}:\n\n${
-              reactions.length === 0
-                ? 'No reactions found.'
-                : reactions
-                    .map(
-                      (reaction) =>
-                        `:${reaction.name}: ${reaction.count} ${
-                          input.full
-                            ? `(${reaction.users.join(', ')})`
-                            : `user${reaction.count === 1 ? '' : 's'}`
-                        }`
-                    )
-                    .join('\n')
-            }\n\n📝 Message: ${message.text?.substring(0, 100)}${message.text && message.text.length > 100 ? '...' : ''}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error getting reactions:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Reactions on message ${input.message_ts}:\n\n${
+                  reactions.length === 0
+                    ? 'No reactions found.'
+                    : reactions
+                        .map(
+                          (reaction) =>
+                            `:${reaction.name}: ${reaction.count} ${
+                              input.full
+                                ? `(${reaction.users.join(', ')})`
+                                : `user${reaction.count === 1 ? '' : 's'}`
+                            }`
+                        )
+                        .join('\n')
+                }\n\n📝 Message: ${message.text?.substring(0, 100)}${message.text && message.text.length > 100 ? '...' : ''}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error getting reactions:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to get reactions: ${error}`);
         }
@@ -2690,42 +2702,42 @@ export class SlackService {
         const input = validateInput(GetReactionStatisticsSchema, args);
 
         try {
-      logger.info('Getting reaction statistics');
+          logger.info('Getting reaction statistics');
 
-      const daysAgo = input.days_back || 30;
-      const oldest = (Date.now() / 1000 - daysAgo * 24 * 3600).toString();
+          const daysAgo = input.days_back || 30;
+          const oldest = (Date.now() / 1000 - daysAgo * 24 * 3600).toString();
 
-      // Get messages from channel(s) and analyze reactions
-      const messages: SlackMessage[] = [];
+          // Get messages from channel(s) and analyze reactions
+          const messages: SlackMessage[] = [];
 
-      if (input.channel) {
-        const result = await this.getClientForOperation('read').conversations.history({
-          channel: input.channel,
-          oldest: oldest,
-          limit: 1000,
-        });
+          if (input.channel) {
+            const result = await this.getClientForOperation('read').conversations.history({
+              channel: input.channel,
+              oldest: oldest,
+              limit: 1000,
+            });
 
-        if (result.ok && result.messages) {
-          messages.push(...(result.messages as unknown as SlackMessage[]));
-        }
-      }
+            if (result.ok && result.messages) {
+              messages.push(...(result.messages as unknown as SlackMessage[]));
+            }
+          }
 
-      const statistics = this.analyzeReactionStatistics(messages, input);
+          const statistics = this.analyzeReactionStatistics(messages, input);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: this.formatReactionStatistics(statistics),
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error getting reaction statistics:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: this.formatReactionStatistics(statistics),
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error getting reaction statistics:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to get reaction statistics: ${error}`);
         }
@@ -2746,70 +2758,72 @@ export class SlackService {
         const input = validateInput(FindMessagesByReactionsSchema, args);
 
         try {
-      logger.info(`Finding messages with reactions: ${input.reactions.join(', ')}`);
+          logger.info(`Finding messages with reactions: ${input.reactions.join(', ')}`);
 
-      // Check if search API is available
-      this.checkSearchApiAvailability(
-        'Reaction search',
-        'Use get_reactions on specific messages as an alternative'
-      );
+          // Check if search API is available
+          this.checkSearchApiAvailability(
+            'Reaction search',
+            'Use get_reactions on specific messages as an alternative'
+          );
 
-      // Build search query based on reactions
-      const searchQuery =
-        input.reactions.map((r) => `has::${r}:`).join(input.match_type === 'all' ? ' ' : ' OR ') +
-        (input.channel ? ` in:${input.channel}` : '') +
-        (input.after ? ` after:${input.after}` : '') +
-        (input.before ? ` before:${input.before}` : '');
+          // Build search query based on reactions
+          const searchQuery =
+            input.reactions
+              .map((r) => `has::${r}:`)
+              .join(input.match_type === 'all' ? ' ' : ' OR ') +
+            (input.channel ? ` in:${input.channel}` : '') +
+            (input.after ? ` after:${input.after}` : '') +
+            (input.before ? ` before:${input.before}` : '');
 
-      const searchArgs: SearchAllArguments = {
-        query: searchQuery,
-        ...(input.limit && { count: input.limit }),
-      };
+          const searchArgs: SearchAllArguments = {
+            query: searchQuery,
+            ...(input.limit && { count: input.limit }),
+          };
 
-      const result = await this.getClientForOperation('read').search.messages(searchArgs);
+          const result = await this.getClientForOperation('read').search.messages(searchArgs);
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to search messages by reactions: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to search messages by reactions: ${result.error}`);
+          }
 
-      const messages = result.messages?.matches || [];
-      const filteredMessages = messages.filter((match: any) => {
-        // eslint-disable-line @typescript-eslint/no-explicit-any
-        const message = match;
-        const reactions = (message as any).reactions || []; // eslint-disable-line @typescript-eslint/no-explicit-any
-        const totalReactions = reactions.reduce((sum: number, r: any) => sum + r.count, 0); // eslint-disable-line @typescript-eslint/no-explicit-any
+          const messages = result.messages?.matches || [];
+          const filteredMessages = messages.filter((match: any) => {
+            // eslint-disable-line @typescript-eslint/no-explicit-any
+            const message = match;
+            const reactions = (message as any).reactions || []; // eslint-disable-line @typescript-eslint/no-explicit-any
+            const totalReactions = reactions.reduce((sum: number, r: any) => sum + r.count, 0); // eslint-disable-line @typescript-eslint/no-explicit-any
 
-        return totalReactions >= (input.min_reaction_count || 1);
-      });
+            return totalReactions >= (input.min_reaction_count || 1);
+          });
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Found ${filteredMessages.length} messages with specified reaction patterns:\n\n${(
-              await Promise.all(
-                filteredMessages.map(async (match: any, idx: number) => {
-                  // eslint-disable-line @typescript-eslint/no-explicit-any
-                  const message = match;
-                  const reactions = (message as any).reactions || []; // eslint-disable-line @typescript-eslint/no-explicit-any
-                  const displayName = await this.getUserDisplayName(message.user || 'unknown');
-                  return (
-                    `${idx + 1}. Message from ${displayName}\n` +
-                    `   └─ Reactions: ${reactions.map((r: any) => `:${r.name}: ${r.count}`).join(' ')}\n` + // eslint-disable-line @typescript-eslint/no-explicit-any
-                    `   └─ Text: ${message.text?.substring(0, 100)}...`
-                  );
-                })
-              )
-            ).join('\n\n')}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error finding messages by reactions:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Found ${filteredMessages.length} messages with specified reaction patterns:\n\n${(
+                  await Promise.all(
+                    filteredMessages.map(async (match: any, idx: number) => {
+                      // eslint-disable-line @typescript-eslint/no-explicit-any
+                      const message = match;
+                      const reactions = (message as any).reactions || []; // eslint-disable-line @typescript-eslint/no-explicit-any
+                      const displayName = await this.getUserDisplayName(message.user || 'unknown');
+                      return (
+                        `${idx + 1}. Message from ${displayName}\n` +
+                        `   └─ Reactions: ${reactions.map((r: any) => `:${r.name}: ${r.count}`).join(' ')}\n` + // eslint-disable-line @typescript-eslint/no-explicit-any
+                        `   └─ Text: ${message.text?.substring(0, 100)}...`
+                      );
+                    })
+                  )
+                ).join('\n\n')}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error finding messages by reactions:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to find messages by reactions: ${error}`);
         }
@@ -2834,35 +2848,35 @@ export class SlackService {
         validateInput(GetWorkspaceInfoSchema, args);
 
         try {
-      logger.info('Getting workspace information');
+          logger.info('Getting workspace information');
 
-      const result = await this.getClientForOperation('read').team.info();
+          const result = await this.getClientForOperation('read').team.info();
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to get workspace info: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to get workspace info: ${result.error}`);
+          }
 
-      const team = result.team as WorkspaceInfo;
+          const team = result.team as WorkspaceInfo;
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text:
-              `Workspace Information:\n\n` +
-              `🏢 ${team.name} (${team.domain})\n` +
-              `• ID: ${team.id}\n` +
-              `• Email Domain: ${team.email_domain}\n` +
-              `• Enterprise: ${team.enterprise_name || 'N/A'} (${team.enterprise_id || 'N/A'})`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error getting workspace info:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  `Workspace Information:\n\n` +
+                  `🏢 ${team.name} (${team.domain})\n` +
+                  `• ID: ${team.id}\n` +
+                  `• Email Domain: ${team.email_domain}\n` +
+                  `• Enterprise: ${team.enterprise_name || 'N/A'} (${team.enterprise_id || 'N/A'})`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error getting workspace info:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to get workspace info: ${error}`);
         }
@@ -2883,55 +2897,55 @@ export class SlackService {
         const input = validateInput(ListTeamMembersSchema, args);
 
         try {
-      logger.info('Listing team members');
+          logger.info('Listing team members');
 
-      const listArgs: UsersListArguments = {
-        include_locale: false,
-        ...(input.limit && { limit: input.limit }),
-        ...(input.cursor && { cursor: input.cursor }),
-      };
+          const listArgs: UsersListArguments = {
+            include_locale: false,
+            ...(input.limit && { limit: input.limit }),
+            ...(input.cursor && { cursor: input.cursor }),
+          };
 
-      const result = await this.getClientForOperation('read').users.list(listArgs);
+          const result = await this.getClientForOperation('read').users.list(listArgs);
 
-      if (!result.ok) {
-        throw new SlackAPIError(`Failed to list team members: ${result.error}`);
-      }
+          if (!result.ok) {
+            throw new SlackAPIError(`Failed to list team members: ${result.error}`);
+          }
 
-      let members = (result.members as TeamMember[]) || [];
+          let members = (result.members as TeamMember[]) || [];
 
-      // Filter based on preferences
-      if (!input.include_deleted) {
-        members = members.filter((member) => !member.deleted);
-      }
-      if (!input.include_bots) {
-        members = members.filter((member) => !member.is_bot);
-      }
+          // Filter based on preferences
+          if (!input.include_deleted) {
+            members = members.filter((member) => !member.deleted);
+          }
+          if (!input.include_bots) {
+            members = members.filter((member) => !member.is_bot);
+          }
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Team Members (${members.length} found):\n\n${members
-              .map(
-                (member, idx) =>
-                  `${idx + 1}. ${member.real_name || member.name} (@${member.name})\n` +
-                  `   └─ ID: ${member.id}\n` +
-                  `   └─ Role: ${member.is_owner ? 'Owner' : member.is_admin ? 'Admin' : member.is_restricted ? 'Restricted' : 'Member'}\n` +
-                  `   └─ Status: ${member.deleted ? 'Deleted' : member.is_bot ? 'Bot' : 'Active'}`
-              )
-              .slice(0, 20) // Limit display to first 20
-              .join(
-                '\n\n'
-              )}${members.length > 20 ? `\n\n... and ${members.length - 20} more` : ''}`,
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error listing team members:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Team Members (${members.length} found):\n\n${members
+                  .map(
+                    (member, idx) =>
+                      `${idx + 1}. ${member.real_name || member.name} (@${member.name})\n` +
+                      `   └─ ID: ${member.id}\n` +
+                      `   └─ Role: ${member.is_owner ? 'Owner' : member.is_admin ? 'Admin' : member.is_restricted ? 'Restricted' : 'Member'}\n` +
+                      `   └─ Status: ${member.deleted ? 'Deleted' : member.is_bot ? 'Bot' : 'Active'}`
+                  )
+                  .slice(0, 20) // Limit display to first 20
+                  .join(
+                    '\n\n'
+                  )}${members.length > 20 ? `\n\n... and ${members.length - 20} more` : ''}`,
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error listing team members:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to list team members: ${error}`);
         }
@@ -2956,62 +2970,62 @@ export class SlackService {
         const input = validateInput(GetWorkspaceActivitySchema, args);
 
         try {
-      logger.info('Generating workspace activity report');
+          logger.info('Generating workspace activity report');
 
-      const startDate =
-        input.start_date ||
-        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = input.end_date || new Date().toISOString().split('T')[0];
+          const startDate =
+            input.start_date ||
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          const endDate = input.end_date || new Date().toISOString().split('T')[0];
 
-      // This would typically involve multiple API calls to gather comprehensive data
-      // For this implementation, we'll provide a basic structure
-      const activity: WorkspaceActivity = {
-        date_range: { start: startDate || '', end: endDate || '' },
-        message_stats: {
-          total_messages: 0,
-          public_messages: 0,
-          private_messages: 0,
-          dm_messages: 0,
-          bot_messages: 0,
-        },
-        user_stats: {
-          active_users: 0,
-          total_users: 0,
-          new_users: 0,
-          user_activity: [],
-        },
-        channel_stats: {
-          active_channels: 0,
-          total_channels: 0,
-          new_channels: 0,
-          channel_activity: [],
-        },
-        file_stats: {
-          files_uploaded: 0,
-          total_storage_bytes: 0,
-          storage_by_type: {},
-        },
-        integration_stats: {
-          api_calls: 0,
-          rate_limit_hits: 0,
-          error_rate: 0,
-        },
-      };
+          // This would typically involve multiple API calls to gather comprehensive data
+          // For this implementation, we'll provide a basic structure
+          const activity: WorkspaceActivity = {
+            date_range: { start: startDate || '', end: endDate || '' },
+            message_stats: {
+              total_messages: 0,
+              public_messages: 0,
+              private_messages: 0,
+              dm_messages: 0,
+              bot_messages: 0,
+            },
+            user_stats: {
+              active_users: 0,
+              total_users: 0,
+              new_users: 0,
+              user_activity: [],
+            },
+            channel_stats: {
+              active_channels: 0,
+              total_channels: 0,
+              new_channels: 0,
+              channel_activity: [],
+            },
+            file_stats: {
+              files_uploaded: 0,
+              total_storage_bytes: 0,
+              storage_by_type: {},
+            },
+            integration_stats: {
+              api_calls: 0,
+              rate_limit_hits: 0,
+              error_rate: 0,
+            },
+          };
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: this.formatWorkspaceActivity(activity),
-          },
-        ],
-      };
-    } catch (error) {
-      logger.error('Error generating workspace activity report:', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: this.formatWorkspaceActivity(activity),
+              },
+            ],
+          };
+        } catch (error) {
+          logger.error('Error generating workspace activity report:', error);
 
-      if (error instanceof SlackAPIError) {
-        throw error;
-      }
+          if (error instanceof SlackAPIError) {
+            throw error;
+          }
 
           throw new SlackAPIError(`Failed to generate workspace activity report: ${error}`);
         }
@@ -3047,7 +3061,8 @@ export class SlackService {
 
           const rateLimitPercentage =
             this.rateLimitMetrics.totalRequests > 0
-              ? (this.rateLimitMetrics.rateLimitedRequests / this.rateLimitMetrics.totalRequests) * 100
+              ? (this.rateLimitMetrics.rateLimitedRequests / this.rateLimitMetrics.totalRequests) *
+                100
               : 0;
 
           // Include modular architecture status in health report
@@ -3066,8 +3081,8 @@ export class SlackService {
               totalMetrics: this.performanceMonitor.export().length,
               ...(this.modularConfig.enablePerformanceMetrics && {
                 stats: this.performanceMonitor.getStats(),
-              })
-            }
+              }),
+            },
           };
 
           const health: ServerHealth = {
@@ -3115,7 +3130,8 @@ export class SlackService {
 
           const rateLimitPercentage =
             this.rateLimitMetrics.totalRequests > 0
-              ? (this.rateLimitMetrics.rateLimitedRequests / this.rateLimitMetrics.totalRequests) * 100
+              ? (this.rateLimitMetrics.rateLimitedRequests / this.rateLimitMetrics.totalRequests) *
+                100
               : 0;
 
           const degradedHealth: ServerHealth = {
