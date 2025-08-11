@@ -59,26 +59,58 @@ export const formatChannelHistoryResponse = async (
 /**
  * Format findThreadsInChannel response for consistent text output
  */
-export const formatFindThreadsResponse = (result: {
-  threads: any[];
-  total: number;
-  hasMore?: boolean;
-}): MCPToolResult => ({
-  content: [
-    {
-      type: 'text',
-      text: `Found ${result.threads.length} threads in channel:\n\n${result.threads
-        .map(
-          (thread, idx) =>
-            `${idx + 1}. Thread ${thread.threadTs}\n` +
-            `   └─ ${thread.replyCount} replies from ${thread.participants?.length || 0} users\n` +
-            `   └─ Last reply: ${thread.lastReply}\n` +
-            `   └─ Parent: ${thread.parentMessage?.text?.substring(0, 100) || ''}...`
-        )
-        .join('\n\n')}`,
-    },
-  ],
-});
+export const formatFindThreadsResponse = async (
+  result: {
+    threads: any[];
+    total: number;
+    hasMore?: boolean;
+  },
+  getUserDisplayName?: (userId: string) => Promise<string>
+): Promise<MCPToolResult> => {
+  let threadsText = '';
+  
+  if (getUserDisplayName) {
+    // Format with user display names
+    const formattedThreads = await Promise.all(
+      result.threads.map(async (thread, idx) => {
+        const parentUserName = thread.parentMessage?.user 
+          ? await getUserDisplayName(thread.parentMessage.user)
+          : 'unknown';
+          
+        return `${idx + 1}. Thread ${thread.threadTs}
+   └─ ${thread.replyCount} replies from ${thread.participants?.length || 0} users
+   └─ Last reply: ${thread.lastReply}
+   └─ Parent by ${parentUserName}: ${thread.parentMessage?.text?.substring(0, 100) || ''}...`;
+      })
+    );
+    threadsText = formattedThreads.join('\n\n');
+  } else {
+    // Fallback to original format
+    threadsText = result.threads
+      .map(
+        (thread, idx) =>
+          `${idx + 1}. Thread ${thread.threadTs}
+` +
+          `   └─ ${thread.replyCount} replies from ${thread.participants?.length || 0} users
+` +
+          `   └─ Last reply: ${thread.lastReply}
+` +
+          `   └─ Parent: ${thread.parentMessage?.text?.substring(0, 100) || ''}...`
+      )
+      .join('\n\n');
+  }
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `Found ${result.threads.length} threads in channel:
+
+${threadsText}`,
+      },
+    ],
+  };
+};
 
 /**
  * Format createThread response for consistent text output
@@ -157,6 +189,43 @@ export const formatSearchMessagesResponse = async (
           null,
           2
         ),
+      },
+    ],
+  };
+};
+/**
+ * Format thread replies response with display names
+ */
+export const formatThreadRepliesResponse = async (
+  result: {
+    messages: any[];
+    hasMore?: boolean;
+    cursor?: string;
+  },
+  getUserDisplayName: (userId: string) => Promise<string>
+): Promise<MCPToolResult> => {
+  const formattedMessages = await Promise.all(
+    result.messages.map(async (msg: any) => {
+      const displayName = await getUserDisplayName(msg.user || 'unknown');
+      return {
+        user: displayName,
+        text: msg.text || '',
+        timestamp: msg.ts,
+        threadTs: msg.thread_ts,
+        replyCount: msg.reply_count,
+        reactions: msg.reactions,
+        edited: msg.edited,
+      };
+    })
+  );
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `Thread replies (${result.messages.length} messages):\n\n${formattedMessages
+          .map((msg) => `[${msg.timestamp}] ${msg.user}: ${msg.text}`)
+          .join('\n')}`,
       },
     ],
   };

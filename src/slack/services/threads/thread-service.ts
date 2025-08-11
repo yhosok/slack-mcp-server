@@ -19,6 +19,7 @@ import type { ThreadService, ThreadServiceDependencies } from './types.js';
 import {
   formatFindThreadsResponse,
   formatCreateThreadResponse,
+  formatThreadRepliesResponse,
 } from '../formatters/text-formatters.js';
 
 // Export types for external use
@@ -100,18 +101,21 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         }
       }
 
-      return formatFindThreadsResponse({
-        threads,
-        total: threads.length,
-        hasMore: result.has_more,
-      });
+      return await formatFindThreadsResponse(
+        {
+          threads,
+          total: threads.length,
+          hasMore: result.has_more,
+        },
+        deps.userService.getDisplayName
+      );
     });
 
   /**
    * Get all replies in a thread
    */
   const getThreadReplies = (args: unknown) =>
-    deps.requestHandler.handle(GetThreadRepliesSchema, args, async (input) => {
+    deps.requestHandler.handleWithCustomFormat(GetThreadRepliesSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
       const result = await client.conversations.replies({
@@ -124,15 +128,18 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         inclusive: input.inclusive !== false,
       });
 
-      if (!result.messages) {
-        throw new SlackAPIError('Thread not found');
+      if (!result.ok || !result.messages) {
+        throw new SlackAPIError(`Thread not found: ${result.error || 'No messages returned'}`);
       }
 
-      return {
-        messages: result.messages,
-        hasMore: result.has_more,
-        cursor: result.response_metadata?.next_cursor,
-      };
+      return formatThreadRepliesResponse(
+        {
+          messages: result.messages,
+          hasMore: result.has_more,
+          cursor: result.response_metadata?.next_cursor,
+        },
+        deps.userService.getDisplayName
+      );
     });
 
   /**
