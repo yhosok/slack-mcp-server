@@ -290,7 +290,7 @@ npm run format
 ### プロジェクト構造
 ```
 src/
-├── __tests__/          # Jestテストファイル（4つのテストスイート）
+├── __tests__/          # Jestテストファイル（13個のテストスイート）
 ├── config/             # 設定管理（Zodベースの環境変数検証）
 ├── index.ts            # MCPサーバーエントリポイント
 ├── mcp/                # MCPプロトコル定義
@@ -298,7 +298,11 @@ src/
 │   ├── tools.ts        # ツール定義（36ツール）
 │   └── types.ts        # MCP TypeScript型
 ├── slack/              # Slack統合
-│   ├── slack-service.ts # コアサービス実装（3000行以上）
+│   ├── analysis/       # 分析関数（スレッド分析、トピック抽出等）
+│   ├── infrastructure/ # インフラストラクチャ層（クライアント管理、レート制限等）
+│   ├── services/       # ドメインサービス（messages、threads、files、reactions、workspace）
+│   ├── service-factory.ts # サービスファクトリー（モジュラーアーキテクチャの構成）
+│   ├── slack-service.ts # 薄いファサード（296行、36メソッドのデリゲーション）
 │   └── types.ts        # Slack固有の型定義
 └── utils/              # ユーティリティ
     ├── errors.ts       # カスタムエラークラス
@@ -329,21 +333,46 @@ src/
    ```
    `ALL_TOOLS`配列に追加
 
-3. **サービスメソッドの実装** (`src/slack/slack-service.ts`)
+3. **ドメインサービスへの実装** (適切なドメインサービスファイルに追加)
+   
+   ドメインサービスの選択基準：
+   - **messages**: チャンネル、DM、一般メッセージ関連
+   - **threads**: スレッドの操作や分析
+   - **files**: ファイルのアップロード、管理、検索
+   - **reactions**: リアクション（絵文字）の管理
+   - **workspace**: ワークスペース全体の情報や統計
+   
+   例：メッセージ関連なら `src/slack/services/messages/message-service.ts`
    ```typescript
-   async myNewTool(args: unknown): Promise<MCPToolResponse> {
-     const input = validateInput(MyNewToolSchema, args);
-     // Slack API呼び出しとレスポンス処理
+   const myNewTool = (args: unknown) =>
+     deps.requestHandler.handleWithCustomFormat(MyNewToolSchema, args, async (input) => {
+       const client = deps.clientManager.getClientForOperation('write');
+       // Slack API呼び出しとレスポンス処理
+     });
+   ```
+
+4. **Service Factoryへのマッピング** (`src/slack/service-factory.ts`)
+   ```typescript
+   const methods: ServiceMethodRegistry = {
+     // 既存のメソッド...
+     myNewTool: messageService.myNewTool,  // 適切なサービスから追加
+   };
+   ```
+
+5. **SlackServiceへのデリゲーションメソッド追加** (`src/slack/slack-service.ts`)
+   ```typescript
+   async myNewTool(args: unknown): Promise<MCPToolResult> {
+     return this.getServiceRegistry().methods.myNewTool(args);
    }
    ```
 
-4. **ルーティングの追加** (`src/index.ts`)
+6. **ルーティングの追加** (`src/index.ts`)
    switchステートメントに新しいケースを追加
 
-5. **型定義の追加** (`src/slack/types.ts`)
+7. **型定義の追加** (`src/slack/types.ts`)
    必要に応じて新しい型を定義
 
-6. **テストの作成** (`src/__tests__/`)
+8. **テストの作成** (`src/__tests__/`)
    ユニットテストとスキーマ変換テストを追加
 
 ## 📝 ライセンスと貢献

@@ -2,6 +2,8 @@
  * Helper utility functions for Slack operations
  */
 
+import type { MCPContent } from '../mcp/types.js';
+
 /**
  * Format a Slack timestamp to a human-readable date string
  */
@@ -97,10 +99,7 @@ export function truncateText(text: string, maxLength: number): string {
  * Escape special characters for Slack message formatting
  */
 export function escapeSlackText(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /**
@@ -117,7 +116,7 @@ export function createSlackLink(url: string, text?: string): string {
  * Format a list of items for display in Slack
  */
 export function formatSlackList(items: string[], bullet: string = '•'): string {
-  return items.map(item => `${bullet} ${item}`).join('\n');
+  return items.map((item) => `${bullet} ${item}`).join('\n');
 }
 
 /**
@@ -135,4 +134,14 @@ export function formatDuration(seconds: number): string {
   } else {
     return `${secs}s`;
   }
+}
+
+/**
+ * Safely extract text content from MCPContent union type
+ */
+export function extractTextContent(content: MCPContent | undefined): string {
+  if (content?.type === 'text') {
+    return content.text;
+  }
+  return '';
 }

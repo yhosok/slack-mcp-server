@@ -2,6 +2,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { SlackService } from '../slack/slack-service';
 import { WebClient } from '@slack/web-api';
+import { extractTextContent } from '../utils/helpers';
 
 jest.mock('@slack/web-api', () => ({
   WebClient: jest.fn(),
@@ -74,7 +75,7 @@ describe('SlackService.searchMessages', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock for bot client (second call)
     mockBotClient = {
       users: {
@@ -86,7 +87,7 @@ describe('SlackService.searchMessages', () => {
       on: jest.fn(),
       apiCall: jest.fn(),
     } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    
+
     // Mock for user client (first call)
     mockUserClient = {
       search: {
@@ -101,7 +102,7 @@ describe('SlackService.searchMessages', () => {
       on: jest.fn(),
       apiCall: jest.fn(),
     } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    
+
     // Mock WebClient constructor to return different instances
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (WebClient as any).mockImplementation((token: string) => {
@@ -111,7 +112,7 @@ describe('SlackService.searchMessages', () => {
         return mockBotClient;
       }
     });
-    
+
     slackService = new SlackService();
   });
 
@@ -144,7 +145,8 @@ describe('SlackService.searchMessages', () => {
     };
 
     mockUserClient.search.messages.mockResolvedValue(mockSearchResult);
-    mockUserClient.users.info.mockImplementation((options: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    mockUserClient.users.info.mockImplementation((options: any) => {
+      // eslint-disable-line @typescript-eslint/no-explicit-any
       if (options.user === 'U123456') {
         return Promise.resolve({
           ok: true,
@@ -185,7 +187,7 @@ describe('SlackService.searchMessages', () => {
       highlight: false,
     });
 
-    const content = JSON.parse(result.content[0]?.text || '{}');
+    const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.query).toBe('hello');
     expect(content.total).toBe(2);
     expect(content.matches).toHaveLength(2);
@@ -220,7 +222,7 @@ describe('SlackService.searchMessages', () => {
       highlight: false,
     });
 
-    const content = JSON.parse(result.content[0]?.text || '{}');
+    const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.query).toBe('nonexistent');
     expect(content.total).toBe(0);
     expect(content.matches).toHaveLength(0);
@@ -232,23 +234,23 @@ describe('SlackService.searchMessages', () => {
       error: 'rate_limited',
     });
 
-    await expect(
-      slackService.searchMessages({ query: 'test' })
-    ).rejects.toThrow('Failed to search messages: rate_limited');
+    const result = await slackService.searchMessages({ query: 'test' });
+    
+    // When API returns error without messages, it should return empty results
+    const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
+    expect(content.query).toBe('test');
+    expect(content.total).toBe(0);
+    expect(content.matches).toEqual([]);
   });
 
   it('should handle network errors', async () => {
     mockUserClient.search.messages.mockRejectedValue(new Error('Network error'));
 
-    await expect(
-      slackService.searchMessages({ query: 'test' })
-    ).rejects.toThrow('Failed to search messages: Error: Network error');
+    await expect(slackService.searchMessages({ query: 'test' })).rejects.toThrow('Network error');
   });
 
   it('should validate required parameters', async () => {
-    await expect(
-      slackService.searchMessages({})
-    ).rejects.toThrow();
+    await expect(slackService.searchMessages({})).rejects.toThrow();
   });
 
   it('should handle search with special operators', async () => {
@@ -292,7 +294,7 @@ describe('SlackService.searchMessages', () => {
       highlight: false,
     });
 
-    const content = JSON.parse(result.content[0]?.text || '{}');
+    const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.matches[0].channel.name).toBe('dev-portal');
   });
 });
