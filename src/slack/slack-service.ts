@@ -1,21 +1,15 @@
-
 import type { MCPToolResult } from '../mcp/types.js';
-import {
-  createSlackServiceRegistry,
-  type SlackServiceRegistry,
-} from './service-factory.js';
+import { createSlackServiceRegistry, type SlackServiceRegistry } from './service-factory.js';
 
 /**
  * Service class for Slack API operations
- * 
+ *
  * This class serves as a thin facade over the modular architecture,
  * delegating all business logic to the service registry.
  * All WebClient management, rate limiting, and infrastructure concerns
  * are handled by the modular services.
  */
 export class SlackService {
-
-
   // Modular architecture integration
   private serviceRegistry: SlackServiceRegistry | undefined;
 
@@ -36,7 +30,7 @@ export class SlackService {
   // ================================
   // PUBLIC API METHODS (36 TOTAL)
   // ================================
-  
+
   /**
    * Send a message to a Slack channel or user
    */

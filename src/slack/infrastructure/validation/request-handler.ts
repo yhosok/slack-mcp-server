@@ -63,8 +63,8 @@ export const createRequestHandler = (dependencies: RequestHandlerDependencies): 
         stack: error instanceof Error ? error.stack : undefined,
       });
 
-      // Re-throw the error to maintain compatibility with legacy error handling
-      throw error instanceof Error ? error : new Error(String(error));
+      // Format error response instead of re-throwing
+      return dependencies.formatError(error instanceof Error ? error : new Error(String(error)));
     }
   };
 
@@ -80,20 +80,6 @@ export const createRequestHandler = (dependencies: RequestHandlerDependencies): 
  * @returns Formatted MCP tool response
  */
 export const defaultResponseFormatter = (data: unknown): MCPToolResult => ({
-  content: [
-    {
-      type: 'text',
-      text: typeof data === 'string' ? data : JSON.stringify(data, null, 2),
-    },
-  ],
-});
-
-/**
- * Legacy-compatible response formatter that matches the text format from legacy implementation
- * @param data - The data to include in the response
- * @returns Formatted MCP tool response with text format matching legacy
- */
-export const legacyCompatibleFormatter = (data: unknown): MCPToolResult => ({
   content: [
     {
       type: 'text',

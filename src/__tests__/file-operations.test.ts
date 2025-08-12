@@ -533,7 +533,7 @@ describe('SlackService - File Operations', () => {
 
       // Act
       const result = await slackService.getFileInfo({ file_id: validFileId });
-      
+
       // Assert
       expect(result.isError).toBe(true);
       expect(extractTextContent(result.content?.[0])).toContain('Error');
@@ -552,7 +552,7 @@ describe('SlackService - File Operations', () => {
 
       // Act
       const result = await slackService.getFileInfo({ file_id: validFileId });
-      
+
       // Assert
       expect(result.isError).toBe(true);
       expect(extractTextContent(result.content?.[0])).toContain('Error');
@@ -587,7 +587,7 @@ describe('SlackService - File Operations', () => {
 
       // Act
       const result = await slackService.deleteFile({ file_id: validFileId });
-      
+
       // Assert
       const content = extractTextContent(result.content?.[0]);
       expect(content).toContain('success');
@@ -600,7 +600,7 @@ describe('SlackService - File Operations', () => {
 
       // Act
       const result = await slackService.deleteFile({ file_id: validFileId });
-      
+
       // Assert
       expect(result.isError).toBe(true);
       expect(extractTextContent(result.content?.[0])).toContain('Error');

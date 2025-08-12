@@ -230,7 +230,7 @@ describe('SlackService.getChannelInfo', () => {
     });
 
     const result = await slackService.getChannelInfo({ channel: 'C999999999' });
-    
+
     expect(result.isError).toBe(true);
     expect(extractTextContent(result.content[0])).toContain('Slack API Error: Channel not found');
   });
@@ -242,7 +242,7 @@ describe('SlackService.getChannelInfo', () => {
     });
 
     const result = await slackService.getChannelInfo({ channel: 'C1234567890' });
-    
+
     expect(result.isError).toBe(true);
     expect(extractTextContent(result.content[0])).toContain('Channel not found');
   });
@@ -254,7 +254,7 @@ describe('SlackService.getChannelInfo', () => {
     });
 
     const result = await slackService.getChannelInfo({ channel: 'C1234567890' });
-    
+
     expect(result.isError).toBe(true);
     expect(extractTextContent(result.content[0])).toContain('Slack API Error: Channel not found');
   });
@@ -263,7 +263,7 @@ describe('SlackService.getChannelInfo', () => {
     mockWebClient.conversations.info.mockRejectedValue(new Error('Network error'));
 
     const result = await slackService.getChannelInfo({ channel: 'C1234567890' });
-    
+
     expect(result.isError).toBe(true);
     expect(extractTextContent(result.content[0])).toContain('Error: Network error');
   });

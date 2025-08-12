@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { jest } from '@jest/globals';
 import { SlackService } from '../slack/slack-service';
-import { SlackAPIError } from '../utils/errors';
 import { extractTextContent } from '../utils/helpers';
 
 // Create a shared mock WebClient instance
@@ -158,8 +157,13 @@ describe('SlackService', () => {
         text: 'Hello, world!',
       };
 
-      // Act & Assert
-      await expect(slackService.sendMessage(args)).rejects.toThrow(SlackAPIError);
+      // Act
+      const result = await slackService.sendMessage(args);
+
+      // Assert
+      expect(result.isError).toBe(true);
+      expect(extractTextContent(result.content?.[0])).toContain('Slack API Error');
+      expect(extractTextContent(result.content?.[0])).toContain('Failed to send message');
     });
 
     it('should validate input parameters', async () => {
@@ -169,8 +173,12 @@ describe('SlackService', () => {
         text: 'Hello, world!',
       };
 
-      // Act & Assert
-      await expect(slackService.sendMessage(args)).rejects.toThrow('Validation failed');
+      // Act
+      const result = await slackService.sendMessage(args);
+
+      // Assert
+      expect(result.isError).toBe(true);
+      expect(extractTextContent(result.content?.[0])).toContain('Validation failed');
     });
   });
 
@@ -740,7 +748,9 @@ describe('SlackService', () => {
         // Assert
         expect(mockWebClientInstance.chat.postMessage).toHaveBeenCalledTimes(2);
         expect(extractTextContent(result.content?.[0])).toContain('Thread created successfully');
-        expect(extractTextContent(result.content?.[0])).toContain('Parent message: 1234567890.123456');
+        expect(extractTextContent(result.content?.[0])).toContain(
+          'Parent message: 1234567890.123456'
+        );
       });
 
       it('should create thread without reply', async () => {
@@ -759,7 +769,9 @@ describe('SlackService', () => {
         // Assert
         expect(mockWebClientInstance.chat.postMessage).toHaveBeenCalledTimes(1);
         expect(extractTextContent(result.content?.[0])).toContain('Thread created successfully');
-        expect(extractTextContent(result.content?.[0])).toContain('Parent message: 1234567890.123456');
+        expect(extractTextContent(result.content?.[0])).toContain(
+          'Parent message: 1234567890.123456'
+        );
         expect(extractTextContent(result.content?.[0])).not.toContain('Reply:');
       });
     });
@@ -916,7 +928,7 @@ describe('SlackService', () => {
         };
 
         mockWebClientInstance.search.all.mockResolvedValue(mockSearchResults);
-        
+
         // Mock conversations.replies for thread verification
         mockWebClientInstance.conversations.replies.mockResolvedValue({
           ok: true,
@@ -974,7 +986,7 @@ describe('SlackService', () => {
 
       // Act
       const result = await slackService.getThreadReplies(args);
-      
+
       // Assert
       expect(result.isError).toBe(true);
       expect(extractTextContent(result.content?.[0])).toContain('Slack API Error');
@@ -990,7 +1002,7 @@ describe('SlackService', () => {
 
       // Act
       const result = await slackService.getThreadReplies(args);
-      
+
       // Assert
       expect(result.isError).toBe(true);
       expect(extractTextContent(result.content?.[0])).toContain('Validation failed');
@@ -1007,7 +1019,7 @@ describe('SlackService', () => {
 
       // Act
       const result = await slackService.getThreadReplies(args);
-      
+
       // Assert
       expect(result.isError).toBe(true);
       expect(extractTextContent(result.content?.[0])).toContain('Error: Network error');

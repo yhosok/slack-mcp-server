@@ -7,8 +7,6 @@ import { createFileService } from './services/files/file-service.js';
 import { createReactionService } from './services/reactions/reaction-service.js';
 import { createWorkspaceService } from './services/workspace/workspace-service.js';
 
-
-
 /**
  * Method registry mapping method names to service implementations
  */
@@ -67,13 +65,10 @@ export interface SlackServiceRegistry {
   methods: ServiceMethodRegistry;
 }
 
-
-
 /**
  * Create complete service registry with real implementations
  */
 export function createSlackServiceRegistry(): SlackServiceRegistry {
-
   // Create infrastructure configuration from global CONFIG
   const infrastructureConfig = {
     botToken: CONFIG.SLACK_BOT_TOKEN,
@@ -147,80 +142,4 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
   return {
     methods,
   };
-}
-
-/**
- * Performance metrics for monitoring legacy vs modular implementation
- */
-export interface PerformanceMetrics {
-  methodName: string;
-  implementationType: 'legacy' | 'modular';
-  executionTime: number;
-  success: boolean;
-  timestamp: Date;
-  errorType?: string;
-}
-
-/**
- * Performance monitoring utility
- */
-export class PerformanceMonitor {
-  private metrics: PerformanceMetrics[] = [];
-  private maxMetrics = 1000; // Keep last 1000 metrics
-
-  /**
-   * Record performance metrics for a method execution
-   */
-  record(metric: PerformanceMetrics): void {
-    this.metrics.push(metric);
-
-    // Keep only the most recent metrics
-    if (this.metrics.length > this.maxMetrics) {
-      this.metrics = this.metrics.slice(-this.maxMetrics);
-    }
-  }
-
-  /**
-   * Get performance statistics for comparison
-   */
-  getStats(methodName?: string): {
-    legacy: { avgTime: number; successRate: number; count: number };
-    modular: { avgTime: number; successRate: number; count: number };
-  } {
-    const filteredMetrics = methodName
-      ? this.metrics.filter((m) => m.methodName === methodName)
-      : this.metrics;
-
-    const legacyMetrics = filteredMetrics.filter((m) => m.implementationType === 'legacy');
-    const modularMetrics = filteredMetrics.filter((m) => m.implementationType === 'modular');
-
-    const calculateStats = (metrics: PerformanceMetrics[]) => ({
-      avgTime:
-        metrics.length > 0
-          ? metrics.reduce((sum, m) => sum + m.executionTime, 0) / metrics.length
-          : 0,
-      successRate:
-        metrics.length > 0 ? metrics.filter((m) => m.success).length / metrics.length : 0,
-      count: metrics.length,
-    });
-
-    return {
-      legacy: calculateStats(legacyMetrics),
-      modular: calculateStats(modularMetrics),
-    };
-  }
-
-  /**
-   * Clear all metrics
-   */
-  clear(): void {
-    this.metrics = [];
-  }
-
-  /**
-   * Export metrics for analysis
-   */
-  export(): PerformanceMetrics[] {
-    return [...this.metrics];
-  }
 }

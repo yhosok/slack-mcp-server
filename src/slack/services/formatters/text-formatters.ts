@@ -68,15 +68,15 @@ export const formatFindThreadsResponse = async (
   getUserDisplayName?: (userId: string) => Promise<string>
 ): Promise<MCPToolResult> => {
   let threadsText = '';
-  
+
   if (getUserDisplayName) {
     // Format with user display names
     const formattedThreads = await Promise.all(
       result.threads.map(async (thread, idx) => {
-        const parentUserName = thread.parentMessage?.user 
+        const parentUserName = thread.parentMessage?.user
           ? await getUserDisplayName(thread.parentMessage.user)
           : 'unknown';
-          
+
         return `${idx + 1}. Thread ${thread.threadTs}
    └─ ${thread.replyCount} replies from ${thread.participants?.length || 0} users
    └─ Last reply: ${thread.lastReply}
@@ -141,7 +141,7 @@ export const formatAddReactionResponse = (result: {
   content: [
     {
       type: 'text',
-      text: result.success 
+      text: result.success
         ? `Reaction :${result.reaction}: added successfully to message ${result.timestamp}.`
         : `Failed to add reaction :${result.reaction}: to message ${result.timestamp}.`,
     },

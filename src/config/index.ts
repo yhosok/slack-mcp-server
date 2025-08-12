@@ -15,7 +15,6 @@ const ConfigSchema = z.object({
   SLACK_REJECT_RATE_LIMITED_CALLS: z.coerce.boolean().default(false), // Reject rate-limited calls instead of retrying
   SLACK_ENABLE_RATE_LIMIT_RETRY: z.coerce.boolean().default(true), // Enable automatic retry on rate limits
 
-
   // MCP configuration
   MCP_SERVER_NAME: z.string().default('slack-mcp-server'),
   MCP_SERVER_VERSION: z.string().default('1.0.0'),

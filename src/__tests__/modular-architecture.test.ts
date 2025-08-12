@@ -157,34 +157,23 @@ describe('SlackService Functionality Tests', () => {
     it('should handle API errors properly', async () => {
       mockWebClientInstance.chat.postMessage.mockRejectedValueOnce(new Error('API Error'));
 
-      let thrownError: any;
-      try {
-        await service.sendMessage({
-          channel: 'C123456',
-          text: 'This will fail',
-        });
-      } catch (error) {
-        thrownError = error;
-      }
+      const result = await service.sendMessage({
+        channel: 'C123456',
+        text: 'This will fail',
+      });
 
-      expect(thrownError).toBeDefined();
-      expect(thrownError.message).toContain('API Error');
+      expect(result.isError).toBe(true);
+      expect(extractTextContent(result.content?.[0])).toContain('API Error');
     });
 
     it('should handle validation errors properly', async () => {
-      let thrownError: any;
-      try {
-        await service.sendMessage({
-          // Missing required 'text' field
-          channel: 'C123456',
-        } as any);
-      } catch (error) {
-        thrownError = error;
-      }
+      const result = await service.sendMessage({
+        // Missing required 'text' field
+        channel: 'C123456',
+      } as any);
 
-      expect(thrownError).toBeDefined();
-      expect(thrownError.message).toContain('text');
+      expect(result.isError).toBe(true);
+      expect(extractTextContent(result.content?.[0])).toContain('text');
     });
   });
 });
-

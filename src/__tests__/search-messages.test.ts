@@ -235,7 +235,7 @@ describe('SlackService.searchMessages', () => {
     });
 
     const result = await slackService.searchMessages({ query: 'test' });
-    
+
     // When API returns error without messages, it should return empty results
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.query).toBe('test');
@@ -246,11 +246,17 @@ describe('SlackService.searchMessages', () => {
   it('should handle network errors', async () => {
     mockUserClient.search.messages.mockRejectedValue(new Error('Network error'));
 
-    await expect(slackService.searchMessages({ query: 'test' })).rejects.toThrow('Network error');
+    const result = await slackService.searchMessages({ query: 'test' });
+
+    expect(result.isError).toBe(true);
+    expect(extractTextContent(result.content?.[0])).toContain('Network error');
   });
 
   it('should validate required parameters', async () => {
-    await expect(slackService.searchMessages({})).rejects.toThrow();
+    const result = await slackService.searchMessages({});
+
+    expect(result.isError).toBe(true);
+    expect(extractTextContent(result.content?.[0])).toContain('Error');
   });
 
   it('should handle search with special operators', async () => {
