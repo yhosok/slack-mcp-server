@@ -1,6 +1,16 @@
 import { z } from 'zod';
 
 /**
+ * Pagination constants - defined here to avoid circular dependency issues
+ */
+export const PAGINATION_DEFAULTS = {
+  MAX_PAGES: 10,
+  MAX_ITEMS: 1000,
+  MAX_PAGES_LIMIT: 100,
+  MAX_ITEMS_LIMIT: 10000,
+} as const;
+
+/**
  * Validation schemas for Slack API requests
  */
 
@@ -62,13 +72,13 @@ export const GetChannelHistorySchema = z
     max_pages: z
       .number()
       .min(1)
-      .max(100)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
       .optional()
       .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
     max_items: z
       .number()
       .min(1)
-      .max(10000)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
@@ -145,13 +155,13 @@ export const FindThreadsInChannelSchema = z
     max_pages: z
       .number()
       .min(1)
-      .max(100)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
       .optional()
       .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
     max_items: z
       .number()
       .min(1)
-      .max(10000)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
@@ -190,13 +200,13 @@ export const GetThreadRepliesSchema = z
     max_pages: z
       .number()
       .min(1)
-      .max(100)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
       .optional()
       .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
     max_items: z
       .number()
       .min(1)
-      .max(10000)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
@@ -588,13 +598,13 @@ export const ListFilesSchema = z
     max_pages: z
       .number()
       .min(1)
-      .max(100)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
       .optional()
       .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
     max_items: z
       .number()
       .min(1)
-      .max(10000)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
@@ -677,13 +687,13 @@ export const SearchFilesSchema = z
     max_pages: z
       .number()
       .min(1)
-      .max(100)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
       .optional()
       .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
     max_items: z
       .number()
       .min(1)
-      .max(10000)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
@@ -824,13 +834,13 @@ export const ListTeamMembersSchema = z
     max_pages: z
       .number()
       .min(1)
-      .max(100)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
       .optional()
       .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
     max_items: z
       .number()
       .min(1)
-      .max(10000)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
@@ -866,13 +876,13 @@ export const GetWorkspaceActivitySchema = z
     max_pages: z
       .number()
       .min(1)
-      .max(100)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
       .optional()
       .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
     max_items: z
       .number()
       .min(1)
-      .max(10000)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
@@ -920,11 +930,11 @@ export function applyPaginationSafetyDefaults<T extends Record<string, any>>(inp
   
   // Apply implicit defaults only if not explicitly specified
   if (result.max_pages === undefined || result.max_pages === null) {
-    result.max_pages = 10; // Safe default: max 10 pages
+    result.max_pages = PAGINATION_DEFAULTS.MAX_PAGES;
   }
   
   if (result.max_items === undefined || result.max_items === null) {
-    result.max_items = 1000; // Safe default: max 1000 items
+    result.max_items = PAGINATION_DEFAULTS.MAX_ITEMS;
   }
   
   return result;

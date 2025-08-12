@@ -396,17 +396,16 @@ describe('SlackService - File Operations', () => {
     });
 
     it('should handle empty file list', async () => {
-      // Arrange
+      // Arrange - With unified pagination, null files now throws an error
       mockWebClientInstance.files.list.mockResolvedValue({ ok: true, files: null });
 
       // Act
       const result = await slackService.listFiles({});
 
-      // Assert
+      // Assert - Unified implementation throws SlackAPIError for null files
+      expect(result.isError).toBe(true);
       const content = extractTextContent(result.content?.[0]);
-      expect(content).toContain('files');
-      expect(content).toContain('total');
-      expect(content).toContain('0');
+      expect(content).toContain('Failed to retrieve files');
     });
 
     it('should handle pagination correctly', async () => {
