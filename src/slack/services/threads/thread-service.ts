@@ -67,7 +67,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       const messages = result.messages || [];
 
-      // Filter messages that have replies (threads) - match legacy logic exactly
+      // Filter messages that have replies (threads) - preserves business logic
       const threadParents = messages.filter(
         (msg: any) => msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
       );
@@ -75,7 +75,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       const threads = [];
 
       for (const parentMsg of threadParents) {
-        // Get thread replies for each parent message (like legacy does)
+        // Get thread replies for each parent message (maintains compatibility)
         const repliesResult = await client.conversations.replies({
           channel: input.channel,
           ts: parentMsg.ts!,
@@ -129,7 +129,18 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       });
 
       if (!result.ok || !result.messages) {
-        throw new SlackAPIError(`Thread not found: ${result.error || 'No messages returned'}`);
+        const error = new SlackAPIError(
+          `Thread not found: ${result.error || 'No messages returned'}`
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Slack API Error: ${error.message}`,
+            },
+          ],
+          isError: true,
+        };
       }
 
       return formatThreadRepliesResponse(

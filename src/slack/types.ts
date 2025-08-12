@@ -626,10 +626,6 @@ export interface ServerHealth {
       enabled: boolean;
       monitoring: boolean;
       totalMetrics: number;
-      stats?: {
-        legacy: { avgTime: number; successRate: number; count: number };
-        modular: { avgTime: number; successRate: number; count: number };
-      };
     };
   };
 }

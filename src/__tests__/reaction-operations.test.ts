@@ -148,9 +148,11 @@ describe('ReactionService - Reaction Operations', () => {
             ],
           };
         }) as any,
-        handleWithCustomFormat: jest.fn().mockImplementation(async (schema: any, args: any, operation: any) => {
-          return await operation(args);
-        }) as any,
+        handleWithCustomFormat: jest
+          .fn()
+          .mockImplementation(async (schema: any, args: any, operation: any) => {
+            return await operation(args);
+          }) as any,
       },
     } as any;
 

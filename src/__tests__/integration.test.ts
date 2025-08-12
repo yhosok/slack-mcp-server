@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { extractTextContent } from '../utils/helpers';
 
 /**
  * Integration tests to validate SlackService functionality
@@ -485,7 +486,7 @@ describe('Integration Tests: SlackService Functionality', () => {
      */
     it('should handle thread → reaction workflow correctly', async () => {
       const service = await createServiceWithConfig({});
-      
+
       // 1. Create a thread
       const threadResult = await service.createThread({
         channel: 'C123456',
@@ -503,7 +504,7 @@ describe('Integration Tests: SlackService Functionality', () => {
       expect(threadResult.content).toBeDefined();
       expect(reactionResult).toBeDefined();
       expect(reactionResult.content).toBeDefined();
-      
+
       expect(mockWebClientInstance.chat.postMessage).toHaveBeenCalled();
       expect(mockWebClientInstance.reactions.add).toHaveBeenCalled();
     });
@@ -559,15 +560,10 @@ describe('Integration Tests: SlackService Functionality', () => {
       const testInput = { channel: 'INVALID', text: 'Test message' };
       const service = await createServiceWithConfig({});
 
-      let thrownError: any;
-      try {
-        await service.sendMessage(testInput);
-      } catch (error) {
-        thrownError = error;
-      }
+      const result = await service.sendMessage(testInput);
 
-      expect(thrownError).toBeDefined();
-      expect(thrownError.message).toContain('channel_not_found');
+      expect(result.isError).toBe(true);
+      expect(extractTextContent(result.content?.[0])).toContain('channel_not_found');
     });
 
     it('should handle missing user token for search operations', async () => {
@@ -578,15 +574,10 @@ describe('Integration Tests: SlackService Functionality', () => {
         SLACK_USER_TOKEN: undefined, // No user token
       });
 
-      let thrownError: any;
-      try {
-        await service.searchMessages(testInput);
-      } catch (error) {
-        thrownError = error;
-      }
+      const result = await service.searchMessages(testInput);
 
-      expect(thrownError).toBeDefined();
-      expect(thrownError.message).toContain('user token');
+      expect(result.isError).toBe(true);
+      expect(extractTextContent(result.content?.[0])).toContain('user token');
     });
   });
 
@@ -602,9 +593,7 @@ describe('Integration Tests: SlackService Functionality', () => {
       ];
 
       const service = await createServiceWithConfig({});
-      const results = await Promise.all(
-        testInputs.map((input) => service.sendMessage(input))
-      );
+      const results = await Promise.all(testInputs.map((input) => service.sendMessage(input)));
 
       expect(results).toHaveLength(3);
       results.forEach((result) => {
