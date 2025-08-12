@@ -30,6 +30,8 @@ export const formatChannelHistoryResponse = async (
     messages: any[];
     hasMore?: boolean;
     cursor?: string;
+    pageCount?: number;
+    totalMessages?: number;
   },
   getUserDisplayName: (userId: string) => Promise<string>
 ): Promise<MCPToolResult> => {
@@ -44,11 +46,17 @@ export const formatChannelHistoryResponse = async (
     })
   );
 
+  const paginationInfo = result.pageCount !== undefined 
+    ? `\n\nPagination: Fetched ${result.pageCount} pages, total ${result.totalMessages || result.messages.length} messages`
+    : result.hasMore 
+      ? `\n\nMore messages available. Next cursor: ${result.cursor || 'N/A'}`
+      : '';
+
   return {
     content: [
       {
         type: 'text',
-        text: `Channel history (${result.messages.length} messages):\n\n${formattedMessages
+        text: `Channel history (${result.messages.length} messages):${paginationInfo}\n\n${formattedMessages
           .map((msg) => `[${msg.timestamp}] ${msg.user}: ${msg.text}`)
           .join('\n')}`,
       },
@@ -201,6 +209,8 @@ export const formatThreadRepliesResponse = async (
     messages: any[];
     hasMore?: boolean;
     cursor?: string;
+    pageCount?: number;
+    totalMessages?: number;
   },
   getUserDisplayName: (userId: string) => Promise<string>
 ): Promise<MCPToolResult> => {
@@ -219,11 +229,17 @@ export const formatThreadRepliesResponse = async (
     })
   );
 
+  const paginationInfo = result.pageCount !== undefined 
+    ? `\n\nPagination: Fetched ${result.pageCount} pages, total ${result.totalMessages || result.messages.length} messages`
+    : result.hasMore 
+      ? `\n\nMore messages available. Next cursor: ${result.cursor || 'N/A'}`
+      : '';
+
   return {
     content: [
       {
         type: 'text',
-        text: `Thread replies (${result.messages.length} messages):\n\n${formattedMessages
+        text: `Thread replies (${result.messages.length} messages):${paginationInfo}\n\n${formattedMessages
           .map((msg) => `[${msg.timestamp}] ${msg.user}: ${msg.text}`)
           .join('\n')}`,
       },

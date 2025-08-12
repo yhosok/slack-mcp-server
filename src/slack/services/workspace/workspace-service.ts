@@ -4,8 +4,10 @@ import {
   ListTeamMembersSchema,
   GetWorkspaceActivitySchema,
   GetServerHealthSchema,
+  applyPaginationSafetyDefaults,
 } from '../../../utils/validation.js';
 import type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
+import { paginateSlackAPI, collectAllPages } from '../../infrastructure/pagination-helper.js';
 
 // Export types for external use
 export type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
@@ -57,6 +59,94 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
     deps.requestHandler.handle(ListTeamMembersSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
+      // Handle fetch_all_pages option
+      if (input.fetch_all_pages) {
+        // Apply safety defaults for pagination
+        const safeInput = applyPaginationSafetyDefaults(input);
+        
+        const fetchPage = async (cursor?: string) => {
+          const listArgs: UsersListArguments = {
+            limit: input.limit || 100,
+            cursor,
+            include_locale: true,
+          };
+
+          const result = await client.users.list(listArgs);
+
+          if (!result.members) {
+            throw new SlackAPIError('Failed to retrieve team members');
+          }
+
+          return result;
+        };
+
+        const getCursor = (response: any) => response.response_metadata?.next_cursor;
+        const getItems = (response: any) => response.members || [];
+
+        const generator = paginateSlackAPI(fetchPage, getCursor, {
+          maxPages: safeInput.max_pages,
+          maxItems: safeInput.max_items,
+          getItems,
+        });
+
+        const { items: allMembers, pageCount } = await collectAllPages(generator, getItems, safeInput.max_items);
+
+        // Filter members based on input options
+        let filteredMembers = allMembers;
+
+        if (!input.include_deleted) {
+          filteredMembers = filteredMembers.filter((member: any) => !member.deleted);
+        }
+
+        if (!input.include_bots) {
+          filteredMembers = filteredMembers.filter((member: any) => !member.is_bot);
+        }
+
+        const processedMembers = filteredMembers.map((member: any) => ({
+          id: member.id,
+          name: member.name,
+          realName: member.real_name,
+          displayName: member.profile?.display_name || member.real_name || member.name,
+          email: member.profile?.email,
+          title: member.profile?.title,
+          isAdmin: member.is_admin,
+          isOwner: member.is_owner,
+          isPrimaryOwner: member.is_primary_owner,
+          isRestricted: member.is_restricted,
+          isUltraRestricted: member.is_ultra_restricted,
+          isBot: member.is_bot,
+          deleted: member.deleted,
+          hasFiles: false, // Property not available in API
+          timezone: member.tz,
+          timezoneLabel: member.tz_label,
+          timezoneOffset: member.tz_offset,
+          profile: {
+            image24: member.profile?.image_24,
+            image32: member.profile?.image_32,
+            image48: member.profile?.image_48,
+            image72: member.profile?.image_72,
+            image192: member.profile?.image_192,
+            image512: member.profile?.image_512,
+            statusText: member.profile?.status_text,
+            statusEmoji: member.profile?.status_emoji,
+            statusExpiration: member.profile?.status_expiration,
+            phone: member.profile?.phone,
+            skype: member.profile?.skype,
+          },
+          updated: member.updated,
+        }));
+
+        return {
+          members: processedMembers,
+          total: processedMembers.length,
+          pageCount,
+          hasMore: false,
+          cursor: undefined,
+          responseMetadata: undefined,
+        };
+      }
+
+      // Single page logic (unchanged)
       const listArgs: UsersListArguments = {
         limit: input.limit || 100,
         cursor: input.cursor,

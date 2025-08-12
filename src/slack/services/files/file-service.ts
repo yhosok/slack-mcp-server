@@ -8,8 +8,10 @@ import {
   ShareFileSchema,
   AnalyzeFilesSchema,
   SearchFilesSchema,
+  applyPaginationSafetyDefaults,
 } from '../../../utils/validation.js';
 import type { FileService, FileServiceDependencies } from './types.js';
+import { paginateSlackAPI, collectAllPages } from '../../infrastructure/pagination-helper.js';
 
 // Export types for external use
 export type { FileService, FileServiceDependencies } from './types.js';
@@ -89,6 +91,74 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
     deps.requestHandler.handle(ListFilesSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
+      // Handle fetch_all_pages option
+      if (input.fetch_all_pages) {
+        // Apply safety defaults for pagination
+        const safeInput = applyPaginationSafetyDefaults(input);
+        
+        let currentPage = input.page || 1;
+        
+        const fetchPage = async () => {
+          const listArgs: FilesListArguments = {
+            channel: input.channel,
+            user: input.user,
+            ts_from: input.ts_from,
+            ts_to: input.ts_to,
+            types: input.types,
+            count: input.count || 100,
+            page: currentPage,
+          };
+
+          const result = await client.files.list(listArgs);
+
+          if (!result.files) {
+            throw new SlackAPIError('Failed to retrieve files');
+          }
+
+          currentPage++;
+          return result;
+        };
+
+        const getCursor = (response: any) => {
+          // Slack files.list uses page-based pagination, not cursor-based
+          // Continue if we have more pages based on the paging info
+          const paging = response.paging;
+          if (paging && paging.page < paging.pages) {
+            return `page-${paging.page + 1}`;
+          }
+          return undefined;
+        };
+        
+        const getItems = (response: any) => response.files || [];
+
+        const generator = paginateSlackAPI(fetchPage, getCursor, {
+          maxPages: safeInput.max_pages,
+          maxItems: safeInput.max_items,
+          getItems,
+        });
+
+        const { items: allFiles, pageCount } = await collectAllPages(generator, getItems, safeInput.max_items);
+
+        return {
+          files: allFiles.map((file: any) => ({
+            id: file.id,
+            name: file.name,
+            title: file.title,
+            filetype: file.filetype,
+            size: file.size,
+            url: file.url_private,
+            downloadUrl: file.url_private_download,
+            user: file.user,
+            timestamp: file.timestamp,
+            channels: file.channels,
+          })),
+          total: allFiles.length,
+          pageCount,
+          pagination: null,
+        };
+      }
+
+      // Single page logic (unchanged)
       const listArgs: FilesListArguments = {
         channel: input.channel,
         user: input.user,

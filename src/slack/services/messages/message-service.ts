@@ -6,6 +6,7 @@ import {
   GetUserInfoSchema,
   SearchMessagesSchema,
   GetChannelInfoSchema,
+  applyPaginationSafetyDefaults,
 } from '../../../utils/validation.js';
 import type { MessageService, MessageServiceDependencies } from './types.js';
 import {
@@ -13,6 +14,7 @@ import {
   formatChannelHistoryResponse,
   formatSearchMessagesResponse,
 } from '../formatters/text-formatters.js';
+import { paginateSlackAPI, collectAllPages } from '../../infrastructure/pagination-helper.js';
 
 // Export types for external use
 export type { MessageService, MessageServiceDependencies } from './types.js';
@@ -96,6 +98,62 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
     deps.requestHandler.handleWithCustomFormat(GetChannelHistorySchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
+      // Handle fetch_all_pages option
+      if (input.fetch_all_pages) {
+        // Apply safety defaults for pagination
+        const safeInput = applyPaginationSafetyDefaults(input);
+        const fetchPage = async (cursor?: string) => {
+          const result = await client.conversations.history({
+            channel: input.channel,
+            limit: input.limit,
+            cursor,
+            oldest: input.oldest,
+            latest: input.latest,
+          });
+
+          if (!result.messages) {
+            throw new SlackAPIError('Failed to retrieve channel history');
+          }
+
+          return result;
+        };
+
+        const getCursor = (response: any) => response.response_metadata?.next_cursor;
+        const getItems = (response: any) => response.messages || [];
+
+        const generator = paginateSlackAPI(fetchPage, getCursor, {
+          maxPages: safeInput.max_pages,
+          maxItems: safeInput.max_items,
+          getItems,
+        });
+
+        const { items: allMessages, pageCount } = await collectAllPages(generator, getItems, safeInput.max_items);
+
+        const messages = allMessages.map((message: any) => ({
+          type: message.type,
+          user: message.user,
+          text: message.text,
+          timestamp: message.ts,
+          threadTs: message.thread_ts,
+          replyCount: message.reply_count,
+          reactions: message.reactions,
+          edited: message.edited,
+          files: message.files,
+        }));
+
+        return formatChannelHistoryResponse(
+          {
+            messages,
+            hasMore: false,
+            cursor: undefined,
+            pageCount,
+            totalMessages: messages.length,
+          },
+          deps.userService.getDisplayName
+        );
+      }
+
+      // Single page logic (unchanged)
       const result = await client.conversations.history({
         channel: input.channel,
         limit: input.limit,
@@ -108,7 +166,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         throw new SlackAPIError('Failed to retrieve channel history');
       }
 
-      const messages = result.messages.map((message) => ({
+      const messages = result.messages.map((message: any) => ({
         type: message.type,
         user: message.user,
         text: message.text,

@@ -1,5 +1,13 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+
+// Mock pagination helper for tests
+jest.mock('../slack/infrastructure/pagination-helper.js', () => ({
+  paginateSlackAPI: jest.fn(),
+  collectAllPages: jest.fn(() => Promise.resolve({ items: [], pageCount: 1 })),
+  processBatch: jest.fn(),
+}));
+
 import { SlackService } from '../slack/slack-service';
 import { WebClient } from '@slack/web-api';
 import { extractTextContent } from '../utils/helpers';

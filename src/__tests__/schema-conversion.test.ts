@@ -144,8 +144,8 @@ describe('Schema Conversion', () => {
 
       expect(result.inputSchema.required).toEqual(['channel']);
       expect(limitProp?.minimum).toBe(1);
-      expect(limitProp?.maximum).toBe(100);
-      expect(limitProp?.default).toBe(10);
+      expect(limitProp?.maximum).toBe(1000); // Updated to reflect the new limit
+      expect(limitProp?.default).toBe(100); // Updated to reflect the new default
       expect(result.inputSchema.additionalProperties).toBe(false);
     });
 

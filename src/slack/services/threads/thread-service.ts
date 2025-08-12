@@ -14,6 +14,7 @@ import {
   FindRelatedThreadsSchema,
   GetThreadMetricsSchema,
   GetThreadsByParticipantsSchema,
+  applyPaginationSafetyDefaults,
 } from '../../../utils/validation.js';
 import type { ThreadService, ThreadServiceDependencies } from './types.js';
 import {
@@ -21,6 +22,7 @@ import {
   formatCreateThreadResponse,
   formatThreadRepliesResponse,
 } from '../formatters/text-formatters.js';
+import { paginateSlackAPI, collectAllPages } from '../../infrastructure/pagination-helper.js';
 
 // Export types for external use
 export type { ThreadService, ThreadServiceDependencies } from './types.js';
@@ -118,6 +120,55 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
     deps.requestHandler.handleWithCustomFormat(GetThreadRepliesSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
+      // Handle fetch_all_pages option
+      if (input.fetch_all_pages) {
+        // Apply safety defaults for pagination
+        const safeInput = applyPaginationSafetyDefaults(input);
+        
+        const fetchPage = async (cursor?: string) => {
+          const result = await client.conversations.replies({
+            channel: input.channel,
+            ts: input.thread_ts,
+            limit: input.limit,
+            cursor,
+            oldest: input.oldest,
+            latest: input.latest,
+            inclusive: input.inclusive !== false,
+          });
+
+          if (!result.ok || !result.messages) {
+            throw new SlackAPIError(
+              `Thread not found: ${result.error || 'No messages returned'}`
+            );
+          }
+
+          return result;
+        };
+
+        const getCursor = (response: any) => response.response_metadata?.next_cursor;
+        const getItems = (response: any) => response.messages || [];
+
+        const generator = paginateSlackAPI(fetchPage, getCursor, {
+          maxPages: safeInput.max_pages,
+          maxItems: safeInput.max_items,
+          getItems,
+        });
+
+        const { items: allMessages, pageCount } = await collectAllPages(generator, getItems, safeInput.max_items);
+
+        return formatThreadRepliesResponse(
+          {
+            messages: allMessages,
+            hasMore: false,
+            cursor: undefined,
+            pageCount,
+            totalMessages: allMessages.length,
+          },
+          deps.userService.getDisplayName
+        );
+      }
+
+      // Single page logic (unchanged)
       const result = await client.conversations.replies({
         channel: input.channel,
         ts: input.thread_ts,
