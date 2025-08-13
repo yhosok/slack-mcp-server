@@ -158,7 +158,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         
         getItems: (response) => response.messages || [],
         
-        formatResponse: (data) => {
+        formatResponse: async (data) => {
           // Check for error case in single page mode
           if (!data.hasMore && data.items.length === 0) {
             const error = new SlackAPIError('Thread not found: No messages returned');
@@ -173,7 +173,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
             };
           }
 
-          return formatThreadRepliesResponse(
+          return await formatThreadRepliesResponse(
             {
               messages: data.items,
               hasMore: data.hasMore,

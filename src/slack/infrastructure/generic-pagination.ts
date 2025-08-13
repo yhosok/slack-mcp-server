@@ -42,14 +42,14 @@ export interface PaginationConfig<T, I, F> {
   /** Function to extract items array from API response */
   getItems: (response: T) => I[];
   
-  /** Function to format the final consolidated response */
+  /** Function to format the final consolidated response (supports both sync and async) */
   formatResponse: (data: {
     items: I[];
     pageCount: number;
     hasMore: boolean;
     cursor?: string;
     totalItems?: number;
-  }) => F;
+  }) => F | Promise<F>;
 }
 
 /**
@@ -57,6 +57,11 @@ export interface PaginationConfig<T, I, F> {
  * across all service layers. This follows the DRY principle and provides consistent
  * pagination behavior throughout the application.
  * 
+ * **Type Compatibility**: Supports both synchronous and asynchronous formatResponse functions,
+ * allowing services to use either pattern:
+ * - Synchronous: Return formatted data directly
+ * - Asynchronous: Return Promise<FormattedData> for operations requiring API calls
+ * 
  * @template T - API response type
  * @template I - Item type
  * @template F - Formatted response type
@@ -66,35 +71,20 @@ export interface PaginationConfig<T, I, F> {
  * 
  * @example
  * ```typescript
- * // Usage in message service
+ * // Synchronous formatter (workspace, files)
  * const result = await executePagination(input, {
  *   fetchPage: (cursor) => client.conversations.history({ channel: input.channel, cursor }),
  *   getCursor: (response) => response.response_metadata?.next_cursor,
  *   getItems: (response) => response.messages || [],
- *   formatResponse: (data) => formatChannelHistoryResponse(data, userService.getDisplayName)
+ *   formatResponse: (data) => ({ items: data.items, total: data.items.length })
  * });
- * ```
- */
-/**
- * Unified pagination execution function that eliminates duplicate fetch_all_pages logic
- * across all service layers. This follows the DRY principle and provides consistent
- * pagination behavior throughout the application.
  * 
- * @template T - API response type
- * @template I - Item type
- * @template F - Formatted response type
- * @param input - The validated input containing pagination options
- * @param config - Configuration object defining pagination behavior
- * @returns Promise resolving to formatted response
- * 
- * @example
- * ```typescript
- * // Usage in message service
+ * // Asynchronous formatter (messages, threads)
  * const result = await executePagination(input, {
  *   fetchPage: (cursor) => client.conversations.history({ channel: input.channel, cursor }),
  *   getCursor: (response) => response.response_metadata?.next_cursor,
  *   getItems: (response) => response.messages || [],
- *   formatResponse: (data) => formatChannelHistoryResponse(data, userService.getDisplayName)
+ *   formatResponse: async (data) => await formatChannelHistoryResponse(data, userService.getDisplayName)
  * });
  * ```
  */
@@ -121,14 +111,14 @@ export async function executePagination<T, I, F>(
       safeInput.max_items
     );
 
-    // Format and return consolidated response
-    return config.formatResponse({
+    // Format and return consolidated response (handle both sync and async formatters)
+    return await Promise.resolve(config.formatResponse({
       items: allItems,
       pageCount,
       hasMore: false,
       cursor: undefined,
       totalItems: allItems.length,
-    });
+    }));
   }
 
   // Single page logic: fetch one page and format response
@@ -136,11 +126,11 @@ export async function executePagination<T, I, F>(
   const items = config.getItems(result);
   const cursor = config.getCursor(result);
   
-  return config.formatResponse({
+  return await Promise.resolve(config.formatResponse({
     items,
     pageCount: 1,
     hasMore: Boolean(cursor),
     cursor,
     totalItems: items.length,
-  });
+  }));
 }
