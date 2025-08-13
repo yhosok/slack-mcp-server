@@ -6,6 +6,7 @@ import {
   createInfrastructureServices,
   type InfrastructureConfig,
 } from '../slack/infrastructure/index.js';
+import { WebClientEvent } from '@slack/web-api';
 
 // Mock the logger to avoid console output during tests
 jest.mock('../utils/logger', () => ({
@@ -138,6 +139,103 @@ describe('Infrastructure Services', () => {
         services.rateLimitService.extractTierFromUrl('https://slack.com/api/custom.endpoint')
       ).toBe('other');
       expect(services.rateLimitService.extractTierFromUrl(undefined)).toBe('unknown');
+    });
+
+    it('should increment retry attempts when rate limit events occur', () => {
+      // Create a fresh service instance for this test
+      const freshServices = createInfrastructureServices({
+        ...mockConfig,
+        botToken: 'xoxb-test-fresh-bot-token', // Use different token to ensure fresh instance
+      });
+      
+      // Get initial metrics to verify starting state
+      const initialMetrics = freshServices.rateLimitService.getMetrics();
+      expect(initialMetrics.retryAttempts).toBe(0);
+      expect(initialMetrics.rateLimitedRequests).toBe(0);
+
+      // Get the bot client (already has rate limit tracking enabled)
+      const trackedClient = freshServices.clientManager.getBotClient();
+
+      // Simulate a rate limit event that should trigger retry tracking
+      // This should increment both rateLimitedRequests AND retryAttempts
+      trackedClient.emit(WebClientEvent.RATE_LIMITED, 30, {
+        team_id: 'T12345',
+        api_url: 'https://slack.com/api/chat.postMessage'
+      });
+
+      // Verify that retry attempts are incremented
+      const metricsAfterRateLimit = freshServices.rateLimitService.getMetrics();
+      expect(metricsAfterRateLimit.rateLimitedRequests).toBe(1);
+      expect(metricsAfterRateLimit.retryAttempts).toBe(1); // Rate limit tracking increments retries when rejectRateLimitedCalls is false
+      expect(metricsAfterRateLimit.lastRateLimitTime).toBeInstanceOf(Date);
+
+      // Test multiple rate limit events to verify cumulative retry tracking
+      trackedClient.emit(WebClientEvent.RATE_LIMITED, 60, {
+        team_id: 'T12345',
+        api_url: 'https://slack.com/api/conversations.history'
+      });
+
+      const finalMetrics = freshServices.rateLimitService.getMetrics();
+      expect(finalMetrics.rateLimitedRequests).toBe(2);
+      expect(finalMetrics.retryAttempts).toBe(2); // Cumulative retry tracking
+    });
+
+    it('should track retry attempts separately from rate limit hits', () => {
+      // Create a fresh service instance for this test
+      const freshServices = createInfrastructureServices({
+        ...mockConfig,
+        botToken: 'xoxb-test-fresh-bot-token-2', // Use different token to ensure fresh instance
+      });
+      
+      // Get the bot client (already has rate limit tracking enabled)
+      const trackedClient = freshServices.clientManager.getBotClient();
+
+      // Simulate scenario where a single rate limit triggers multiple retries
+      // First rate limit event
+      trackedClient.emit(WebClientEvent.RATE_LIMITED, 30, {
+        team_id: 'T12345',
+        api_url: 'https://slack.com/api/chat.postMessage'
+      });
+
+      let metrics = freshServices.rateLimitService.getMetrics();
+      expect(metrics.rateLimitedRequests).toBe(1);
+      expect(metrics.retryAttempts).toBe(1); // Retry tracking for individual rate limits
+
+      // Simulate additional retry attempts for the same rate limit
+      // (This would happen when SDK retries internally)
+      trackedClient.emit(WebClientEvent.RATE_LIMITED, 60, {
+        team_id: 'T12345',
+        api_url: 'https://slack.com/api/chat.postMessage'
+      });
+
+      metrics = freshServices.rateLimitService.getMetrics();
+      expect(metrics.rateLimitedRequests).toBe(2);
+      expect(metrics.retryAttempts).toBe(2); // Multiple retry attempts tracked
+    });
+
+    it('should handle retry attempts with rejectRateLimitedCalls configuration', () => {
+      // Test with rejectRateLimitedCalls: true (no retries should happen)
+      const configWithReject: InfrastructureConfig = {
+        ...mockConfig,
+        botToken: 'xoxb-test-fresh-bot-token-3', // Use different token to ensure fresh instance
+        rejectRateLimitedCalls: true,
+      };
+
+      const services = createInfrastructureServices(configWithReject);
+      
+      // Get the bot client (already has rate limit tracking enabled)
+      const trackedClient = services.clientManager.getBotClient();
+
+      // With rejectRateLimitedCalls: true, rate limits should be tracked but retries should not increment
+      trackedClient.emit(WebClientEvent.RATE_LIMITED, 30, {
+        team_id: 'T12345',
+        api_url: 'https://slack.com/api/chat.postMessage'
+      });
+
+      const metrics = services.rateLimitService.getMetrics();
+      expect(metrics.rateLimitedRequests).toBe(1);
+      // When rejecting rate limited calls, retryAttempts should remain 0
+      expect(metrics.retryAttempts).toBe(0); // No retries when calls are rejected
     });
   });
 
