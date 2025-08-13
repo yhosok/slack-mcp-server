@@ -621,9 +621,10 @@ describe('SlackService - File Operations', () => {
 
     it('should share a file successfully', async () => {
       // Arrange
-      mockWebClientInstance.files.sharedPublicURL.mockResolvedValue({
+      mockWebClientInstance.files.info.mockResolvedValue({
         ok: true,
         file: {
+          id: 'F1234567890',
           permalink: 'https://example.slack.com/files/U123456789/F1234567890/test.txt',
         },
       });
@@ -635,10 +636,14 @@ describe('SlackService - File Operations', () => {
       // Act
       const result = await slackService.shareFile(validArgs);
 
-      // Assert - The implementation now uses chat.postMessage instead of files.sharedPublicURL
+      // Assert
+      expect(mockWebClientInstance.files.info).toHaveBeenCalledWith({
+        file: 'F1234567890',
+      });
       expect(mockWebClientInstance.chat.postMessage).toHaveBeenCalledWith({
         channel: 'C1234567890',
-        text: expect.stringContaining('F1234567890'),
+        text: 'File shared: https://example.slack.com/files/U123456789/F1234567890/test.txt',
+        unfurl_links: true,
       });
 
       const content = extractTextContent(result.content?.[0]);
@@ -647,11 +652,54 @@ describe('SlackService - File Operations', () => {
       expect(content).toContain('C1234567890');
     });
 
-    it('should handle sharing failure', async () => {
+    it('should handle sharing failure when file not found', async () => {
       // Arrange
-      mockWebClientInstance.files.sharedPublicURL.mockResolvedValue({
+      mockWebClientInstance.files.info.mockResolvedValue({
         ok: false,
         error: 'file_not_found',
+      });
+
+      // Act
+      const result = await slackService.shareFile(validArgs);
+
+      // Assert
+      expect(mockWebClientInstance.files.info).toHaveBeenCalledWith({
+        file: 'F1234567890',
+      });
+      expect(result.isError).toBe(true);
+      expect(extractTextContent(result.content?.[0])).toContain('Error');
+    });
+
+    it('should handle sharing failure when file has no permalink', async () => {
+      // Arrange
+      mockWebClientInstance.files.info.mockResolvedValue({
+        ok: true,
+        file: {
+          id: 'F1234567890',
+          // No permalink field
+        },
+      });
+
+      // Act
+      const result = await slackService.shareFile(validArgs);
+
+      // Assert
+      expect(result.isError).toBe(true);
+      expect(extractTextContent(result.content?.[0])).toContain('Error');
+    });
+
+    it('should handle chat message posting failure', async () => {
+      // Arrange
+      mockWebClientInstance.files.info.mockResolvedValue({
+        ok: true,
+        file: {
+          id: 'F1234567890',
+          permalink: 'https://example.slack.com/files/U123456789/F1234567890/test.txt',
+        },
+      });
+      mockWebClientInstance.chat.postMessage.mockResolvedValue({
+        ok: false,
+        error: 'channel_not_found',
       });
 
       // Act

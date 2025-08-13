@@ -238,18 +238,36 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
     deps.requestHandler.handle(ShareFileSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
 
-      // Note: files.share API method may not be available
-      // Use alternative approach or skip this functionality for now
-      const result = await client.chat.postMessage({
-        channel: input.channel,
-        text: `File shared: <@${input.file_id}|File>`,
+      // First, get the file information to retrieve the permalink
+      const fileInfo = await client.files.info({
+        file: input.file_id,
       });
 
+      if (!fileInfo.ok) {
+        throw new Error(`Failed to get file information: ${fileInfo.error}`);
+      }
+
+      if (!fileInfo.file?.permalink) {
+        throw new Error('File permalink not available');
+      }
+
+      // Share the file by posting its permalink to the channel
+      const result = await client.chat.postMessage({
+        channel: input.channel,
+        text: `File shared: ${fileInfo.file.permalink}`,
+        unfurl_links: true, // Enable link previews for the file
+      });
+
+      if (!result.ok) {
+        throw new Error(`Failed to share file: ${result.error}`);
+      }
+
       return {
-        success: result.ok || false,
+        success: true,
         fileId: input.file_id,
         channel: input.channel,
-        message: result.ok ? 'File shared successfully' : 'Failed to share file',
+        permalink: fileInfo.file.permalink,
+        message: 'File shared successfully',
       };
     });
 
