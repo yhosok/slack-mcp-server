@@ -39,6 +39,7 @@ import {
   formatThreadSummary,
   type ThreadSummaryFormatterOptions,
 } from '../../analysis/index.js';
+import { countWordsInMessages } from '../../analysis/thread/sentiment-analysis.js';
 
 /**
  * Create thread service with infrastructure dependencies
@@ -328,8 +329,8 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           extracted_from_message_ts: (item as any).message_ts || '',
         })),
         summary: 'Thread analysis completed',
-        word_count: analysis.metadata.messageCount * 10, // Rough estimate
-        duration_hours: (Date.now() - parseFloat(input.thread_ts || '0') * 1000) / (1000 * 60 * 60),
+        word_count: countWordsInMessages(messages), // Actual word count using multilingual tokenization
+        duration_hours: analysis.timeline.totalDuration / 60, // Convert minutes to hours
       };
 
       return formatThreadAnalysis(threadAnalysis, formattedOptions);

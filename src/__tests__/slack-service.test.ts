@@ -539,6 +539,159 @@ describe('SlackService', () => {
           expect(content).toContain('participants');
         }
       });
+
+      it('should calculate duration_hours correctly from first and last message timestamps', async () => {
+        // Arrange - Create messages with specific timestamps for precise duration calculation
+        const firstMessageTs = '1699564800.000100'; // Nov 9, 2023 16:00:00 GMT
+        const lastMessageTs = '1699568400.000200';  // Nov 9, 2023 17:00:00 GMT (1 hour later)
+        const expectedDurationHours = 1.0; // Exactly 1 hour
+
+        const mockMessages = [
+          {
+            type: 'message',
+            ts: firstMessageTs,
+            text: 'This is the first message in the thread',
+            user: 'U1234567890',
+          },
+          {
+            type: 'message',
+            ts: '1699566600.000150', // Some message in between
+            text: 'This is a middle message',
+            user: 'U0987654321',
+          },
+          {
+            type: 'message',
+            ts: lastMessageTs,
+            text: 'This is the last message in the thread',
+            user: 'U1111111111',
+          },
+        ];
+
+        mockWebClientInstance.conversations.replies.mockResolvedValue({
+          ok: true,
+          messages: mockMessages,
+        });
+
+        // Mock user info for each user
+        mockWebClientInstance.users.info.mockImplementation((params: { user: string }) => {
+          const userMocks = {
+            'U1234567890': { ok: true, user: { id: 'U1234567890', name: 'alice', real_name: 'Alice Smith' } },
+            'U0987654321': { ok: true, user: { id: 'U0987654321', name: 'bob', real_name: 'Bob Johnson' } },
+            'U1111111111': { ok: true, user: { id: 'U1111111111', name: 'charlie', real_name: 'Charlie Brown' } },
+          };
+          return Promise.resolve(userMocks[params.user as keyof typeof userMocks]);
+        });
+
+        const args = {
+          channel: 'C1234567890',
+          thread_ts: firstMessageTs,
+          include_timeline: true,
+        };
+
+        // Act
+        const result = await slackService.analyzeThread(args);
+
+        // Assert
+        expect(result.content).toBeDefined();
+        expect(result.content[0]).toBeDefined();
+        const content = extractTextContent(result.content?.[0]);
+        expect(content).toBeDefined();
+
+        if (!result.isError) {
+          // Parse the response to extract duration_hours
+          const lines = content.split('\n');
+          const durationLine = lines.find(line => line.includes('Duration:'));
+          expect(durationLine).toBeDefined();
+          
+          // Extract duration from the line (expected format: "Duration: X.X hours")
+          const durationMatch = durationLine!.match(/Duration:\s*([0-9.]+)\s*hours?/);
+          expect(durationMatch).toBeDefined();
+          expect(durationMatch![1]).toBeDefined();
+          
+          const actualDurationHours = parseFloat(durationMatch![1]!);
+          
+          // The duration should be calculated from first to last message, not from thread start to now
+          expect(actualDurationHours).toBeCloseTo(expectedDurationHours, 1);
+        } else {
+          // If there's an error, the test fails - this should not happen in Red phase
+          throw new Error(`Expected successful analysis but got error: ${content}`);
+        }
+      });
+
+      it('should calculate word_count accurately from actual message content', async () => {
+        // Arrange - Create messages with known word counts
+        const mockMessages = [
+          {
+            type: 'message',
+            ts: '1699564800.000100',
+            text: 'Hello world this is a test message', // 7 words
+            user: 'U1234567890',
+          },
+          {
+            type: 'message',
+            ts: '1699564860.000200',
+            text: 'I agree completely', // 3 words
+            user: 'U0987654321',
+          },
+          {
+            type: 'message',
+            ts: '1699564920.000300',
+            text: 'Let us proceed with the implementation', // 6 words
+            user: 'U1111111111',
+          },
+        ];
+        // Total expected words: 7 + 3 + 6 = 16 words
+
+        mockWebClientInstance.conversations.replies.mockResolvedValue({
+          ok: true,
+          messages: mockMessages,
+        });
+
+        // Mock user info for each user
+        mockWebClientInstance.users.info.mockImplementation((params: { user: string }) => {
+          const userMocks = {
+            'U1234567890': { ok: true, user: { id: 'U1234567890', name: 'alice', real_name: 'Alice Smith' } },
+            'U0987654321': { ok: true, user: { id: 'U0987654321', name: 'bob', real_name: 'Bob Johnson' } },
+            'U1111111111': { ok: true, user: { id: 'U1111111111', name: 'charlie', real_name: 'Charlie Brown' } },
+          };
+          return Promise.resolve(userMocks[params.user as keyof typeof userMocks]);
+        });
+
+        const args = {
+          channel: 'C1234567890',
+          thread_ts: '1699564800.000100',
+        };
+
+        // Act
+        const result = await slackService.analyzeThread(args);
+
+        // Assert
+        expect(result.content).toBeDefined();
+        expect(result.content[0]).toBeDefined();
+        const content = extractTextContent(result.content?.[0]);
+        expect(content).toBeDefined();
+
+        if (!result.isError) {
+          // Parse the response to extract word_count
+          const lines = content.split('\n');
+          const wordCountLine = lines.find(line => line.includes('Word Count:'));
+          expect(wordCountLine).toBeDefined();
+          
+          // Extract word count from the line (expected format: "Word Count: X")
+          const wordCountMatch = wordCountLine!.match(/Word Count:\s*([0-9]+)/);
+          expect(wordCountMatch).toBeDefined();
+          expect(wordCountMatch![1]).toBeDefined();
+          
+          const actualWordCount = parseInt(wordCountMatch![1]!);
+          
+          // The word count should be calculated from actual message content, not estimated
+          const expectedWordCount = 16;
+          expect(actualWordCount).toBe(expectedWordCount);
+        } else {
+          // If there's an error, the test fails - this should not happen in Red phase
+          throw new Error(`Expected successful analysis but got error: ${content}`);
+        }
+      });
     });
 
     describe('summarizeThread', () => {
