@@ -4,9 +4,7 @@ import type { MCPToolResult } from '../../../mcp/types.js';
 /**
  * Dependencies for file service operations
  */
-export interface FileServiceDependencies extends InfrastructureServices {
-  // Additional file-specific dependencies can be added here
-}
+export type FileServiceDependencies = InfrastructureServices;
 
 /**
  * Configuration for file service operations

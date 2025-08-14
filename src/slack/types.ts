@@ -658,9 +658,7 @@ export interface FileUploadResponse extends SlackAPIResponse {
   file?: SlackFile;
 }
 
-export interface ReactionAddResponse extends SlackAPIResponse {
-  // Standard response, no additional fields
-}
+export type ReactionAddResponse = SlackAPIResponse;
 
 export interface ReactionGetResponse extends SlackAPIResponse {
   type: string;

@@ -39,6 +39,7 @@ import {
   formatThreadSummary,
   type ThreadSummaryFormatterOptions,
 } from '../../analysis/index.js';
+import { countWordsInMessages } from '../../analysis/thread/sentiment-analysis.js';
 
 /**
  * Create thread service with infrastructure dependencies
@@ -158,7 +159,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         
         getItems: (response) => response.messages || [],
         
-        formatResponse: (data) => {
+        formatResponse: async (data) => {
           // Check for error case in single page mode
           if (!data.hasMore && data.items.length === 0) {
             const error = new SlackAPIError('Thread not found: No messages returned');
@@ -173,7 +174,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
             };
           }
 
-          return formatThreadRepliesResponse(
+          return await formatThreadRepliesResponse(
             {
               messages: data.items,
               hasMore: data.hasMore,
@@ -328,8 +329,8 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           extracted_from_message_ts: (item as any).message_ts || '',
         })),
         summary: 'Thread analysis completed',
-        word_count: analysis.metadata.messageCount * 10, // Rough estimate
-        duration_hours: (Date.now() - parseFloat(input.thread_ts || '0') * 1000) / (1000 * 60 * 60),
+        word_count: countWordsInMessages(messages), // Actual word count using multilingual tokenization
+        duration_hours: analysis.timeline.totalDuration / 60, // Convert minutes to hours
       };
 
       return formatThreadAnalysis(threadAnalysis, formattedOptions);

@@ -51,9 +51,10 @@ interface MutableRateLimitMetrics {
 
 /**
  * Create a rate limit service instance
+ * @param rejectRateLimitedCalls - Whether rate limited calls should be rejected instead of retried
  * @returns A new RateLimitService instance
  */
-export const createRateLimitService = (): RateLimitService => {
+export const createRateLimitService = (rejectRateLimitedCalls?: boolean): RateLimitService => {
   // Internal mutable state
   let metrics: MutableRateLimitMetrics = {
     totalRequests: 0,
@@ -83,10 +84,14 @@ export const createRateLimitService = (): RateLimitService => {
    */
   const setupRateLimitListeners = (client: WebClient, clientType: 'bot' | 'user'): void => {
     client.on(WebClientEvent.RATE_LIMITED, (numSeconds: number, { team_id, api_url }) => {
+      // Determine if this will trigger a retry based on configuration
+      const willRetry = rejectRateLimitedCalls !== true;
+
       // Immutable update of metrics
       metrics = {
         ...metrics,
         rateLimitedRequests: metrics.rateLimitedRequests + 1,
+        retryAttempts: willRetry ? metrics.retryAttempts + 1 : metrics.retryAttempts,
         lastRateLimitTime: new Date(),
         rateLimitsByTier: new Map(metrics.rateLimitsByTier),
       };
@@ -102,6 +107,7 @@ export const createRateLimitService = (): RateLimitService => {
         retry_after_seconds: numSeconds,
         tier,
         total_rate_limits: metrics.rateLimitedRequests,
+        will_retry: willRetry,
       });
     });
 

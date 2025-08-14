@@ -4,9 +4,7 @@ import type { MCPToolResult } from '../../../mcp/types.js';
 /**
  * Dependencies for reaction service operations
  */
-export interface ReactionServiceDependencies extends InfrastructureServices {
-  // Additional reaction-specific dependencies can be added here
-}
+export type ReactionServiceDependencies = InfrastructureServices;
 
 /**
  * Configuration for reaction service operations

@@ -119,7 +119,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         
         getItems: (response) => response.messages || [],
         
-        formatResponse: (data) => {
+        formatResponse: async (data) => {
           const messages = data.items.map((message: any) => ({
             type: message.type,
             user: message.user,
@@ -132,7 +132,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
             files: message.files,
           }));
 
-          return formatChannelHistoryResponse(
+          return await formatChannelHistoryResponse(
             {
               messages,
               hasMore: data.hasMore,

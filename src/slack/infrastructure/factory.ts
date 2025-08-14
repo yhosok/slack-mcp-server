@@ -50,7 +50,7 @@ export const createInfrastructureServices = (
   config: InfrastructureConfig
 ): InfrastructureServices => {
   // Create rate limit service first (no dependencies)
-  const rateLimitService = createRateLimitService();
+  const rateLimitService = createRateLimitService(config.rejectRateLimitedCalls);
 
   // Create client configuration
   const clientConfig: ClientConfig = {

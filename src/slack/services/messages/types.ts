@@ -4,9 +4,7 @@ import type { MCPToolResult } from '../../../mcp/types.js';
 /**
  * Dependencies for message service operations
  */
-export interface MessageServiceDependencies extends InfrastructureServices {
-  // Additional message-specific dependencies can be added here
-}
+export type MessageServiceDependencies = InfrastructureServices;
 
 /**
  * Configuration for message service operations
