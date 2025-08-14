@@ -1,6 +1,16 @@
 import { z } from 'zod';
 
 /**
+ * Pagination constants - defined here to avoid circular dependency issues
+ */
+export const PAGINATION_DEFAULTS = {
+  MAX_PAGES: 10,
+  MAX_ITEMS: 1000,
+  MAX_PAGES_LIMIT: 100,
+  MAX_ITEMS_LIMIT: 10000,
+} as const;
+
+/**
  * Validation schemas for Slack API requests
  */
 
@@ -47,15 +57,32 @@ export const GetChannelHistorySchema = z
     limit: z
       .number()
       .min(1)
-      .max(100)
+      .max(1000)
       .optional()
-      .default(10)
-      .describe('Number of messages to retrieve (1-100)'),
+      .default(100)
+      .describe('Number of messages to retrieve per page (1-1000)'),
     cursor: z.string().optional().describe('Cursor for pagination (optional)'),
     oldest: z.string().optional().describe('Start of time range (timestamp)'),
     latest: z.string().optional().describe('End of time range (timestamp)'),
+    fetch_all_pages: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Whether to fetch all pages at once instead of single page'),
+    max_pages: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
+      .optional()
+      .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
+    max_items: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
+      .optional()
+      .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
-  .describe('Get message history from a Slack channel');
+  .describe('Get message history from a Slack channel with optional pagination support');
 
 export const GetUserInfoSchema = z
   .object({
@@ -120,6 +147,23 @@ export const FindThreadsInChannelSchema = z
       .optional()
       .default(false)
       .describe('Include additional metadata in response'),
+    fetch_all_pages: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Whether to fetch all pages at once instead of single page'),
+    max_pages: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
+      .optional()
+      .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
+    max_items: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
+      .optional()
+      .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
   .describe('Find all threaded conversations in a specific channel');
 
@@ -139,7 +183,7 @@ export const GetThreadRepliesSchema = z
       .max(1000)
       .optional()
       .default(100)
-      .describe('Maximum number of messages to retrieve (1-1000)'),
+      .describe('Maximum number of messages to retrieve per page (1-1000)'),
     cursor: z.string().optional().describe('Pagination cursor'),
     oldest: z.string().optional().describe('Start of time range'),
     latest: z.string().optional().describe('End of time range'),
@@ -148,8 +192,25 @@ export const GetThreadRepliesSchema = z
       .optional()
       .default(true)
       .describe('Include messages with matching timestamps'),
+    fetch_all_pages: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Whether to fetch all pages at once instead of single page'),
+    max_pages: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
+      .optional()
+      .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
+    max_items: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
+      .optional()
+      .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
-  .describe('Get complete thread content including parent message and all replies');
+  .describe('Get complete thread content including parent message and all replies with optional pagination support');
 
 export const SearchThreadsSchema = z
   .object({
@@ -527,10 +588,27 @@ export const ListFilesSchema = z
       .max(1000)
       .optional()
       .default(100)
-      .describe('Number of files to return (1-1000)'),
+      .describe('Number of files to return per page (1-1000)'),
     page: z.number().min(1).optional().default(1).describe('Page number for pagination'),
+    fetch_all_pages: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Whether to fetch all pages at once instead of single page'),
+    max_pages: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
+      .optional()
+      .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
+    max_items: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
+      .optional()
+      .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
-  .describe('List files in workspace with filtering options');
+  .describe('List files in workspace with filtering options and optional pagination support');
 
 export const GetFileInfoSchema = z
   .object({
@@ -601,6 +679,23 @@ export const SearchFilesSchema = z
       .optional()
       .default(20)
       .describe('Number of results to return (1-100)'),
+    fetch_all_pages: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Whether to fetch all pages at once instead of single page'),
+    max_pages: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
+      .optional()
+      .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
+    max_items: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
+      .optional()
+      .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
   .describe('Search for files by name, type, or content');
 
@@ -730,9 +825,26 @@ export const ListTeamMembersSchema = z
       .max(200)
       .optional()
       .default(100)
-      .describe('Maximum number of members to return (1-200)'),
+      .describe('Maximum number of members to return per page (1-200)'),
+    fetch_all_pages: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Whether to fetch all pages at once instead of single page'),
+    max_pages: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
+      .optional()
+      .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
+    max_items: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
+      .optional()
+      .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
-  .describe('List all team members with their roles and status');
+  .describe('List all team members with their roles and status with optional pagination support');
 
 /**
  * Analytics and reporting validation schemas
@@ -756,6 +868,23 @@ export const GetWorkspaceActivitySchema = z
       .optional()
       .default(10)
       .describe('Number of top users/channels to include'),
+    fetch_all_pages: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Whether to fetch all pages at once instead of single page'),
+    max_pages: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
+      .optional()
+      .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
+    max_items: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
+      .optional()
+      .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
   .describe('Generate comprehensive workspace activity report');
 
@@ -786,6 +915,29 @@ export function validateInput<T>(schema: z.ZodSchema<T>, input: unknown): T {
   }
 
   return result.data;
+}
+
+/**
+ * Applies implicit safety defaults for pagination parameters when fetch_all_pages is true
+ * This prevents memory and performance issues by applying reasonable limits
+ */
+export function applyPaginationSafetyDefaults<T extends Record<string, any>>(input: T): T & { max_pages?: number; max_items?: number } {
+  if (!input.fetch_all_pages) {
+    return input;
+  }
+
+  const result = { ...input } as T & { max_pages?: number; max_items?: number };
+  
+  // Apply implicit defaults only if not explicitly specified
+  if (result.max_pages === undefined || result.max_pages === null) {
+    result.max_pages = PAGINATION_DEFAULTS.MAX_PAGES;
+  }
+  
+  if (result.max_items === undefined || result.max_items === null) {
+    result.max_items = PAGINATION_DEFAULTS.MAX_ITEMS;
+  }
+  
+  return result;
 }
 
 // Existing types

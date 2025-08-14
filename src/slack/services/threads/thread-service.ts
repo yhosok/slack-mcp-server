@@ -21,6 +21,7 @@ import {
   formatCreateThreadResponse,
   formatThreadRepliesResponse,
 } from '../formatters/text-formatters.js';
+import { executePagination } from '../../infrastructure/generic-pagination.js';
 
 // Export types for external use
 export type { ThreadService, ThreadServiceDependencies } from './types.js';
@@ -38,6 +39,7 @@ import {
   formatThreadSummary,
   type ThreadSummaryFormatterOptions,
 } from '../../analysis/index.js';
+import { countWordsInMessages } from '../../analysis/thread/sentiment-analysis.js';
 
 /**
  * Create thread service with infrastructure dependencies
@@ -52,63 +54,76 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
     deps.requestHandler.handleWithCustomFormat(FindThreadsInChannelSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
-      const result = await client.conversations.history({
-        channel: input.channel,
-        limit: input.limit || 100,
-        cursor: input.cursor,
-        oldest: input.oldest,
-        latest: input.latest,
-        include_all_metadata: input.include_all_metadata,
-      });
+      // Use unified pagination implementation with thread processing logic
+      return await executePagination(input, {
+        fetchPage: async (cursor?: string) => {
+          const result = await client.conversations.history({
+            channel: input.channel,
+            limit: input.limit || 100,
+            cursor,
+            oldest: input.oldest,
+            latest: input.latest,
+            include_all_metadata: input.include_all_metadata,
+          });
 
-      if (!result.messages) {
-        return formatFindThreadsResponse({ threads: [], total: 0 });
-      }
-
-      const messages = result.messages || [];
-
-      // Filter messages that have replies (threads) - preserves business logic
-      const threadParents = messages.filter(
-        (msg: any) => msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
-      );
-
-      const threads = [];
-
-      for (const parentMsg of threadParents) {
-        // Get thread replies for each parent message (maintains compatibility)
-        const repliesResult = await client.conversations.replies({
-          channel: input.channel,
-          ts: parentMsg.ts!,
-          limit: 100,
-        });
-
-        if (repliesResult.ok && repliesResult.messages) {
-          const [parent, ...replies] = repliesResult.messages;
-
-          if (parent) {
-            threads.push({
-              threadTs: parent.ts,
-              parentMessage: {
-                text: parent.text,
-                user: parent.user,
-                timestamp: parent.ts,
-              },
-              replyCount: replies.length,
-              lastReply: replies[replies.length - 1]?.ts || parent.ts,
-              participants: [...new Set(replies.map((r: any) => r.user).filter(Boolean))],
-            });
+          if (!result.messages) {
+            throw new SlackAPIError('Failed to retrieve channel history for thread discovery');
           }
-        }
-      }
 
-      return await formatFindThreadsResponse(
-        {
-          threads,
-          total: threads.length,
-          hasMore: result.has_more,
+          return result;
         },
-        deps.userService.getDisplayName
-      );
+
+        getCursor: (response) => response.response_metadata?.next_cursor,
+        
+        getItems: (response) => {
+          const messages = response.messages || [];
+          // Filter messages that have replies (threads) - preserves business logic
+          return messages.filter(
+            (msg: any) => msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
+          );
+        },
+        
+        formatResponse: async (data) => {
+          const threadParents = data.items;
+          const threads = [];
+
+          for (const parentMsg of threadParents) {
+            // Get thread replies for each parent message (maintains compatibility)
+            const repliesResult = await client.conversations.replies({
+              channel: input.channel,
+              ts: (parentMsg as any).ts!,
+              limit: 100,
+            });
+
+            if (repliesResult.ok && repliesResult.messages) {
+              const [parent, ...replies] = repliesResult.messages;
+
+              if (parent) {
+                threads.push({
+                  threadTs: parent.ts,
+                  parentMessage: {
+                    text: parent.text,
+                    user: parent.user,
+                    timestamp: parent.ts,
+                  },
+                  replyCount: replies.length,
+                  lastReply: replies[replies.length - 1]?.ts || parent.ts,
+                  participants: [...new Set(replies.map((r: any) => r.user).filter(Boolean))],
+                });
+              }
+            }
+          }
+
+          return await formatFindThreadsResponse(
+            {
+              threads,
+              total: threads.length,
+              hasMore: data.hasMore,
+            },
+            deps.userService.getDisplayName
+          );
+        },
+      });
     });
 
   /**
@@ -118,39 +133,58 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
     deps.requestHandler.handleWithCustomFormat(GetThreadRepliesSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
-      const result = await client.conversations.replies({
-        channel: input.channel,
-        ts: input.thread_ts,
-        limit: input.limit,
-        cursor: input.cursor,
-        oldest: input.oldest,
-        latest: input.latest,
-        inclusive: input.inclusive !== false,
-      });
+      // Use unified pagination implementation
+      return await executePagination(input, {
+        fetchPage: async (cursor?: string) => {
+          const result = await client.conversations.replies({
+            channel: input.channel,
+            ts: input.thread_ts,
+            limit: input.limit,
+            cursor,
+            oldest: input.oldest,
+            latest: input.latest,
+            inclusive: input.inclusive !== false,
+          });
 
-      if (!result.ok || !result.messages) {
-        const error = new SlackAPIError(
-          `Thread not found: ${result.error || 'No messages returned'}`
-        );
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Slack API Error: ${error.message}`,
-            },
-          ],
-          isError: true,
-        };
-      }
+          if (!result.ok || !result.messages) {
+            throw new SlackAPIError(
+              `Thread not found: ${result.error || 'No messages returned'}`
+            );
+          }
 
-      return formatThreadRepliesResponse(
-        {
-          messages: result.messages,
-          hasMore: result.has_more,
-          cursor: result.response_metadata?.next_cursor,
+          return result;
         },
-        deps.userService.getDisplayName
-      );
+
+        getCursor: (response) => response.response_metadata?.next_cursor,
+        
+        getItems: (response) => response.messages || [],
+        
+        formatResponse: async (data) => {
+          // Check for error case in single page mode
+          if (!data.hasMore && data.items.length === 0) {
+            const error = new SlackAPIError('Thread not found: No messages returned');
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Slack API Error: ${error.message}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          return await formatThreadRepliesResponse(
+            {
+              messages: data.items,
+              hasMore: data.hasMore,
+              cursor: data.cursor,
+              totalMessages: data.items.length,
+            },
+            deps.userService.getDisplayName
+          );
+        },
+      });
     });
 
   /**
@@ -295,8 +329,8 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           extracted_from_message_ts: (item as any).message_ts || '',
         })),
         summary: 'Thread analysis completed',
-        word_count: analysis.metadata.messageCount * 10, // Rough estimate
-        duration_hours: (Date.now() - parseFloat(input.thread_ts || '0') * 1000) / (1000 * 60 * 60),
+        word_count: countWordsInMessages(messages), // Actual word count using multilingual tokenization
+        duration_hours: analysis.timeline.totalDuration / 60, // Convert minutes to hours
       };
 
       return formatThreadAnalysis(threadAnalysis, formattedOptions);

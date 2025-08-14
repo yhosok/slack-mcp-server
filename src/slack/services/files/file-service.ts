@@ -10,6 +10,7 @@ import {
   SearchFilesSchema,
 } from '../../../utils/validation.js';
 import type { FileService, FileServiceDependencies } from './types.js';
+import { executePagination } from '../../infrastructure/generic-pagination.js';
 
 // Export types for external use
 export type { FileService, FileServiceDependencies } from './types.js';
@@ -89,38 +90,65 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
     deps.requestHandler.handle(ListFilesSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
-      const listArgs: FilesListArguments = {
-        channel: input.channel,
-        user: input.user,
-        ts_from: input.ts_from,
-        ts_to: input.ts_to,
-        types: input.types,
-        count: input.count || 100,
-        page: input.page || 1,
-      };
+      // Use unified pagination implementation for Slack files API (page-based)
+      let currentPage = input.page || 1;
+      
+      return await executePagination(input, {
+        fetchPage: async () => {
+          const listArgs: FilesListArguments = {
+            channel: input.channel,
+            user: input.user,
+            ts_from: input.ts_from,
+            ts_to: input.ts_to,
+            types: input.types,
+            count: input.count || 100,
+            page: currentPage,
+          };
 
-      const result = await client.files.list(listArgs);
+          const result = await client.files.list(listArgs);
 
-      if (!result.files) {
-        return { files: [], total: 0 };
-      }
+          if (!result.files) {
+            throw new SlackAPIError(`Failed to retrieve files${currentPage > 1 ? ` (page ${currentPage})` : ''}`);
+          }
 
-      return {
-        files: result.files.map((file) => ({
-          id: file.id,
-          name: file.name,
-          title: file.title,
-          filetype: file.filetype,
-          size: file.size,
-          url: file.url_private,
-          downloadUrl: file.url_private_download,
-          user: file.user,
-          timestamp: file.timestamp,
-          channels: file.channels,
-        })),
-        total: result.files.length,
-        pagination: result.paging,
-      };
+          currentPage++;
+          return result;
+        },
+
+        getCursor: (response) => {
+          // Slack files.list uses page-based pagination, not cursor-based
+          // Continue if we have more pages based on the paging info
+          const paging = response.paging;
+          if (paging && paging.page !== undefined && paging.pages !== undefined && paging.page < paging.pages) {
+            return `page-${paging.page + 1}`;
+          }
+          return undefined;
+        },
+        
+        getItems: (response) => response.files || [],
+        
+        formatResponse: (data) => {
+          const files = data.items.map((file: any) => ({
+            id: file.id,
+            name: file.name,
+            title: file.title,
+            filetype: file.filetype,
+            size: file.size,
+            url: file.url_private,
+            downloadUrl: file.url_private_download,
+            user: file.user,
+            timestamp: file.timestamp,
+            channels: file.channels,
+          }));
+
+          return {
+            files,
+            total: files.length,
+            pageCount: data.pageCount,
+            pagination: data.hasMore ? { hasMore: true } : null,
+          };
+        },
+      });
     });
 
   /**
@@ -144,7 +172,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         try {
           // Note: files.comments is deprecated, skip for now
           comments = [];
-        } catch (error) {
+        } catch {
           // Comments API not available or deprecated
           comments = [];
         }
@@ -210,18 +238,36 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
     deps.requestHandler.handle(ShareFileSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
 
-      // Note: files.share API method may not be available
-      // Use alternative approach or skip this functionality for now
-      const result = await client.chat.postMessage({
-        channel: input.channel,
-        text: `File shared: <@${input.file_id}|File>`,
+      // First, get the file information to retrieve the permalink
+      const fileInfo = await client.files.info({
+        file: input.file_id,
       });
 
+      if (!fileInfo.ok) {
+        throw new Error(`Failed to get file information: ${fileInfo.error}`);
+      }
+
+      if (!fileInfo.file?.permalink) {
+        throw new Error('File permalink not available');
+      }
+
+      // Share the file by posting its permalink to the channel
+      const result = await client.chat.postMessage({
+        channel: input.channel,
+        text: `File shared: ${fileInfo.file.permalink}`,
+        unfurl_links: true, // Enable link previews for the file
+      });
+
+      if (!result.ok) {
+        throw new Error(`Failed to share file: ${result.error}`);
+      }
+
       return {
-        success: result.ok || false,
+        success: true,
         fileId: input.file_id,
         channel: input.channel,
-        message: result.ok ? 'File shared successfully' : 'Failed to share file',
+        permalink: fileInfo.file.permalink,
+        message: 'File shared successfully',
       };
     });
 

@@ -13,6 +13,7 @@ import {
   formatChannelHistoryResponse,
   formatSearchMessagesResponse,
 } from '../formatters/text-formatters.js';
+import { executePagination } from '../../infrastructure/generic-pagination.js';
 
 // Export types for external use
 export type { MessageService, MessageServiceDependencies } from './types.js';
@@ -96,38 +97,53 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
     deps.requestHandler.handleWithCustomFormat(GetChannelHistorySchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
-      const result = await client.conversations.history({
-        channel: input.channel,
-        limit: input.limit,
-        cursor: input.cursor,
-        oldest: input.oldest,
-        latest: input.latest,
-      });
+      // Use unified pagination implementation
+      return await executePagination(input, {
+        fetchPage: async (cursor?: string) => {
+          const result = await client.conversations.history({
+            channel: input.channel,
+            limit: input.limit,
+            cursor,
+            oldest: input.oldest,
+            latest: input.latest,
+          });
 
-      if (!result.messages) {
-        throw new SlackAPIError('Failed to retrieve channel history');
-      }
+          if (!result.messages) {
+            throw new SlackAPIError(`Failed to retrieve channel history${cursor ? ` (page with cursor: ${cursor.substring(0, 10)}...)` : ''}`);
+          }
 
-      const messages = result.messages.map((message) => ({
-        type: message.type,
-        user: message.user,
-        text: message.text,
-        timestamp: message.ts,
-        threadTs: message.thread_ts,
-        replyCount: message.reply_count,
-        reactions: message.reactions,
-        edited: message.edited,
-        files: message.files,
-      }));
-
-      return formatChannelHistoryResponse(
-        {
-          messages,
-          hasMore: result.has_more,
-          cursor: result.response_metadata?.next_cursor,
+          return result;
         },
-        deps.userService.getDisplayName
-      );
+
+        getCursor: (response) => response.response_metadata?.next_cursor,
+        
+        getItems: (response) => response.messages || [],
+        
+        formatResponse: async (data) => {
+          const messages = data.items.map((message: any) => ({
+            type: message.type,
+            user: message.user,
+            text: message.text,
+            timestamp: message.ts,
+            threadTs: message.thread_ts,
+            replyCount: message.reply_count,
+            reactions: message.reactions,
+            edited: message.edited,
+            files: message.files,
+          }));
+
+          return await formatChannelHistoryResponse(
+            {
+              messages,
+              hasMore: data.hasMore,
+              cursor: data.cursor,
+              pageCount: data.pageCount,
+              totalMessages: messages.length,
+            },
+            deps.userService.getDisplayName
+          );
+        },
+      });
     });
 
   /**

@@ -2,6 +2,13 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { extractTextContent } from '../utils/helpers';
 
+// Mock pagination helper for tests
+jest.mock('../slack/infrastructure/pagination-helper.js', () => ({
+  paginateSlackAPI: jest.fn(),
+  collectAllPages: jest.fn(() => Promise.resolve({ items: [], pageCount: 1 })),
+  processBatch: jest.fn(),
+}));
+
 /**
  * Integration tests to validate SlackService functionality
  *

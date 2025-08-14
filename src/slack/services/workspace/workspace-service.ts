@@ -6,6 +6,7 @@ import {
   GetServerHealthSchema,
 } from '../../../utils/validation.js';
 import type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
+import { executePagination } from '../../infrastructure/generic-pagination.js';
 
 // Export types for external use
 export type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
@@ -57,70 +58,84 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
     deps.requestHandler.handle(ListTeamMembersSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
-      const listArgs: UsersListArguments = {
-        limit: input.limit || 100,
-        cursor: input.cursor,
-        include_locale: true,
-      };
+      // Use unified pagination implementation
+      return await executePagination(input, {
+        fetchPage: async (cursor?: string) => {
+          const listArgs: UsersListArguments = {
+            limit: input.limit || 100,
+            cursor,
+            include_locale: true,
+          };
 
-      const result = await client.users.list(listArgs);
+          const result = await client.users.list(listArgs);
 
-      if (!result.members) {
-        throw new SlackAPIError('Failed to retrieve team members');
-      }
+          if (!result.members) {
+            throw new SlackAPIError(`Failed to retrieve team members${cursor ? ` (page with cursor: ${cursor.substring(0, 10)}...)` : ''}`);
+          }
 
-      // Filter members based on input options
-      let members = result.members;
-
-      if (!input.include_deleted) {
-        members = members.filter((member) => !member.deleted);
-      }
-
-      if (!input.include_bots) {
-        members = members.filter((member) => !member.is_bot);
-      }
-
-      const processedMembers = members.map((member) => ({
-        id: member.id,
-        name: member.name,
-        realName: member.real_name,
-        displayName: member.profile?.display_name || member.real_name || member.name,
-        email: member.profile?.email,
-        title: member.profile?.title,
-        isAdmin: member.is_admin,
-        isOwner: member.is_owner,
-        isPrimaryOwner: member.is_primary_owner,
-        isRestricted: member.is_restricted,
-        isUltraRestricted: member.is_ultra_restricted,
-        isBot: member.is_bot,
-        deleted: member.deleted,
-        hasFiles: false, // Property not available in API
-        timezone: member.tz,
-        timezoneLabel: member.tz_label,
-        timezoneOffset: member.tz_offset,
-        profile: {
-          image24: member.profile?.image_24,
-          image32: member.profile?.image_32,
-          image48: member.profile?.image_48,
-          image72: member.profile?.image_72,
-          image192: member.profile?.image_192,
-          image512: member.profile?.image_512,
-          statusText: member.profile?.status_text,
-          statusEmoji: member.profile?.status_emoji,
-          statusExpiration: member.profile?.status_expiration,
-          phone: member.profile?.phone,
-          skype: member.profile?.skype,
+          return result;
         },
-        updated: member.updated,
-      }));
 
-      return {
-        members: processedMembers,
-        total: processedMembers.length,
-        hasMore: result.response_metadata?.next_cursor ? true : false,
-        cursor: result.response_metadata?.next_cursor,
-        responseMetadata: result.response_metadata,
-      };
+        getCursor: (response) => response.response_metadata?.next_cursor,
+        
+        getItems: (response) => response.members || [],
+        
+        formatResponse: (data) => {
+          // Filter members based on input options
+          let filteredMembers = data.items;
+
+          if (!input.include_deleted) {
+            filteredMembers = filteredMembers.filter((member: any) => !member.deleted);
+          }
+
+          if (!input.include_bots) {
+            filteredMembers = filteredMembers.filter((member: any) => !member.is_bot);
+          }
+
+          const processedMembers = filteredMembers.map((member: any) => ({
+            id: member.id,
+            name: member.name,
+            realName: member.real_name,
+            displayName: member.profile?.display_name || member.real_name || member.name,
+            email: member.profile?.email,
+            title: member.profile?.title,
+            isAdmin: member.is_admin,
+            isOwner: member.is_owner,
+            isPrimaryOwner: member.is_primary_owner,
+            isRestricted: member.is_restricted,
+            isUltraRestricted: member.is_ultra_restricted,
+            isBot: member.is_bot,
+            deleted: member.deleted,
+            hasFiles: false, // Property not available in API
+            timezone: member.tz,
+            timezoneLabel: member.tz_label,
+            timezoneOffset: member.tz_offset,
+            profile: {
+              image24: member.profile?.image_24,
+              image32: member.profile?.image_32,
+              image48: member.profile?.image_48,
+              image72: member.profile?.image_72,
+              image192: member.profile?.image_192,
+              image512: member.profile?.image_512,
+              statusText: member.profile?.status_text,
+              statusEmoji: member.profile?.status_emoji,
+              statusExpiration: member.profile?.status_expiration,
+              phone: member.profile?.phone,
+              skype: member.profile?.skype,
+            },
+            updated: member.updated,
+          }));
+
+          return {
+            members: processedMembers,
+            total: processedMembers.length,
+            pageCount: data.pageCount,
+            hasMore: data.hasMore,
+            cursor: data.cursor,
+            responseMetadata: data.hasMore ? { next_cursor: data.cursor } : undefined,
+          };
+        },
+      });
     });
 
   /**
@@ -350,7 +365,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         const responseTime = Date.now() - start;
         connectivityStatus = responseTime < 1000 ? 'good' : responseTime < 3000 ? 'fair' : 'slow';
         lastApiCall = new Date();
-      } catch (error) {
+      } catch {
         connectivityStatus = 'error';
       }
 
