@@ -172,7 +172,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         try {
           // Note: files.comments is deprecated, skip for now
           comments = [];
-        } catch (error) {
+        } catch {
           // Comments API not available or deprecated
           comments = [];
         }

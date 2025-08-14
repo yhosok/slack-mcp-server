@@ -365,7 +365,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         const responseTime = Date.now() - start;
         connectivityStatus = responseTime < 1000 ? 'good' : responseTime < 3000 ? 'fair' : 'slow';
         lastApiCall = new Date();
-      } catch (error) {
+      } catch {
         connectivityStatus = 'error';
       }
 

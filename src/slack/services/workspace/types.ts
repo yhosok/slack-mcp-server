@@ -4,9 +4,7 @@ import type { MCPToolResult } from '../../../mcp/types.js';
 /**
  * Dependencies for workspace service operations
  */
-export interface WorkspaceServiceDependencies extends InfrastructureServices {
-  // Additional workspace-specific dependencies can be added here
-}
+export type WorkspaceServiceDependencies = InfrastructureServices;
 
 /**
  * Configuration for workspace service operations

@@ -268,7 +268,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
                 .split('T')[0];
               const currentCount = stats.dailyTrends.get(date || '') || 0;
               stats.dailyTrends.set(date || '', currentCount + totalMessageReactions);
-            } catch (error) {
+            } catch {
               // Skip invalid timestamps
             }
           }

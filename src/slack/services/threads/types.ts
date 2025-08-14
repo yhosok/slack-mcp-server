@@ -4,9 +4,7 @@ import type { MCPToolResult } from '../../../mcp/types.js';
 /**
  * Dependencies for thread service operations
  */
-export interface ThreadServiceDependencies extends InfrastructureServices {
-  // Additional thread-specific dependencies can be added here
-}
+export type ThreadServiceDependencies = InfrastructureServices;
 
 /**
  * Configuration for thread service operations
