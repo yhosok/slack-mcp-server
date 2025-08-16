@@ -195,11 +195,14 @@ describe('SlackService.searchMessages', () => {
       highlight: false,
     });
 
+    // Parse Context7 JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
-    expect(content.query).toBe('hello');
-    expect(content.total).toBe(2);
-    expect(content.matches).toHaveLength(2);
-    expect(content.matches[0].user).toBe('John Doe');
+    expect(content.statusCode).toBe('10000');
+    expect(content.message).toBe('Message search completed successfully');
+    expect(content.data.query).toBe('hello');
+    expect(content.data.total).toBe(2);
+    expect(content.data.messages).toHaveLength(2);
+    expect(content.data.messages[0].user).toBe('U123456'); // User ID, not display name
   });
 
   it('should handle search with minimal parameters', async () => {
@@ -230,10 +233,13 @@ describe('SlackService.searchMessages', () => {
       highlight: false,
     });
 
+    // Parse Context7 JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
-    expect(content.query).toBe('nonexistent');
-    expect(content.total).toBe(0);
-    expect(content.matches).toHaveLength(0);
+    expect(content.statusCode).toBe('10000');
+    expect(content.message).toBe('Message search completed successfully'); // Empty matches still returns "completed successfully"
+    expect(content.data.query).toBe('nonexistent');
+    expect(content.data.total).toBe(0);
+    expect(content.data.messages).toHaveLength(0);
   });
 
   it('should handle API errors', async () => {
@@ -246,9 +252,11 @@ describe('SlackService.searchMessages', () => {
 
     // When API returns error without messages, it should return empty results
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
-    expect(content.query).toBe('test');
-    expect(content.total).toBe(0);
-    expect(content.matches).toEqual([]);
+    expect(content.statusCode).toBe('10000');
+    expect(content.message).toBe('No messages found matching the search criteria'); // Correct message for empty results
+    expect(content.data.query).toBe('test');
+    expect(content.data.total).toBe(0);
+    expect(content.data.messages).toEqual([]);
   });
 
   it('should handle network errors', async () => {
@@ -308,8 +316,10 @@ describe('SlackService.searchMessages', () => {
       highlight: false,
     });
 
+    // Parse Context7 JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
-    expect(content.matches[0].channel.name).toBe('dev-portal');
+    expect(content.statusCode).toBe('10000');
+    expect(content.data.messages[0].channel).toBe('C3BVD6FPB'); // Actual channel ID from mock data
   });
 });
 

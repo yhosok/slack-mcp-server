@@ -6,6 +6,7 @@ import {
   GetUserInfoSchema,
   SearchMessagesSchema,
   GetChannelInfoSchema,
+  validateInput,
 } from '../../../utils/validation.js';
 import type { MessageService, MessageServiceDependencies } from './types.js';
 import {
@@ -14,6 +15,27 @@ import {
   formatSearchMessagesResponse,
 } from '../formatters/text-formatters.js';
 import { executePagination } from '../../infrastructure/generic-pagination.js';
+import {
+  createServiceSuccess,
+  createServiceError,
+  enforceServiceOutput,
+  type ServiceErrorType,
+  createTypedServiceError,
+} from '../../types/context7-patterns.js';
+import type {
+  SendMessageResult,
+  MessageSearchResult,
+  ChannelHistoryResult,
+  ListChannelsResult,
+  UserInfoResult,
+  ChannelInfoResult,
+  SendMessageOutput,
+  MessageSearchOutput,
+  ChannelHistoryOutput,
+  ListChannelsOutput,
+  UserInfoOutput,
+  ChannelInfoOutput,
+} from '../../types/outputs/messages.js';
 
 // Export types for external use
 export type { MessageService, MessageServiceDependencies } from './types.js';
@@ -21,48 +43,134 @@ import { SlackAPIError } from '../../../utils/errors.js';
 
 /**
  * Create message service with infrastructure dependencies
- * @param deps - Infrastructure dependencies
- * @returns Message service instance
+ * 
+ * Factory function that creates a Context7-compliant message service with
+ * full type safety, error handling, and integration with existing infrastructure.
+ * 
+ * Features:
+ * - Type-safe operations with discriminated union results
+ * - Automatic input validation using Zod schemas
+ * - Consistent error handling with ServiceResult patterns
+ * - Integration with Slack Web API client management
+ * - Support for both bot and user token operations
+ * 
+ * @param deps - Infrastructure dependencies (client manager, rate limiter, etc.)
+ * @returns Message service instance with Context7 + ts-pattern type safety
+ * 
+ * @example Service Creation
+ * ```typescript
+ * const messageService = createMessageService({
+ *   clientManager,
+ *   rateLimitTracker,
+ *   requestHandler,
+ *   userService
+ * });
+ * 
+ * const result = await messageService.sendMessage({
+ *   channel: 'C1234567890',
+ *   text: 'Hello, world!'
+ * });
+ * 
+ * match(result)
+ *   .with({ success: true }, (success) => console.log('Sent:', success.data))
+ *   .with({ success: false }, (error) => console.error('Failed:', error.error))
+ *   .exhaustive();
+ * ```
  */
 export const createMessageService = (deps: MessageServiceDependencies): MessageService => {
   /**
-   * Send a message to a channel or user
+   * Send a message to a channel or user with Context7 + ts-pattern type safety
+   * 
+   * Sends a text message to a Slack channel, direct message, or thread.
+   * Uses bot token for write operations and includes comprehensive error handling.
+   * 
+   * @param args - Unknown input (validated at runtime using SendMessageSchema)
+   * @returns ServiceResult with send confirmation or error details
+   * 
+   * @example Basic Message
+   * ```typescript
+   * const result = await sendMessage({
+   *   channel: 'C1234567890',
+   *   text: 'Hello, team!'
+   * });
+   * ```
+   * 
+   * @example Thread Reply
+   * ```typescript
+   * const result = await sendMessage({
+   *   channel: 'C1234567890',
+   *   text: 'Reply to this thread',
+   *   thread_ts: '1234567890.123456'
+   * });
+   * ```
+   * 
+   * @example Error Handling
+   * ```typescript
+   * const result = await sendMessage(args);
+   * if (!result.success) {
+   *   console.error(`Send failed: ${result.error}`);
+   *   // Handle specific error cases
+   * }
+   * ```
    */
-  const sendMessage = (args: unknown) =>
-    deps.requestHandler.handleWithCustomFormat(SendMessageSchema, args, async (input) => {
+  const sendMessage = async (args: unknown): Promise<SendMessageResult> => {
+    try {
+      // Validate input using Context7 validation pattern
+      const input = validateInput(SendMessageSchema, args);
+
       const client = deps.clientManager.getClientForOperation('write');
 
-      try {
-        const result = await client.chat.postMessage({
-          channel: input.channel,
-          text: input.text,
-          thread_ts: input.thread_ts,
-        });
+      const result = await client.chat.postMessage({
+        channel: input.channel,
+        text: input.text,
+        thread_ts: input.thread_ts,
+      });
 
-        if (!result.ok) {
-          throw new SlackAPIError(`Failed to send message: ${result.error}`);
-        }
-
-        return formatSendMessageResponse({
-          success: true,
-          timestamp: result.ts,
-          channel: result.channel,
-          message: result.message,
-        });
-      } catch (error) {
-        if (error instanceof SlackAPIError) {
-          throw error;
-        }
-
-        throw new SlackAPIError(`Failed to send message: ${error}`);
+      if (!result.ok) {
+        return createServiceError(
+          `Failed to send message: ${result.error}`,
+          'Message delivery failed'
+        );
       }
-    });
+
+      // Create Context7-compliant output using existing formatter
+      const formattedResponse = await formatSendMessageResponse({
+        success: true,
+        timestamp: result.ts,
+        channel: result.channel,
+        message: result.message,
+      });
+
+      // Ensure ServiceOutput compliance and create type-safe success result
+      const output: SendMessageOutput = enforceServiceOutput({
+        success: true,
+        channel: result.channel || input.channel,
+        ts: result.ts || '',
+        message: 'Message sent successfully',
+        ...formattedResponse,
+      });
+
+      return createServiceSuccess(output, 'Message sent successfully');
+    } catch (error) {
+      if (error instanceof SlackAPIError) {
+        return createServiceError(error.message, 'Message delivery failed');
+      }
+
+      return createServiceError(
+        `Failed to send message: ${error}`,
+        'Unexpected error during message delivery'
+      );
+    }
+  };
 
   /**
-   * List channels in the workspace
+   * List channels in the workspace with Context7 + ts-pattern type safety
    */
-  const listChannels = (args: unknown) =>
-    deps.requestHandler.handle(ListChannelsSchema, args, async (input) => {
+  const listChannels = async (args: unknown): Promise<ListChannelsResult> => {
+    try {
+      // Validate input using Context7 validation pattern
+      const input = validateInput(ListChannelsSchema, args);
+
       const client = deps.clientManager.getClientForOperation('read');
 
       const result = await client.conversations.list({
@@ -72,33 +180,52 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       });
 
       if (!result.channels) {
-        throw new SlackAPIError('Failed to retrieve channels');
+        return createServiceError(
+          'Failed to retrieve channels',
+          'Channel list is unavailable'
+        );
       }
 
-      return {
+      // Create Context7-compliant output
+      const output: ListChannelsOutput = enforceServiceOutput({
         channels: result.channels.map((channel) => ({
-          id: channel.id,
-          name: channel.name,
-          isPrivate: channel.is_private,
-          isMember: channel.is_member,
-          isArchived: channel.is_archived,
+          id: channel.id || '',
+          name: channel.name || '',
+          isPrivate: channel.is_private || false,
+          isMember: channel.is_member || false,
+          isArchived: channel.is_archived || false,
           memberCount: channel.num_members,
           topic: channel.topic?.value,
           purpose: channel.purpose?.value,
         })),
         total: result.channels.length,
-      };
-    });
+      });
+
+      return createServiceSuccess(output, 'Channels retrieved successfully');
+    } catch (error) {
+      if (error instanceof SlackAPIError) {
+        return createServiceError(error.message, 'Failed to retrieve channels');
+      }
+
+      return createServiceError(
+        `Failed to list channels: ${error}`,
+        'Unexpected error during channel retrieval'
+      );
+    }
+  };
 
   /**
-   * Get message history from a channel
+   * Get message history from a channel with Context7 + ts-pattern type safety
    */
-  const getChannelHistory = (args: unknown) =>
-    deps.requestHandler.handleWithCustomFormat(GetChannelHistorySchema, args, async (input) => {
+  const getChannelHistory = async (args: unknown): Promise<ChannelHistoryResult> => {
+    try {
+      // Validate input using Context7 validation pattern
+      const input = validateInput(GetChannelHistorySchema, args);
+
       const client = deps.clientManager.getClientForOperation('read');
 
       // Use unified pagination implementation
-      return await executePagination(input, {
+      const paginationResult = await executePagination(input, {
         fetchPage: async (cursor?: string) => {
           const result = await client.conversations.history({
             channel: input.channel,
@@ -124,33 +251,47 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
             type: message.type,
             user: message.user,
             text: message.text,
-            timestamp: message.ts,
-            threadTs: message.thread_ts,
-            replyCount: message.reply_count,
+            ts: message.ts,
+            thread_ts: message.thread_ts,
+            reply_count: message.reply_count,
             reactions: message.reactions,
             edited: message.edited,
             files: message.files,
           }));
 
-          return await formatChannelHistoryResponse(
-            {
-              messages,
-              hasMore: data.hasMore,
-              cursor: data.cursor,
-              pageCount: data.pageCount,
-              totalMessages: messages.length,
-            },
-            deps.userService.getDisplayName
-          );
+          // Create Context7-compliant output
+          const output: ChannelHistoryOutput = enforceServiceOutput({
+            messages,
+            hasMore: data.hasMore,
+            responseMetadata: data.cursor ? { nextCursor: data.cursor } : undefined,
+            channel: input.channel,
+          });
+
+          return output;
         },
       });
-    });
+
+      return createServiceSuccess(paginationResult as ChannelHistoryOutput, 'Channel history retrieved successfully');
+    } catch (error) {
+      if (error instanceof SlackAPIError) {
+        return createServiceError(error.message, 'Failed to retrieve channel history');
+      }
+
+      return createServiceError(
+        `Failed to get channel history: ${error}`,
+        'Unexpected error during channel history retrieval'
+      );
+    }
+  };
 
   /**
-   * Get information about a user
+   * Get information about a user with Context7 + ts-pattern type safety
    */
-  const getUserInfo = (args: unknown) =>
-    deps.requestHandler.handle(GetUserInfoSchema, args, async (input) => {
+  const getUserInfo = async (args: unknown): Promise<UserInfoResult> => {
+    try {
+      // Validate input using Context7 validation pattern
+      const input = validateInput(GetUserInfoSchema, args);
+
       const client = deps.clientManager.getClientForOperation('read');
 
       // Get user display name from cache or API
@@ -162,12 +303,16 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       });
 
       if (!result.user) {
-        throw new SlackAPIError('User not found');
+        return createServiceError(
+          'User not found',
+          'Requested user does not exist'
+        );
       }
 
-      return {
-        id: result.user.id,
-        name: result.user.name,
+      // Create Context7-compliant output
+      const output: UserInfoOutput = enforceServiceOutput({
+        id: result.user.id || '',
+        name: result.user.name || '',
         displayName,
         realName: result.user.real_name,
         email: result.user.profile?.email,
@@ -186,14 +331,29 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
           statusEmoji: result.user.profile?.status_emoji,
           title: result.user.profile?.title,
         },
-      };
-    });
+      });
+
+      return createServiceSuccess(output, 'User information retrieved successfully');
+    } catch (error) {
+      if (error instanceof SlackAPIError) {
+        return createServiceError(error.message, 'Failed to retrieve user information');
+      }
+
+      return createServiceError(
+        `Failed to get user info: ${error}`,
+        'Unexpected error during user information retrieval'
+      );
+    }
+  };
 
   /**
-   * Search for messages in the workspace
+   * Search for messages in the workspace with Context7 + ts-pattern type safety
    */
-  const searchMessages = (args: unknown) =>
-    deps.requestHandler.handleWithCustomFormat(SearchMessagesSchema, args, async (input) => {
+  const searchMessages = async (args: unknown): Promise<MessageSearchResult> => {
+    try {
+      // Validate input using Context7 validation pattern
+      const input = validateInput(SearchMessagesSchema, args);
+
       // Check if search API is available
       deps.clientManager.checkSearchApiAvailability(
         'searchMessages',
@@ -213,34 +373,56 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
 
       const result = await client.search.messages(searchArgs);
 
+      // Handle empty results
       if (!result.messages) {
-        return await formatSearchMessagesResponse(
-          {
-            results: [],
-            total: 0,
-            query: input.query,
-          },
-          deps.userService.getDisplayName
-        );
+        const output: MessageSearchOutput = enforceServiceOutput({
+          messages: [],
+          total: 0,
+          query: input.query,
+          hasMore: false,
+        });
+
+        return createServiceSuccess(output, 'No messages found matching the search criteria');
       }
 
-      return await formatSearchMessagesResponse(
-        {
-          results: result.messages.matches || [],
-          total: result.messages.total || 0,
-          query: input.query,
-          page: result.messages.paging?.page,
-          pages: result.messages.paging?.pages,
-        },
-        deps.userService.getDisplayName
+      // Process search results and create Context7-compliant output
+      const searchResults = result.messages.matches || [];
+      const messages = searchResults.map((match: any) => ({
+        text: match.text || '',
+        user: match.user || '',
+        ts: match.ts || '',
+        channel: match.channel?.id || '',
+        permalink: match.permalink || '',
+      }));
+
+      const output: MessageSearchOutput = enforceServiceOutput({
+        messages,
+        total: result.messages.total || 0,
+        query: input.query,
+        hasMore: (result.messages.paging?.page || 1) < (result.messages.paging?.pages || 1),
+      });
+
+      return createServiceSuccess(output, 'Message search completed successfully');
+    } catch (error) {
+      if (error instanceof SlackAPIError) {
+        return createServiceError(error.message, 'Failed to search messages');
+      }
+
+      return createServiceError(
+        `Failed to search messages: ${error}`,
+        'Unexpected error during message search'
       );
-    });
+    }
+  };
 
   /**
-   * Get detailed information about a channel
+   * Get detailed information about a channel with Context7 + ts-pattern type safety
    */
-  const getChannelInfo = (args: unknown) =>
-    deps.requestHandler.handle(GetChannelInfoSchema, args, async (input) => {
+  const getChannelInfo = async (args: unknown): Promise<ChannelInfoResult> => {
+    try {
+      // Validate input using Context7 validation pattern
+      const input = validateInput(GetChannelInfoSchema, args);
+
       const client = deps.clientManager.getClientForOperation('read');
 
       const result = await client.conversations.info({
@@ -248,12 +430,16 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       });
 
       if (!result.channel) {
-        throw new SlackAPIError('Channel not found');
+        return createServiceError(
+          'Channel not found',
+          'Requested channel does not exist'
+        );
       }
 
-      return {
-        id: result.channel.id,
-        name: result.channel.name,
+      // Create Context7-compliant output
+      const output: ChannelInfoOutput = enforceServiceOutput({
+        id: result.channel.id || '',
+        name: result.channel.name || '',
         isChannel: result.channel.is_channel,
         isGroup: result.channel.is_group,
         isPrivate: result.channel.is_private,
@@ -264,8 +450,20 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         purpose: result.channel.purpose,
         memberCount: result.channel.num_members,
         members: (result.channel as any)?.members,
-      };
-    });
+      });
+
+      return createServiceSuccess(output, 'Channel information retrieved successfully');
+    } catch (error) {
+      if (error instanceof SlackAPIError) {
+        return createServiceError(error.message, 'Failed to retrieve channel information');
+      }
+
+      return createServiceError(
+        `Failed to get channel info: ${error}`,
+        'Unexpected error during channel information retrieval'
+      );
+    }
+  };
 
   return {
     sendMessage,

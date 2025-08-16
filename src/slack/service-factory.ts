@@ -1,7 +1,7 @@
 import { CONFIG } from '../config/index.js';
 import type { MCPToolResult } from '../mcp/types.js';
 import { createInfrastructureServices } from './infrastructure/factory.js';
-import { createMessageService } from './services/messages/message-service.js';
+import { createMessageServiceMCPAdapter } from './services/messages/message-service-mcp-adapter.js';
 import { createThreadService } from './services/threads/thread-service.js';
 import { createFileService } from './services/files/file-service.js';
 import { createReactionService } from './services/reactions/reaction-service.js';
@@ -85,7 +85,7 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
   const infrastructure = createInfrastructureServices(infrastructureConfig);
 
   // Create domain services
-  const messageService = createMessageService(infrastructure);
+  const messageService = createMessageServiceMCPAdapter(infrastructure);
   const threadService = createThreadService(infrastructure);
   const fileService = createFileService(infrastructure);
   const reactionService = createReactionService(infrastructure);

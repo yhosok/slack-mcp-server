@@ -120,12 +120,15 @@ describe('SlackService.getChannelInfo', () => {
       channel: 'C1234567890',
     });
 
+    // Parse Context7 JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
-    expect(content.id).toBe('C1234567890');
-    expect(content.name).toBe('general');
-    expect(content.isChannel).toBe(true);
-    expect(content.memberCount).toBe(179);
-    expect(content.topic).toEqual({
+    expect(content.statusCode).toBe('10000');
+    expect(content.message).toBe('Channel information retrieved successfully');
+    expect(content.data.id).toBe('C1234567890');
+    expect(content.data.name).toBe('general');
+    expect(content.data.isChannel).toBe(true);
+    expect(content.data.memberCount).toBe(179);
+    expect(content.data.topic).toEqual({
       value: 'Company-wide announcements and work-based matters',
       creator: 'U1234567890',
       last_set: 1234567890,
@@ -171,12 +174,15 @@ describe('SlackService.getChannelInfo', () => {
       channel: 'G1234567890',
     });
 
+    // Parse Context7 JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
-    expect(content.id).toBe('G1234567890');
-    expect(content.name).toBe('private-team');
-    expect(content.isPrivate).toBe(true);
-    expect(content.isGroup).toBe(true);
-    expect(content.memberCount).toBe(5);
+    expect(content.statusCode).toBe('10000');
+    expect(content.message).toBe('Channel information retrieved successfully');
+    expect(content.data.id).toBe('G1234567890');
+    expect(content.data.name).toBe('private-team');
+    expect(content.data.isPrivate).toBe(true);
+    expect(content.data.isGroup).toBe(true);
+    expect(content.data.memberCount).toBe(5);
   });
 
   it('should handle archived channel', async () => {
@@ -218,9 +224,12 @@ describe('SlackService.getChannelInfo', () => {
       channel: 'C0987654321',
     });
 
+    // Parse Context7 JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
-    expect(content.isArchived).toBe(true);
-    expect(content.memberCount).toBe(0);
+    expect(content.statusCode).toBe('10000');
+    expect(content.message).toBe('Channel information retrieved successfully');
+    expect(content.data.isArchived).toBe(true);
+    expect(content.data.memberCount).toBe(0);
   });
 
   it('should handle channel not found error', async () => {
@@ -232,7 +241,11 @@ describe('SlackService.getChannelInfo', () => {
     const result = await slackService.getChannelInfo({ channel: 'C999999999' });
 
     expect(result.isError).toBe(true);
-    expect(extractTextContent(result.content[0])).toContain('Slack API Error: Channel not found');
+    // Parse Context7 JSON error response
+    const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
+    expect(content.statusCode).toBe('10001');
+    expect(content.message).toBe('Requested channel does not exist');
+    expect(content.error).toBe('Channel not found');
   });
 
   it('should handle missing channel in response', async () => {
@@ -256,7 +269,11 @@ describe('SlackService.getChannelInfo', () => {
     const result = await slackService.getChannelInfo({ channel: 'C1234567890' });
 
     expect(result.isError).toBe(true);
-    expect(extractTextContent(result.content[0])).toContain('Slack API Error: Channel not found');
+    // Parse Context7 JSON error response
+    const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
+    expect(content.statusCode).toBe('10001');
+    expect(content.message).toBe('Requested channel does not exist');
+    expect(content.error).toBe('Channel not found');
   });
 
   it('should handle network errors', async () => {
@@ -303,9 +320,12 @@ describe('SlackService.getChannelInfo', () => {
       channel: 'D1234567890',
     });
 
+    // Parse Context7 JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
-    expect(content.id).toBe('D1234567890');
-    expect(content.isChannel).toBe(false);
-    expect(content.isPrivate).toBe(true);
+    expect(content.statusCode).toBe('10000');
+    expect(content.message).toBe('Channel information retrieved successfully');
+    expect(content.data.id).toBe('D1234567890');
+    expect(content.data.isChannel).toBe(false);
+    expect(content.data.isPrivate).toBe(true);
   });
 });

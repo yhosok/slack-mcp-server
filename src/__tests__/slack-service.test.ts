@@ -137,14 +137,15 @@ describe('SlackService', () => {
         thread_ts: undefined,
       });
 
-      expect(result).toEqual({
-        content: [
-          {
-            type: 'text',
-            text: 'Message sent successfully to undefined. Timestamp: 1234567890.123456',
-          },
-        ],
-      });
+      // Parse the JSON response from Context7 implementation
+      const responseText = extractTextContent(result.content?.[0]);
+      const parsedResponse = JSON.parse(responseText);
+      
+      expect(parsedResponse.statusCode).toBe('10000');
+      expect(parsedResponse.message).toBe('Message sent successfully');
+      expect(parsedResponse.data).toHaveProperty('success', true);
+      expect(parsedResponse.data).toHaveProperty('channel', 'C1234567890');
+      expect(parsedResponse.data).toHaveProperty('ts', '1234567890.123456');
     });
 
     it('should throw SlackAPIError when Slack API returns error', async () => {
@@ -162,8 +163,13 @@ describe('SlackService', () => {
 
       // Assert
       expect(result.isError).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Slack API Error');
-      expect(extractTextContent(result.content?.[0])).toContain('Failed to send message');
+      const responseText = extractTextContent(result.content?.[0]);
+      const parsedResponse = JSON.parse(responseText);
+      
+      expect(parsedResponse.statusCode).toBe('10001');
+      expect(parsedResponse.message).toBe('Message delivery failed');
+      expect(parsedResponse.error).toContain('Failed to send message');
+      expect(parsedResponse.error).toContain('channel_not_found');
     });
 
     it('should validate input parameters', async () => {
@@ -263,9 +269,20 @@ describe('SlackService', () => {
         limit: 10,
       });
 
-      expect(extractTextContent(result.content?.[0])).toContain('Channel history (2 messages)');
-      expect(extractTextContent(result.content?.[0])).toContain('U1234567890: Hello!');
-      expect(extractTextContent(result.content?.[0])).toContain('U0987654321: Hi there!');
+      // Parse the JSON response from Context7 implementation
+      const responseText = extractTextContent(result.content?.[0]);
+      const parsedResponse = JSON.parse(responseText);
+      
+      expect(parsedResponse.statusCode).toBe('10000');
+      expect(parsedResponse.message).toBe('Channel history retrieved successfully');
+      expect(parsedResponse.data).toHaveProperty('messages');
+      expect(parsedResponse.data.messages).toHaveLength(2);
+      expect(parsedResponse.data.messages[0]).toHaveProperty('user', 'U1234567890');
+      expect(parsedResponse.data.messages[0]).toHaveProperty('text', 'Hello!');
+      expect(parsedResponse.data.messages[1]).toHaveProperty('user', 'U0987654321');
+      expect(parsedResponse.data.messages[1]).toHaveProperty('text', 'Hi there!');
+      expect(parsedResponse.data).toHaveProperty('channel', 'C1234567890');
+      expect(parsedResponse.data).toHaveProperty('hasMore', false);
     });
   });
 
