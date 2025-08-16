@@ -1,5 +1,5 @@
 import type { ReactionsGetArguments } from '@slack/web-api';
-import type { SlackMessage } from '../../types.js';
+import type { SlackMessage } from '../../types/index.js';
 import {
   AddReactionSchema,
   RemoveReactionSchema,

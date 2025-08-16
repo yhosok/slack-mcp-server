@@ -31,7 +31,7 @@ import type {
   ThreadParticipant,
   ThreadAnalysis,
   ThreadSummary,
-} from '../../types.js';
+} from '../../types/index.js';
 import {
   performComprehensiveAnalysis,
   performQuickAnalysis,

@@ -51,7 +51,7 @@ export type {
  * High-level analysis orchestration functions
  */
 
-import type { SlackMessage, ThreadParticipant } from '../types.js';
+import type { SlackMessage, ThreadParticipant } from '../types/index.js';
 import type {
   SentimentAnalysisResult,
   TopicExtractionResult,

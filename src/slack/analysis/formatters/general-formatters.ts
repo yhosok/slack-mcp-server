@@ -3,7 +3,7 @@
  * No side effects, fully testable and functional
  */
 
-import type { SlackMessage } from '../../types.js';
+import type { SlackMessage } from "../../types/index.js";
 import type { FormattedResult, DurationFormatterOptions, ByteFormatterOptions } from './types.js';
 
 /**

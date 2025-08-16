@@ -8,7 +8,7 @@ import type {
   ThreadParticipant,
   ThreadTimelineEvent,
   ActionItem,
-} from '../../types.js';
+} from '../../types/index.js';
 
 /**
  * Input data structures for analysis functions

@@ -9,7 +9,7 @@
  */
 
 import { jest } from '@jest/globals';
-import type { SlackMessage } from '../slack/types.js';
+import type { SlackMessage } from '../slack/types/index.js';
 import { SlackAPIError } from '../utils/errors.js';
 
 // Mock the logger to avoid console output during tests
