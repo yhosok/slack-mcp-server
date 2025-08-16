@@ -19,6 +19,13 @@ import { formatFileAnalysis } from '../../analysis/index.js';
 import { logger } from '../../../utils/logger.js';
 
 /**
+ * Constants for file upload fallback handling
+ */
+const FALLBACK_ID_PREFIX = 'temp_';
+const FALLBACK_FILENAME_SANITIZER = /[^a-zA-Z0-9.-]/g;
+const FALLBACK_FILENAME_REPLACEMENT = '_';
+
+/**
  * Type alias for the files.uploadV2 API response
  * Uses the same structure as files.completeUploadExternal
  */
@@ -47,8 +54,20 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       try {
         fileContent = await fs.readFile(input.file_path);
       } catch (error) {
+        // Enhanced error context for better debugging
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorCode = (error as NodeJS.ErrnoException)?.code;
+        
+        logger.error('Failed to read file for upload', {
+          file_path: input.file_path,
+          error_message: errorMessage,
+          error_code: errorCode,
+          api_context: 'file_read_error',
+          operation: 'uploadFile',
+        });
+        
         throw new SlackAPIError(
-          `Failed to read file from path '${input.file_path}': ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to read file from path '${input.file_path}': ${errorMessage}${errorCode ? ` (${errorCode})` : ''}`
         );
       }
 
@@ -68,10 +87,13 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         
         // Log a warning if multiple channels were specified (V2 API limitation)
         if (input.channels.length > 1) {
-          logger.warn(
-            `files.uploadV2 API only supports single channel uploads. Using first channel: ${input.channels[0]}. ` +
-            `Additional channels ignored: ${input.channels.slice(1).join(', ')}`
-          );
+          logger.warn('files.uploadV2 API limitation: multiple channels not supported', {
+            filename,
+            total_channels: input.channels.length,
+            selected_channel: input.channels[0],
+            ignored_channels: input.channels.slice(1),
+            api_context: 'uploadV2_channel_limitation',
+          });
         }
       }
 
@@ -92,12 +114,33 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
 
       // Validate V2 API response structure
       if (!result.ok) {
+        logger.error('Slack files.uploadV2 API returned error response', {
+          filename,
+          file_size: fileContent.length,
+          upload_channel: uploadOptions.channel_id || 'none',
+          slack_error: result.error || 'Unknown error',
+          api_context: 'uploadV2_api_error',
+          operation: 'uploadFile',
+        });
+        
         throw new SlackAPIError(
           `File upload failed: ${result.error || 'Unknown error'}`
         );
       }
 
       if (!result.files || result.files.length === 0) {
+        logger.error('Slack files.uploadV2 API succeeded but returned no file information', {
+          filename,
+          file_size: fileContent.length,
+          upload_channel: uploadOptions.channel_id || 'none',
+          api_context: 'uploadV2_empty_response',
+          operation: 'uploadFile',
+          response_structure: {
+            has_files_array: !!result.files,
+            files_array_length: result.files?.length || 0,
+          },
+        });
+        
         throw new SlackAPIError(
           'File upload failed: API succeeded but returned no file information'
         );
@@ -107,17 +150,39 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       // The files array is guaranteed to have at least one element due to the check above
       const uploadedFile = result.files[0]!
       
-      // Ensure we have a valid file ID (required field)
+      // Handle missing ID gracefully with fallback strategy
+      let fileId: string;
       if (!uploadedFile.id) {
-        throw new SlackAPIError(
-          'File upload failed: API returned file without ID'
-        );
+        // Generate fallback ID using timestamp + filename pattern
+        const timestamp = uploadedFile.timestamp || Math.floor(Date.now() / 1000);
+        const sanitizedFilename = filename.replace(FALLBACK_FILENAME_SANITIZER, FALLBACK_FILENAME_REPLACEMENT);
+        const fallbackId = `${FALLBACK_ID_PREFIX}${timestamp}_${sanitizedFilename}`;
+        fileId = fallbackId;
+        
+        // Log structured warning about missing ID with comprehensive context
+        logger.warn('Slack API returned file without ID - using fallback strategy', {
+          fallback_id: fallbackId,
+          original_filename: filename,
+          sanitized_filename: sanitizedFilename,
+          file_timestamp: timestamp,
+          file_size: uploadedFile.size || fileContent.length,
+          upload_channel: uploadOptions.channel_id || 'none',
+          api_context: 'missing_file_id_fallback',
+          response_metadata: {
+            has_name: !!uploadedFile.name,
+            has_title: !!uploadedFile.title,
+            has_url: !!uploadedFile.url_private,
+            has_timestamp: !!uploadedFile.timestamp,
+          },
+        });
+      } else {
+        fileId = uploadedFile.id;
       }
 
       return {
         success: true,
         file: {
-          id: uploadedFile.id,
+          id: fileId,
           name: uploadedFile.name || filename,
           title: uploadedFile.title || filename,
           size: uploadedFile.size || fileContent.length,

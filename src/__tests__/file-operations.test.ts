@@ -460,6 +460,122 @@ describe('SlackService - File Operations', () => {
       expect(content).toContain('success');
       expect(content).toContain('F1234567890'); // Should extract file ID from files array
     });
+
+    it('should handle missing ID gracefully with fallback strategy (TDD Green Phase)', async () => {
+      // Arrange
+      const mockFileContent = Buffer.from('test content without id');
+      mockReadFile.mockResolvedValue(mockFileContent);
+
+      // Mock successful API response but with file object missing 'id' field
+      // This simulates a legitimate Slack API response scenario where id field may be absent
+      const mockV2ResultWithoutId = {
+        ok: true,
+        files: [
+          {
+            // Note: No 'id' field in this file object
+            name: 'test-file.txt',
+            title: 'Test File',
+            size: mockFileContent.length,
+            url_private: 'https://files.slack.com/files-pri/test',
+            url_private_download: 'https://files.slack.com/files-pri/test/download',
+            channels: ['C1234567890'],
+            timestamp: 1234567890,
+            filetype: 'txt',
+            mimetype: 'text/plain',
+          },
+        ],
+      };
+      mockWebClientInstance.filesUploadV2.mockResolvedValue(mockV2ResultWithoutId);
+
+      // Act
+      const result = await slackService.uploadFile(validArgs);
+
+      // Assert - Should succeed with graceful fallback ID handling
+      expect(mockWebClientInstance.filesUploadV2).toHaveBeenCalled();
+      expect(result.isError).toBeUndefined(); // Successful operations don't have isError property
+      expect(result.content).toBeDefined();
+      
+      // Verify the response contains success and fallback ID
+      const content = extractTextContent(result.content?.[0]);
+      expect(content).toContain('success');
+      expect(content).toContain('true'); // success: true
+      expect(content).toContain('temp_1234567890_test-file.txt'); // fallback ID pattern
+      
+      // Verify structured warning was logged about missing ID with enhanced metadata
+      const { logger } = await import('../utils/logger');
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Slack API returned file without ID - using fallback strategy',
+        expect.objectContaining({
+          fallback_id: 'temp_1234567890_test-file.txt',
+          original_filename: 'test-file.txt',
+          sanitized_filename: 'test-file.txt',
+          file_timestamp: 1234567890,
+          file_size: mockFileContent.length,
+          upload_channel: 'C1234567890',
+          api_context: 'missing_file_id_fallback',
+          response_metadata: expect.objectContaining({
+            has_name: true,
+            has_title: true,
+            has_url: true,
+            has_timestamp: true,
+          }),
+        })
+      );
+    });
+
+    it('should handle multiple channels with structured warning logging', async () => {
+      // Arrange
+      const mockFileContent = Buffer.from('test file for multiple channels');
+      mockReadFile.mockResolvedValue(mockFileContent);
+      
+      const multiChannelArgs = {
+        file_path: '/path/to/multi-channel-file.txt',
+        filename: 'multi-channel-file.txt',
+        channels: ['C1234567890', 'C0987654321', 'C1122334455'],
+      };
+
+      const mockV2Result = {
+        ok: true,
+        files: [
+          {
+            id: 'F1234567890',
+            name: 'multi-channel-file.txt',
+            title: 'multi-channel-file.txt',
+            size: mockFileContent.length,
+            url_private: 'https://files.slack.com/files-pri/test',
+            url_private_download: 'https://files.slack.com/files-pri/test/download',
+            channels: ['C1234567890'],
+            timestamp: 1234567890,
+          },
+        ],
+      };
+      mockWebClientInstance.filesUploadV2.mockResolvedValue(mockV2Result);
+
+      // Act
+      const result = await slackService.uploadFile(multiChannelArgs);
+
+      // Assert - Should succeed and log structured warning about multiple channels
+      expect(mockWebClientInstance.filesUploadV2).toHaveBeenCalledWith(
+        expect.objectContaining({
+          channel_id: 'C1234567890', // Only first channel used
+        })
+      );
+      
+      expect(result.isError).toBeUndefined();
+      
+      // Verify structured warning was logged about multiple channels limitation
+      const { logger } = await import('../utils/logger');
+      expect(logger.warn).toHaveBeenCalledWith(
+        'files.uploadV2 API limitation: multiple channels not supported',
+        expect.objectContaining({
+          filename: 'multi-channel-file.txt',
+          total_channels: 3,
+          selected_channel: 'C1234567890',
+          ignored_channels: ['C0987654321', 'C1122334455'],
+          api_context: 'uploadV2_channel_limitation',
+        })
+      );
+    });
   });
 
   describe('listFiles', () => {
