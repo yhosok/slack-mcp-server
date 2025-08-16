@@ -1,5 +1,21 @@
 import type { InfrastructureServices } from '../../infrastructure/factory.js';
 import type { MCPToolResult } from '../../../mcp/types.js';
+import type {
+  ThreadDiscoveryResult,
+  ThreadRepliesResult,
+  ThreadSearchResult,
+  ThreadAnalysisResult,
+  ThreadSummaryResult,
+  ActionItemsResult,
+  ThreadReplyResult,
+  CreateThreadResult,
+  MarkImportantResult,
+  ImportantThreadsResult,
+  ThreadExportResult,
+  RelatedThreadsResult,
+  ThreadMetricsResult,
+  ThreadsByParticipantsResult,
+} from '../../types/outputs/threads.js';
 
 /**
  * Dependencies for thread service operations
@@ -22,9 +38,31 @@ export interface ThreadServiceConfig {
 }
 
 /**
- * Thread service interface
+ * Context7 + ts-pattern type-safe thread service interface
+ * Returns ServiceResult discriminated unions for exhaustive pattern matching
  */
 export interface ThreadService {
+  findThreadsInChannel(args: unknown): Promise<ThreadDiscoveryResult>;
+  getThreadReplies(args: unknown): Promise<ThreadRepliesResult>;
+  searchThreads(args: unknown): Promise<ThreadSearchResult>;
+  analyzeThread(args: unknown): Promise<ThreadAnalysisResult>;
+  summarizeThread(args: unknown): Promise<ThreadSummaryResult>;
+  extractActionItems(args: unknown): Promise<ActionItemsResult>;
+  postThreadReply(args: unknown): Promise<ThreadReplyResult>;
+  createThread(args: unknown): Promise<CreateThreadResult>;
+  markThreadImportant(args: unknown): Promise<MarkImportantResult>;
+  identifyImportantThreads(args: unknown): Promise<ImportantThreadsResult>;
+  exportThread(args: unknown): Promise<ThreadExportResult>;
+  findRelatedThreads(args: unknown): Promise<RelatedThreadsResult>;
+  getThreadMetrics(args: unknown): Promise<ThreadMetricsResult>;
+  getThreadsByParticipants(args: unknown): Promise<ThreadsByParticipantsResult>;
+}
+
+/**
+ * MCP-compatible thread service interface for backward compatibility
+ * Maintains existing MCPToolResult return types for SlackService facade
+ */
+export interface ThreadServiceMCPCompat {
   findThreadsInChannel(args: unknown): Promise<MCPToolResult>;
   getThreadReplies(args: unknown): Promise<MCPToolResult>;
   searchThreads(args: unknown): Promise<MCPToolResult>;

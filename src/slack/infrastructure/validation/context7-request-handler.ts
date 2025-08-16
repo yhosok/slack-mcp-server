@@ -9,7 +9,7 @@ import type { ZodSchema } from 'zod';
 import type { MCPToolResult } from '../../../mcp/types.js';
 import type { RequestHandlerDependencies } from './types.js';
 import { logger } from '../../../utils/logger.js';
-import { SlackAPIError } from '../../../utils/errors.js';
+import { SlackAPIError as _SlackAPIError } from '../../../utils/errors.js';
 import { 
   type ServiceResult, 
   type ServiceOutput,

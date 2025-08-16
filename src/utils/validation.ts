@@ -921,7 +921,7 @@ export function validateInput<T>(schema: z.ZodSchema<T>, input: unknown): T {
  * Applies implicit safety defaults for pagination parameters when fetch_all_pages is true
  * This prevents memory and performance issues by applying reasonable limits
  */
-export function applyPaginationSafetyDefaults<T extends Record<string, any>>(input: T): T & { max_pages?: number; max_items?: number } {
+export function applyPaginationSafetyDefaults<T extends Record<string, unknown>>(input: T): T & { max_pages?: number; max_items?: number } {
   if (!input.fetch_all_pages) {
     return input;
   }

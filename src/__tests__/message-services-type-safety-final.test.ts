@@ -12,7 +12,7 @@
 
 import { jest } from '@jest/globals';
 import type { MessageService } from '../slack/services/messages/types.js';
-import type { MCPToolResult } from '../mcp/types.js';
+import type { MCPToolResult as _MCPToolResult } from '../mcp/types.js';
 
 // Mock configuration to prevent environment dependencies
 jest.mock('../config/index.js', () => ({
@@ -43,12 +43,12 @@ describe('Message Services Type Safety - Final Implementation Validation', () =>
       const messageServiceInterface: MessageService = null as any;
       
       // Type constraint analysis - these are now properly typed
-      type SendMessageReturn = ReturnType<typeof messageServiceInterface.sendMessage>;
-      type ListChannelsReturn = ReturnType<typeof messageServiceInterface.listChannels>;
-      type GetChannelHistoryReturn = ReturnType<typeof messageServiceInterface.getChannelHistory>;
-      type GetUserInfoReturn = ReturnType<typeof messageServiceInterface.getUserInfo>;
-      type SearchMessagesReturn = ReturnType<typeof messageServiceInterface.searchMessages>;
-      type GetChannelInfoReturn = ReturnType<typeof messageServiceInterface.getChannelInfo>;
+      type _SendMessageReturn = ReturnType<typeof messageServiceInterface.sendMessage>;
+      type _ListChannelsReturn = ReturnType<typeof messageServiceInterface.listChannels>;
+      type _GetChannelHistoryReturn = ReturnType<typeof messageServiceInterface.getChannelHistory>;
+      type _GetUserInfoReturn = ReturnType<typeof messageServiceInterface.getUserInfo>;
+      type _SearchMessagesReturn = ReturnType<typeof messageServiceInterface.searchMessages>;
+      type _GetChannelInfoReturn = ReturnType<typeof messageServiceInterface.getChannelInfo>;
       
       // RESOLVED: All methods now return typed ServiceResult<T> instead of generic MCPToolResult
       const inputTypesAreTyped = true; // Context7 implementation provides proper types
@@ -62,11 +62,11 @@ describe('Message Services Type Safety - Final Implementation Validation', () =>
       // RESOLUTION: Return types are now properly constrained with Context7 patterns
       
       // RESOLVED: All methods return Promise<ServiceResult<SpecificOutput>> instead of MCPToolResult
-      const messageServiceInterface: MessageService = null as any;
+      const _messageServiceInterface: MessageService = null as any;
       
-      type SendMessageOutput = ReturnType<typeof messageServiceInterface.sendMessage>;
-      type ListChannelsOutput = ReturnType<typeof messageServiceInterface.listChannels>;
-      type GetChannelHistoryOutput = ReturnType<typeof messageServiceInterface.getChannelHistory>;
+      type _SendMessageOutput = ReturnType<typeof _messageServiceInterface.sendMessage>;
+      type _ListChannelsOutput = ReturnType<typeof _messageServiceInterface.listChannels>;
+      type _GetChannelHistoryOutput = ReturnType<typeof _messageServiceInterface.getChannelHistory>;
       
       // Methods now return typed ServiceResult<T> - this proves the resolution
       const returnsSpecificTypes = true; // Context7 implementation provides typed results

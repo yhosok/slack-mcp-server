@@ -20,15 +20,15 @@ import type {
   ServiceResult, 
   ServiceOutput,
   ApiResponse,
-  InferPatternType,
+  InferPatternType as _InferPatternType,
 } from '../slack/types/context7-patterns.js';
 import type { 
   SendMessageOutput,
   MessageSearchOutput,
   ChannelHistoryOutput,
-  ListChannelsOutput,
-  UserInfoOutput,
-  ChannelInfoOutput,
+  ListChannelsOutput as _ListChannelsOutput,
+  UserInfoOutput as _UserInfoOutput,
+  ChannelInfoOutput as _ChannelInfoOutput,
   SendMessageResult,
   MessageSearchResult,
   ChannelHistoryResult,
@@ -37,7 +37,7 @@ import type {
   ChannelInfoResult,
 } from '../slack/types/outputs/messages.js';
 import type { MessageService } from '../slack/services/messages/types.js';
-import { createMessageService } from '../slack/services/messages/message-service.js';
+import { createMessageService as _createMessageService } from '../slack/services/messages/message-service.js';
 import { 
   createServiceSuccess,
   createServiceError,
@@ -235,12 +235,12 @@ describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', 
       // VALIDATION: Service interfaces now use proper types instead of unknown/MCPToolResult
       
       // Test that MessageService interface is properly typed
-      type SendMessageReturn = ReturnType<MessageService['sendMessage']>;
-      type ListChannelsReturn = ReturnType<MessageService['listChannels']>;
-      type GetChannelHistoryReturn = ReturnType<MessageService['getChannelHistory']>;
-      type GetUserInfoReturn = ReturnType<MessageService['getUserInfo']>;
-      type SearchMessagesReturn = ReturnType<MessageService['searchMessages']>;
-      type GetChannelInfoReturn = ReturnType<MessageService['getChannelInfo']>;
+      type _SendMessageReturn = ReturnType<MessageService['sendMessage']>;
+      type _ListChannelsReturn = ReturnType<MessageService['listChannels']>;
+      type _GetChannelHistoryReturn = ReturnType<MessageService['getChannelHistory']>;
+      type _GetUserInfoReturn = ReturnType<MessageService['getUserInfo']>;
+      type _SearchMessagesReturn = ReturnType<MessageService['searchMessages']>;
+      type _GetChannelInfoReturn = ReturnType<MessageService['getChannelInfo']>;
       
       // These should be properly typed Promise<ServiceResult<T>> instead of Promise<MCPToolResult>
       const sendMessageReturnIsTyped = true; // Now properly typed
@@ -324,12 +324,12 @@ describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', 
       // VALIDATION: ServiceResult union types are properly defined
       
       // Test that result types are properly typed
-      type SendMessageResultType = SendMessageResult;
-      type MessageSearchResultType = MessageSearchResult;
-      type ChannelHistoryResultType = ChannelHistoryResult;
-      type ListChannelsResultType = ListChannelsResult;
-      type UserInfoResultType = UserInfoResult;
-      type ChannelInfoResultType = ChannelInfoResult;
+      type _SendMessageResultType = SendMessageResult;
+      type _MessageSearchResultType = MessageSearchResult;
+      type _ChannelHistoryResultType = ChannelHistoryResult;
+      type _ListChannelsResultType = ListChannelsResult;
+      type _UserInfoResultType = UserInfoResult;
+      type _ChannelInfoResultType = ChannelInfoResult;
       
       // Should be discriminated union types
       const resultTypesAreDiscriminatedUnions = true; // Now implemented

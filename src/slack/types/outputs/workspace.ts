@@ -1,9 +1,11 @@
 /**
  * Workspace service output types following Context7 TypeScript best practices
- * All types extend Record<string, any> for JSON serialization safety
+ * All types extend ServiceOutput for JSON serialization safety
  */
 
-export interface WorkspaceInfoOutput extends Record<string, any> {
+import type { ServiceOutput } from '../context7-patterns.js';
+
+export interface WorkspaceInfoOutput extends ServiceOutput {
   team: {
     id: string;
     name: string;
@@ -15,7 +17,7 @@ export interface WorkspaceInfoOutput extends Record<string, any> {
   memberCount: number;
 }
 
-export interface TeamMembersOutput extends Record<string, any> {
+export interface TeamMembersOutput extends ServiceOutput {
   members: Array<{
     id: string;
     name: string;
@@ -33,7 +35,7 @@ export interface TeamMembersOutput extends Record<string, any> {
   hasMore: boolean;
 }
 
-export interface WorkspaceActivityOutput extends Record<string, any> {
+export interface WorkspaceActivityOutput extends ServiceOutput {
   summary: {
     totalMessages: number;
     totalChannels: number;
@@ -56,7 +58,7 @@ export interface WorkspaceActivityOutput extends Record<string, any> {
   }>;
 }
 
-export interface ServerHealthOutput extends Record<string, any> {
+export interface ServerHealthOutput extends ServiceOutput {
   status: 'healthy' | 'warning' | 'error';
   rateLimits: {
     tier1: { remaining: number; resetTime?: string };

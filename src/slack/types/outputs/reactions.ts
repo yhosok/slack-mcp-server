@@ -1,9 +1,11 @@
 /**
  * Reaction service output types following Context7 TypeScript best practices
- * All types extend Record<string, any> for JSON serialization safety
+ * All types extend ServiceOutput for JSON serialization safety
  */
 
-export interface AddReactionOutput extends Record<string, any> {
+import type { ServiceOutput } from '../context7-patterns.js';
+
+export interface AddReactionOutput extends ServiceOutput {
   success: boolean;
   channel: string;
   message_ts: string;
@@ -11,7 +13,7 @@ export interface AddReactionOutput extends Record<string, any> {
   message: string;
 }
 
-export interface RemoveReactionOutput extends Record<string, any> {
+export interface RemoveReactionOutput extends ServiceOutput {
   success: boolean;
   channel: string;
   message_ts: string;
@@ -19,7 +21,7 @@ export interface RemoveReactionOutput extends Record<string, any> {
   message: string;
 }
 
-export interface GetReactionsOutput extends Record<string, any> {
+export interface GetReactionsOutput extends ServiceOutput {
   reactions: Array<{
     name: string;
     count: number;
@@ -34,7 +36,7 @@ export interface GetReactionsOutput extends Record<string, any> {
   channel: string;
 }
 
-export interface ReactionStatisticsOutput extends Record<string, any> {
+export interface ReactionStatisticsOutput extends ServiceOutput {
   totalReactions: number;
   topReactions: Array<{
     name: string;

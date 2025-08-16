@@ -17,7 +17,7 @@
 
 import { jest } from '@jest/globals';
 import type { MessageService } from '../slack/services/messages/types.js';
-import type { MCPToolResult } from '../mcp/types.js';
+import type { MCPToolResult as _MCPToolResult } from '../mcp/types.js';
 import { match, P } from 'ts-pattern';
 import {
   type ServiceResult,
@@ -27,18 +27,18 @@ import {
   createServiceError,
   enforceServiceOutput,
   validateServiceResult,
-  type InferPatternType,
+  type InferPatternType as _InferPatternType,
 } from '../slack/types/context7-patterns.js';
 import {
-  type SendMessageResult,
-  type MessageSearchResult,
-  type ChannelHistoryResult,
-  type ListChannelsResult,
-  type UserInfoResult,
-  type ChannelInfoResult,
+  type SendMessageResult as _SendMessageResult,
+  type MessageSearchResult as _MessageSearchResult,
+  type ChannelHistoryResult as _ChannelHistoryResult,
+  type ListChannelsResult as _ListChannelsResult,
+  type UserInfoResult as _UserInfoResult,
+  type ChannelInfoResult as _ChannelInfoResult,
 } from '../slack/types/outputs/messages.js';
-import { createMessageService } from '../slack/services/messages/message-service.js';
-import { createMessageServiceMCPAdapter } from '../slack/services/messages/message-service-mcp-adapter.js';
+import { createMessageService as _createMessageService } from '../slack/services/messages/message-service.js';
+import { createMessageServiceMCPAdapter as _createMessageServiceMCPAdapter } from '../slack/services/messages/message-service-mcp-adapter.js';
 
 // Mock configuration to prevent environment dependencies
 jest.mock('../config/index.js', () => ({
@@ -66,15 +66,15 @@ describe('Message Services Context7 + ts-pattern Implementation Validation (Refa
       // VALIDATION: Interface correctly implements Context7 patterns
       
       // VALIDATION 1: Methods properly accept unknown for runtime validation (Context7 pattern)
-      const messageServiceInterface: MessageService = null as any;
+      const _messageServiceInterface: MessageService = null as any;
       
       // Type constraint analysis - Context7 uses unknown with runtime validation
-      type SendMessageInput = Parameters<typeof messageServiceInterface.sendMessage>[0];
-      type ListChannelsInput = Parameters<typeof messageServiceInterface.listChannels>[0];
-      type GetChannelHistoryInput = Parameters<typeof messageServiceInterface.getChannelHistory>[0];
-      type GetUserInfoInput = Parameters<typeof messageServiceInterface.getUserInfo>[0];
-      type SearchMessagesInput = Parameters<typeof messageServiceInterface.searchMessages>[0];
-      type GetChannelInfoInput = Parameters<typeof messageServiceInterface.getChannelInfo>[0];
+      type _SendMessageInput = Parameters<typeof _messageServiceInterface.sendMessage>[0];
+      type _ListChannelsInput = Parameters<typeof _messageServiceInterface.listChannels>[0];
+      type _GetChannelHistoryInput = Parameters<typeof _messageServiceInterface.getChannelHistory>[0];
+      type _GetUserInfoInput = Parameters<typeof _messageServiceInterface.getUserInfo>[0];
+      type _SearchMessagesInput = Parameters<typeof _messageServiceInterface.searchMessages>[0];
+      type _GetChannelInfoInput = Parameters<typeof _messageServiceInterface.getChannelInfo>[0];
       
       // VALIDATION: Context7 pattern uses 'unknown' with runtime validation for type safety
       const inputTypesFollowContext7Pattern = true; // Context7 implementation reality
@@ -88,11 +88,11 @@ describe('Message Services Context7 + ts-pattern Implementation Validation (Refa
       // VALIDATION: Return types follow Context7 ServiceResult pattern
       
       // VALIDATION 2: Methods return typed ServiceResult discriminated unions
-      const messageServiceInterface: MessageService = null as any;
+      const _messageServiceInterface: MessageService = null as any;
       
-      type SendMessageOutput = ReturnType<typeof messageServiceInterface.sendMessage>;
-      type ListChannelsOutput = ReturnType<typeof messageServiceInterface.listChannels>;
-      type GetChannelHistoryOutput = ReturnType<typeof messageServiceInterface.getChannelHistory>;
+      type _SendMessageOutput = ReturnType<typeof _messageServiceInterface.sendMessage>;
+      type _ListChannelsOutput = ReturnType<typeof _messageServiceInterface.listChannels>;
+      type _GetChannelHistoryOutput = ReturnType<typeof _messageServiceInterface.getChannelHistory>;
       
       // Context7 ServiceResult discriminated unions are implemented
       const returnsTypedServiceResults = true; // Context7 implementation reality
@@ -180,7 +180,7 @@ describe('Message Services Context7 + ts-pattern Implementation Validation (Refa
       
       // Verify P.infer works for type inference
       const testPattern = P.string;
-      type InferredType = InferPatternType<typeof testPattern>;
+      type InferredType = _InferPatternType<typeof testPattern>;
       
       // Test with actual P patterns
       const stringPattern = P.string;
@@ -337,8 +337,8 @@ describe('Message Services Context7 + ts-pattern Implementation Validation (Refa
       } as any;
       
       // All methods should return Promise<ServiceResult<T>>
-      type SendMessageReturnType = ReturnType<ReturnType<typeof createMessageService>['sendMessage']>;
-      type ListChannelsReturnType = ReturnType<ReturnType<typeof createMessageService>['listChannels']>;
+      type SendMessageReturnType = ReturnType<ReturnType<typeof _createMessageService>['sendMessage']>;
+      type ListChannelsReturnType = ReturnType<ReturnType<typeof _createMessageService>['listChannels']>;
       
       expect(hasUnifiedTypeConstraints).toBe(shouldHaveUnifiedConstraints);
       // This will PASS because unified type constraints are implemented
@@ -413,12 +413,12 @@ describe('Message Services Context7 + ts-pattern Implementation Validation (Refa
       const shouldBeIntegrated = true; // Context7 target achieved
       
       // Verify output types are properly typed and integrated
-      type SendMessageResultType = SendMessageResult;
-      type MessageSearchResultType = MessageSearchResult;
-      type ChannelHistoryResultType = ChannelHistoryResult;
-      type ListChannelsResultType = ListChannelsResult;
-      type UserInfoResultType = UserInfoResult;
-      type ChannelInfoResultType = ChannelInfoResult;
+      type SendMessageResultType = _SendMessageResult;
+      type MessageSearchResultType = _MessageSearchResult;
+      type ChannelHistoryResultType = _ChannelHistoryResult;
+      type ListChannelsResultType = _ListChannelsResult;
+      type UserInfoResultType = _UserInfoResult;
+      type ChannelInfoResultType = _ChannelInfoResult;
       
       // These should all be ServiceResult<T> discriminated unions
       const testSuccess = createServiceSuccess({ success: true, channel: 'test', ts: '123', message: 'test' }, 'Success');
@@ -445,7 +445,7 @@ describe('Message Services Context7 + ts-pattern Implementation Validation (Refa
         userService: { getDisplayName: jest.fn() },
       } as any;
       
-      const mcpAdapter = createMessageServiceMCPAdapter(mockDeps);
+      const mcpAdapter = _createMessageServiceMCPAdapter(mockDeps);
       
       // Verify adapter has all required methods
       expect(typeof mcpAdapter.sendMessage).toBe('function');

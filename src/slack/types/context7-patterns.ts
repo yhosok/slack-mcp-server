@@ -79,7 +79,7 @@ const ERROR_RESPONSE_TEMPLATE = {
  * const alsoInvalid: ServiceOutput = 42; // Error!
  * ```
  */
-export type ServiceOutput = Record<string, any>;
+export type ServiceOutput = Record<string, unknown>;
 
 /**
  * Production-ready API response structure for Node.js backends
@@ -557,7 +557,7 @@ export type TypedServiceError = {
   error: string;
   message: string;
   errorType: ServiceErrorType;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 };
 
 /**

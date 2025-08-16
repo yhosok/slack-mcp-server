@@ -145,3 +145,44 @@ export function extractTextContent(content: MCPContent | undefined): string {
   }
   return '';
 }
+
+/**
+ * Parse JSON response from Context7-style services and extract data
+ * Returns parsed object for success responses (statusCode: "10000")
+ * Returns error object for error responses (statusCode: "10001")
+ */
+export function parseJsonResponse(content: MCPContent | undefined): {
+  success: boolean;
+  statusCode?: string;
+  message?: string;
+  data?: any;
+  error?: string;
+} {
+  const textContent = extractTextContent(content);
+  if (!textContent) {
+    return { success: false };
+  }
+
+  try {
+    const parsed = JSON.parse(textContent);
+    return {
+      success: parsed.statusCode === "10000",
+      statusCode: parsed.statusCode,
+      message: parsed.message,
+      data: parsed.data,
+      error: parsed.error,
+    };
+  } catch {
+    // Fallback for non-JSON responses (backward compatibility)
+    return { success: true, data: textContent };
+  }
+}
+
+/**
+ * Extract data from Context7-style JSON responses
+ * For tests that need to check specific data fields
+ */
+export function extractJsonData(content: MCPContent | undefined): any {
+  const parsed = parseJsonResponse(content);
+  return parsed.data;
+}

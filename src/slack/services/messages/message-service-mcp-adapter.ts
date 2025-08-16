@@ -33,7 +33,7 @@ export const createMessageServiceMCPAdapter = (deps: MessageServiceDependencies)
     const apiResponse = handleServiceResult(result);
     
     return match(result)
-      .with({ success: true }, (successResult) => ({
+      .with({ success: true }, (_successResult) => ({
         content: [
           {
             type: 'text' as const,
@@ -45,7 +45,7 @@ export const createMessageServiceMCPAdapter = (deps: MessageServiceDependencies)
           },
         ],
       }))
-      .with({ success: false }, (errorResult) => ({
+      .with({ success: false }, (_errorResult) => ({
         content: [
           {
             type: 'text' as const,

@@ -11,16 +11,16 @@ import {
 import type { MessageService, MessageServiceDependencies } from './types.js';
 import {
   formatSendMessageResponse,
-  formatChannelHistoryResponse,
-  formatSearchMessagesResponse,
+  formatChannelHistoryResponse as _formatChannelHistoryResponse,
+  formatSearchMessagesResponse as _formatSearchMessagesResponse,
 } from '../formatters/text-formatters.js';
 import { executePagination } from '../../infrastructure/generic-pagination.js';
 import {
   createServiceSuccess,
   createServiceError,
   enforceServiceOutput,
-  type ServiceErrorType,
-  createTypedServiceError,
+  type ServiceErrorType as _ServiceErrorType,
+  createTypedServiceError as _createTypedServiceError,
 } from '../../types/context7-patterns.js';
 import type {
   SendMessageResult,
