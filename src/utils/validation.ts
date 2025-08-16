@@ -557,20 +557,35 @@ export const UploadFileSchema = z
     file_path: z
       .string()
       .min(1, 'File path is required')
-      .describe('Local path to the file to upload'),
+      .max(4096, 'File path too long (max 4096 characters)')
+      .refine(
+        (path) => !path.includes('..') && !path.includes('~'),
+        'File path must not contain path traversal patterns'
+      )
+      .describe('Local path to the file to upload (validated for security)'),
     filename: z
       .string()
+      .max(255, 'Filename too long (max 255 characters)')
       .optional()
       .describe('Optional filename to use (defaults to original filename)'),
-    title: z.string().optional().describe('Optional title for the file'),
+    title: z
+      .string()
+      .max(255, 'Title too long (max 255 characters)')
+      .optional()
+      .describe('Optional title for the file'),
     channels: z
       .array(z.string())
+      .max(10, 'Too many channels (max 10 per upload)')
       .optional()
       .describe('Channels to share the file to (channel IDs)'),
-    initial_comment: z.string().optional().describe('Optional initial comment for the file'),
+    initial_comment: z
+      .string()
+      .max(8000, 'Initial comment too long (max 8000 characters)')
+      .optional()
+      .describe('Optional initial comment for the file'),
     thread_ts: z.string().optional().describe('Optional thread timestamp to upload to a thread'),
   })
-  .describe('Upload a file to Slack channels or threads');
+  .describe('Upload a file to Slack channels or threads with security validation');
 
 export const ListFilesSchema = z
   .object({

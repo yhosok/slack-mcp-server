@@ -3,7 +3,7 @@ import type { MCPToolResult } from '../mcp/types.js';
 import { createInfrastructureServices } from './infrastructure/factory.js';
 import { createMessageServiceMCPAdapter } from './services/messages/message-service-mcp-adapter.js';
 import { createThreadServiceMCPAdapter } from './services/threads/thread-service-mcp-adapter.js';
-import { createFileService } from './services/files/file-service.js';
+import { createFileServiceMCPAdapter } from './services/files/file-service-mcp-adapter.js';
 import { createReactionService } from './services/reactions/reaction-service.js';
 import { createWorkspaceService } from './services/workspace/workspace-service.js';
 
@@ -87,7 +87,7 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
   // Create domain services
   const messageService = createMessageServiceMCPAdapter(infrastructure);
   const threadService = createThreadServiceMCPAdapter(infrastructure);
-  const fileService = createFileService(infrastructure);
+  const fileService = createFileServiceMCPAdapter(infrastructure);
   const reactionService = createReactionService(infrastructure);
   const workspaceService = createWorkspaceService(infrastructure);
 

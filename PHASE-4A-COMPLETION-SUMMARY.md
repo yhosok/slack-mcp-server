@@ -59,10 +59,10 @@ Successfully implemented TypeSafeAPI + ts-pattern type safety patterns in Messag
 ## 📁 Key Files Created/Modified
 
 ### New Implementation Files
-- `src/slack/types/context7-patterns.ts` - Core TypeSafeAPI + ts-pattern types
+- `src/slack/types/typesafe-api-patterns.ts` - Core TypeSafeAPI + ts-pattern types
 - `src/slack/services/messages/message-service-mcp-adapter.ts` - MCP protocol adapter
 - `src/__tests__/message-services-type-safety.test.ts` - Comprehensive validation tests
-- `src/__tests__/message-services-context7-green.test.ts` - Green phase tests
+- `src/__tests__/message-services-typesafe-api-green.test.ts` - Green phase tests
 - `src/__tests__/message-services-type-safety-final.test.ts` - Final validation
 
 ### Enhanced Files

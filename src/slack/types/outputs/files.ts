@@ -8,7 +8,7 @@
  * - Comprehensive metadata for debugging and analytics
  */
 
-import type { ServiceOutput } from '../../infrastructure/validation/type-helpers.js';
+import type { ServiceOutput, ServiceResult } from '../typesafe-api-patterns.js';
 
 /**
  * Result of file deletion operation
@@ -25,38 +25,21 @@ export interface DeleteFileOutput extends ServiceOutput {
 
 /**
  * Result of file upload operation
- * TypeSafeAPI pattern: Discriminated union for type-safe success/error handling
+ * TypeSafeAPI pattern: ServiceOutput for upload confirmation with file metadata
  */
-export type UploadFileOutput = UploadFileSuccess | UploadFileError;
-
-export interface UploadFileSuccess extends ServiceOutput {
-  success: true;
+export interface UploadFileOutput extends ServiceOutput {
   file: {
     id?: string; // Optional due to Slack API limitations
     name: string;
-    title?: string;
+    title: string;
     size: number;
     url: string;
-    downloadUrl?: string;
+    downloadUrl: string;
     channels: string[];
     timestamp: number;
   };
-  message: string;
+  uploadedAt: string;
   [key: string]: unknown;
-
-}
-
-export interface UploadFileError extends ServiceOutput {
-  success: false;
-  error: string;
-  message: string;
-  context?: {
-    filename?: string;
-    fileSize?: number;
-    channels?: string[];
-  };
-  [key: string]: unknown;
-
 }
 
 /**
@@ -180,3 +163,55 @@ export interface SearchFilesOutput extends ServiceOutput {
   [key: string]: unknown;
 
 }
+
+/**
+ * TypeSafeAPI ServiceResult discriminated union types for File Services
+ * 
+ * These types enable:
+ * - Exhaustive pattern matching with ts-pattern
+ * - Type-safe error handling without try-catch complexity
+ * - Functional programming patterns for result processing
+ * - Zero-cost abstractions with TypeScript inference
+ */
+
+/**
+ * Upload file operation result
+ * Supports file upload with V2 API handling and error recovery
+ */
+export type UploadFileResult = ServiceResult<UploadFileOutput>;
+
+/**
+ * List files operation result  
+ * Supports pagination and filtering with comprehensive metadata
+ */
+export type ListFilesResult = ServiceResult<ListFilesOutput>;
+
+/**
+ * Get file info operation result
+ * Provides detailed file metadata with comment support
+ */
+export type FileInfoResult = ServiceResult<FileInfoOutput>;
+
+/**
+ * Delete file operation result
+ * Simple success/failure operation with context preservation
+ */
+export type DeleteFileResult = ServiceResult<DeleteFileOutput>;
+
+/**
+ * Share file operation result
+ * Complex permalink sharing via chat.postMessage integration
+ */
+export type ShareFileResult = ServiceResult<ShareFileOutput>;
+
+/**
+ * Analyze files operation result
+ * Complex analysis with formatFileAnalysis integration
+ */
+export type FileAnalysisResult = ServiceResult<FileAnalysisOutput>;
+
+/**
+ * Search files operation result
+ * User token validation and complex query building
+ */
+export type SearchFilesResult = ServiceResult<SearchFilesOutput>;
