@@ -120,7 +120,7 @@ describe('SlackService.getChannelInfo', () => {
       channel: 'C1234567890',
     });
 
-    // Parse Context7 JSON response
+    // Parse TypeSafeAPI JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.statusCode).toBe('10000');
     expect(content.message).toBe('Channel information retrieved successfully');
@@ -174,7 +174,7 @@ describe('SlackService.getChannelInfo', () => {
       channel: 'G1234567890',
     });
 
-    // Parse Context7 JSON response
+    // Parse TypeSafeAPI JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.statusCode).toBe('10000');
     expect(content.message).toBe('Channel information retrieved successfully');
@@ -224,7 +224,7 @@ describe('SlackService.getChannelInfo', () => {
       channel: 'C0987654321',
     });
 
-    // Parse Context7 JSON response
+    // Parse TypeSafeAPI JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.statusCode).toBe('10000');
     expect(content.message).toBe('Channel information retrieved successfully');
@@ -241,7 +241,7 @@ describe('SlackService.getChannelInfo', () => {
     const result = await slackService.getChannelInfo({ channel: 'C999999999' });
 
     expect(result.isError).toBe(true);
-    // Parse Context7 JSON error response
+    // Parse TypeSafeAPI JSON error response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.statusCode).toBe('10001');
     expect(content.message).toBe('Requested channel does not exist');
@@ -269,7 +269,7 @@ describe('SlackService.getChannelInfo', () => {
     const result = await slackService.getChannelInfo({ channel: 'C1234567890' });
 
     expect(result.isError).toBe(true);
-    // Parse Context7 JSON error response
+    // Parse TypeSafeAPI JSON error response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.statusCode).toBe('10001');
     expect(content.message).toBe('Requested channel does not exist');
@@ -320,7 +320,7 @@ describe('SlackService.getChannelInfo', () => {
       channel: 'D1234567890',
     });
 
-    // Parse Context7 JSON response
+    // Parse TypeSafeAPI JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.statusCode).toBe('10000');
     expect(content.message).toBe('Channel information retrieved successfully');

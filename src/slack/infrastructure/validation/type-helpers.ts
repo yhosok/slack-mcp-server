@@ -1,5 +1,5 @@
 /**
- * Type helper functions for Context7 TypeScript best practices
+ * Type helper functions for TypeSafeAPI TypeScript best practices
  * 
  * Features:
  * - JSON serialization safety with performance optimization
@@ -16,14 +16,14 @@
 import type { MCPToolResult } from '../../../mcp/types.js';
 
 /**
- * Utility type alias for Context7 service output constraints
+ * Utility type alias for TypeSafeAPI service output constraints
  * Simplifies the verbose "extends Record<string, any>" pattern throughout the codebase
  */
-export type ServiceOutput = Record<string, any>;
+export type ServiceOutput = Record<string, unknown>;
 
 /**
  * Creates a typed MCP result with guaranteed JSON serialization safety
- * Context7 pattern: ServiceOutput constraint ensures object structure and JSON safety
+ * TypeSafeAPI pattern: ServiceOutput constraint ensures object structure and JSON safety
  * 
  * Performance: Uses optimized JSON.stringify with error boundary
  * 
@@ -56,7 +56,7 @@ export function createTypedMCPResult<T extends ServiceOutput>(data: T): MCPToolR
 
 /**
  * Enhanced type guard to validate service output structure
- * Context7 pattern: Comprehensive validation with performance optimization
+ * TypeSafeAPI pattern: Comprehensive validation with performance optimization
  * 
  * Performance: Optimized type checking order for early exit on most common cases
  * 
@@ -86,7 +86,7 @@ export function isValidServiceOutput<T extends ServiceOutput>(data: unknown): da
 
 /**
  * Safely converts any value to JSON-serializable format
- * Context7 pattern: Performance-optimized validation with detailed error context
+ * TypeSafeAPI pattern: Performance-optimized validation with detailed error context
  * 
  * Performance Optimizations:
  * - Lazy JSON serialization test (only when needed)
@@ -109,7 +109,7 @@ export function toSerializableOutput<T extends ServiceOutput>(data: unknown): T 
                    
     throw new TypeError(
       `Service output must be a plain object (Record<string, any>). ` +
-      `Received: ${details}. Context7 pattern requires object structure for JSON serialization safety.`
+      `Received: ${details}. TypeSafeAPI pattern requires object structure for JSON serialization safety.`
     );
   }
   
@@ -123,7 +123,7 @@ export function toSerializableOutput<T extends ServiceOutput>(data: unknown): T 
     throw new TypeError(
       `Service output contains circular references or non-serializable values. ` +
       `Error: ${error instanceof Error ? error.message : 'Unknown serialization error'}. ` +
-      `Context7 pattern requires JSON-safe object structure.`
+      `TypeSafeAPI pattern requires JSON-safe object structure.`
     );
   }
   
@@ -137,29 +137,29 @@ export function toSerializableOutput<T extends ServiceOutput>(data: unknown): T 
 export type SerializableOutput = ServiceOutput;
 
 /**
- * Type utility to ensure compile-time checking of Context7 constraints
+ * Type utility to ensure compile-time checking of TypeSafeAPI constraints
  * Enhanced with better type safety and runtime validation capabilities
  * 
  * Usage Examples:
- * - assertContext7Compliance<MyServiceOutput>() // Compile-time check
- * - assertContext7Compliance<string>() // Would cause TypeScript error
+ * - assertTypeSafeAPICompliance<MyServiceOutput>() // Compile-time check
+ * - assertTypeSafeAPICompliance<string>() // Would cause TypeScript error
  * 
  * @returns Type-safe boolean indicating compliance at compile time
  */
-export function assertContext7Compliance<T>(): T extends ServiceOutput ? true : false;
-export function assertContext7Compliance<_T>(): boolean {
-  return true as any; // Implementation only needed for compile-time type checking
+export function assertTypeSafeAPICompliance<T>(): T extends ServiceOutput ? true : false;
+export function assertTypeSafeAPICompliance<_T>(): boolean {
+  return true as boolean; // Implementation only needed for compile-time type checking
 }
 
 /**
- * Runtime utility to verify Context7 compliance with detailed validation
+ * Runtime utility to verify TypeSafeAPI compliance with detailed validation
  * Provides detailed error reporting for debugging service output issues
  * 
- * @param data - Data to validate against Context7 patterns
+ * @param data - Data to validate against TypeSafeAPI patterns
  * @param context - Optional context for error reporting
  * @returns Validation result with detailed error information
  */
-export function validateContext7Compliance(
+export function validateTypeSafeAPICompliance(
   data: unknown, 
   context?: { serviceName?: string; methodName?: string }
 ): { isValid: boolean; error?: string; details?: string } {
@@ -174,14 +174,14 @@ export function validateContext7Compliance(
     return {
       isValid: false,
       error: error instanceof Error ? error.message : 'Unknown validation error',
-      details: `Context7 compliance validation failed${contextInfo}`
+      details: `TypeSafeAPI compliance validation failed${contextInfo}`
     };
   }
 }
 
 /**
  * Enhanced error formatting for type-safe error responses
- * Context7 pattern: Consistent error structure with comprehensive debugging information
+ * TypeSafeAPI pattern: Consistent error structure with comprehensive debugging information
  * 
  * @param error - Error message or Error instance
  * @param context - Additional context for debugging (must follow ServiceOutput pattern)
@@ -210,7 +210,7 @@ export function createTypedErrorResult(
 
 /**
  * Type-safe success result builder with enhanced validation
- * Context7 pattern: Consistent success structure with runtime safety checks
+ * TypeSafeAPI pattern: Consistent success structure with runtime safety checks
  * 
  * @param data - Success data that must follow ServiceOutput pattern
  * @param message - Optional success message
@@ -220,8 +220,8 @@ export function createTypedSuccessResult<T extends ServiceOutput>(
   data: T, 
   message?: string
 ): MCPToolResult {
-  // Validate input data follows Context7 patterns before processing
-  const validationResult = validateContext7Compliance(data, { 
+  // Validate input data follows TypeSafeAPI patterns before processing
+  const validationResult = validateTypeSafeAPICompliance(data, { 
     serviceName: 'createTypedSuccessResult',
     methodName: 'build' 
   });

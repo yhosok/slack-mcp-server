@@ -8,7 +8,7 @@ import type { ServiceOutput } from './type-helpers.js';
 export interface RequestHandler {
   /**
    * Handle an API request with validation, error handling, and response formatting
-   * Context7 pattern: TOutput extends ServiceOutput ensures JSON serialization safety
+   * TypeSafeAPI pattern: TOutput extends ServiceOutput ensures JSON serialization safety
    * @param schema - Zod schema for input validation
    * @param args - Raw input arguments to validate
    * @param operation - Async operation to perform with validated input

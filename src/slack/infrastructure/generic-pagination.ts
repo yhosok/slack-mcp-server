@@ -29,7 +29,7 @@ export interface PaginationInput {
   /** Maximum total items to retrieve (1-10000) */
   max_items?: number;
   /** Allow service-specific fields to be passed through */
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface PaginationConfig<T, I, F> {

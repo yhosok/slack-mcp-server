@@ -21,7 +21,7 @@ import {
   enforceServiceOutput,
   type ServiceErrorType as _ServiceErrorType,
   createTypedServiceError as _createTypedServiceError,
-} from '../../types/context7-patterns.js';
+} from '../../types/typesafe-api-patterns.js';
 import type {
   SendMessageResult,
   MessageSearchResult,
@@ -44,7 +44,7 @@ import { SlackAPIError } from '../../../utils/errors.js';
 /**
  * Create message service with infrastructure dependencies
  * 
- * Factory function that creates a Context7-compliant message service with
+ * Factory function that creates a TypeSafeAPI-compliant message service with
  * full type safety, error handling, and integration with existing infrastructure.
  * 
  * Features:
@@ -55,7 +55,7 @@ import { SlackAPIError } from '../../../utils/errors.js';
  * - Support for both bot and user token operations
  * 
  * @param deps - Infrastructure dependencies (client manager, rate limiter, etc.)
- * @returns Message service instance with Context7 + ts-pattern type safety
+ * @returns Message service instance with TypeSafeAPI + ts-pattern type safety
  * 
  * @example Service Creation
  * ```typescript
@@ -79,7 +79,7 @@ import { SlackAPIError } from '../../../utils/errors.js';
  */
 export const createMessageService = (deps: MessageServiceDependencies): MessageService => {
   /**
-   * Send a message to a channel or user with Context7 + ts-pattern type safety
+   * Send a message to a channel or user with TypeSafeAPI + ts-pattern type safety
    * 
    * Sends a text message to a Slack channel, direct message, or thread.
    * Uses bot token for write operations and includes comprehensive error handling.
@@ -115,7 +115,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
    */
   const sendMessage = async (args: unknown): Promise<SendMessageResult> => {
     try {
-      // Validate input using Context7 validation pattern
+      // Validate input using TypeSafeAPI validation pattern
       const input = validateInput(SendMessageSchema, args);
 
       const client = deps.clientManager.getClientForOperation('write');
@@ -133,7 +133,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         );
       }
 
-      // Create Context7-compliant output using existing formatter
+      // Create TypeSafeAPI-compliant output using existing formatter
       const formattedResponse = await formatSendMessageResponse({
         success: true,
         timestamp: result.ts,
@@ -164,11 +164,11 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
   };
 
   /**
-   * List channels in the workspace with Context7 + ts-pattern type safety
+   * List channels in the workspace with TypeSafeAPI + ts-pattern type safety
    */
   const listChannels = async (args: unknown): Promise<ListChannelsResult> => {
     try {
-      // Validate input using Context7 validation pattern
+      // Validate input using TypeSafeAPI validation pattern
       const input = validateInput(ListChannelsSchema, args);
 
       const client = deps.clientManager.getClientForOperation('read');
@@ -186,7 +186,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         );
       }
 
-      // Create Context7-compliant output
+      // Create TypeSafeAPI-compliant output
       const output: ListChannelsOutput = enforceServiceOutput({
         channels: result.channels.map((channel) => ({
           id: channel.id || '',
@@ -215,11 +215,11 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
   };
 
   /**
-   * Get message history from a channel with Context7 + ts-pattern type safety
+   * Get message history from a channel with TypeSafeAPI + ts-pattern type safety
    */
   const getChannelHistory = async (args: unknown): Promise<ChannelHistoryResult> => {
     try {
-      // Validate input using Context7 validation pattern
+      // Validate input using TypeSafeAPI validation pattern
       const input = validateInput(GetChannelHistorySchema, args);
 
       const client = deps.clientManager.getClientForOperation('read');
@@ -259,7 +259,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
             files: message.files,
           }));
 
-          // Create Context7-compliant output
+          // Create TypeSafeAPI-compliant output
           const output: ChannelHistoryOutput = enforceServiceOutput({
             messages,
             hasMore: data.hasMore,
@@ -285,11 +285,11 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
   };
 
   /**
-   * Get information about a user with Context7 + ts-pattern type safety
+   * Get information about a user with TypeSafeAPI + ts-pattern type safety
    */
   const getUserInfo = async (args: unknown): Promise<UserInfoResult> => {
     try {
-      // Validate input using Context7 validation pattern
+      // Validate input using TypeSafeAPI validation pattern
       const input = validateInput(GetUserInfoSchema, args);
 
       const client = deps.clientManager.getClientForOperation('read');
@@ -309,7 +309,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         );
       }
 
-      // Create Context7-compliant output
+      // Create TypeSafeAPI-compliant output
       const output: UserInfoOutput = enforceServiceOutput({
         id: result.user.id || '',
         name: result.user.name || '',
@@ -347,11 +347,11 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
   };
 
   /**
-   * Search for messages in the workspace with Context7 + ts-pattern type safety
+   * Search for messages in the workspace with TypeSafeAPI + ts-pattern type safety
    */
   const searchMessages = async (args: unknown): Promise<MessageSearchResult> => {
     try {
-      // Validate input using Context7 validation pattern
+      // Validate input using TypeSafeAPI validation pattern
       const input = validateInput(SearchMessagesSchema, args);
 
       // Check if search API is available
@@ -385,7 +385,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         return createServiceSuccess(output, 'No messages found matching the search criteria');
       }
 
-      // Process search results and create Context7-compliant output
+      // Process search results and create TypeSafeAPI-compliant output
       const searchResults = result.messages.matches || [];
       const messages = searchResults.map((match: any) => ({
         text: match.text || '',
@@ -416,11 +416,11 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
   };
 
   /**
-   * Get detailed information about a channel with Context7 + ts-pattern type safety
+   * Get detailed information about a channel with TypeSafeAPI + ts-pattern type safety
    */
   const getChannelInfo = async (args: unknown): Promise<ChannelInfoResult> => {
     try {
-      // Validate input using Context7 validation pattern
+      // Validate input using TypeSafeAPI validation pattern
       const input = validateInput(GetChannelInfoSchema, args);
 
       const client = deps.clientManager.getClientForOperation('read');
@@ -436,7 +436,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         );
       }
 
-      // Create Context7-compliant output
+      // Create TypeSafeAPI-compliant output
       const output: ChannelInfoOutput = enforceServiceOutput({
         id: result.channel.id || '',
         name: result.channel.name || '',
@@ -449,7 +449,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         topic: result.channel.topic,
         purpose: result.channel.purpose,
         memberCount: result.channel.num_members,
-        members: (result.channel as any)?.members,
+        members: (result.channel as { members?: string[] })?.members,
       });
 
       return createServiceSuccess(output, 'Channel information retrieved successfully');

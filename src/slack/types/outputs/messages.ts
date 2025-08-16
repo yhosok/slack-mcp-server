@@ -1,15 +1,16 @@
 /**
- * Message service output types following Context7 + ts-pattern TypeScript best practices
- * All types extend ServiceOutput (Record<string, any>) for Context7 compliance
+ * Message service output types following TypeSafeAPI + ts-pattern TypeScript best practices
+ * All types extend ServiceOutput (Record<string, any>) for TypeSafeAPI compliance
  */
 
-import type { ServiceOutput, ServiceResult } from '../context7-patterns.js';
+import type { ServiceOutput, ServiceResult } from '../typesafe-api-patterns';
 
 export interface SendMessageOutput extends ServiceOutput {
   success: boolean;
   channel: string;
   ts: string;
   message: string;
+  [key: string]: unknown;
 }
 
 export interface MessageSearchOutput extends ServiceOutput {
@@ -23,6 +24,7 @@ export interface MessageSearchOutput extends ServiceOutput {
   total: number;
   query: string;
   hasMore: boolean;
+  [key: string]: unknown;
 }
 
 export interface ChannelHistoryOutput extends ServiceOutput {
@@ -39,6 +41,7 @@ export interface ChannelHistoryOutput extends ServiceOutput {
     nextCursor?: string;
   };
   channel: string;
+  [key: string]: unknown;
 }
 
 export interface ListChannelsOutput extends ServiceOutput {
@@ -53,6 +56,7 @@ export interface ListChannelsOutput extends ServiceOutput {
     purpose?: string;
   }>;
   total: number;
+  [key: string]: unknown;
 }
 
 export interface UserInfoOutput extends ServiceOutput {
@@ -76,6 +80,7 @@ export interface UserInfoOutput extends ServiceOutput {
     statusEmoji?: string;
     title?: string;
   };
+  [key: string]: unknown;
 }
 
 export interface ChannelInfoOutput extends ServiceOutput {
@@ -87,14 +92,15 @@ export interface ChannelInfoOutput extends ServiceOutput {
   isArchived?: boolean;
   created?: number;
   creator?: string;
-  topic?: any;
-  purpose?: any;
+  topic?: { value?: string; creator?: string; last_set?: number };
+  purpose?: { value?: string; creator?: string; last_set?: number };
   memberCount?: number;
   members?: string[];
+  [key: string]: unknown;
 }
 
 /**
- * Context7 + ts-pattern discriminated union types for type-safe service results
+ * TypeSafeAPI + ts-pattern discriminated union types for type-safe service results
  */
 export type SendMessageResult = ServiceResult<SendMessageOutput>;
 export type MessageSearchResult = ServiceResult<MessageSearchOutput>;

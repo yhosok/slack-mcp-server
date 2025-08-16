@@ -1,14 +1,14 @@
 /**
- * Context7 + ts-pattern Type Safety Patterns
+ * TypeSafeAPI + ts-pattern Type Safety Patterns
  * 
  * Production-ready discriminated unions and response structures following
- * Context7 TypeScript best practices for Node.js backend applications.
+ * TypeSafeAPI TypeScript best practices for Node.js backend applications.
  * 
  * This module provides:
  * - Type-safe discriminated unions with exhaustive pattern matching
  * - Consistent API response structures for production backends
  * - Runtime type validation with compile-time safety
- * - Integration patterns between Context7 services and MCP protocol
+ * - Integration patterns between TypeSafeAPI services and MCP protocol
  * 
  * @example Basic Usage
  * ```typescript
@@ -61,7 +61,7 @@ const ERROR_RESPONSE_TEMPLATE = {
  * This ensures:
  * - JSON serialization safety for API responses
  * - Type-safe property access without runtime errors
- * - Compatibility with Context7 service architecture
+ * - Compatibility with TypeSafeAPI service architecture
  * - Prevention of primitive values as service outputs
  * 
  * @example Valid ServiceOutput
@@ -84,7 +84,7 @@ export type ServiceOutput = Record<string, unknown>;
 /**
  * Production-ready API response structure for Node.js backends
  * 
- * Standardized response format following Context7 architecture patterns:
+ * Standardized response format following TypeSafeAPI architecture patterns:
  * - statusCode: String-based status ("10000" = success, "10001" = error)
  * - message: Human-readable description of the operation result
  * - data: Typed payload for successful operations (optional)
@@ -173,7 +173,7 @@ export type ServiceResult<T extends ServiceOutput> =
   | { success: false; error: string; message: string };
 
 /**
- * Context7 type-safe result handler using ts-pattern exhaustive matching
+ * TypeSafeAPI type-safe result handler using ts-pattern exhaustive matching
  * 
  * Converts ServiceResult discriminated unions to standardized ApiResponse format
  * for consistent API responses across all service endpoints.
@@ -235,7 +235,7 @@ export const handleServiceResult = <T extends ServiceOutput>(
     .exhaustive(); // Ensures type safety - compiler error if cases missed
 
 /**
- * Type-safe error creation utility with Context7 patterns
+ * Type-safe error creation utility with TypeSafeAPI patterns
  * 
  * Creates a standardized error result for service operations.
  * All error results follow the same structure for consistent handling.
@@ -271,7 +271,7 @@ export const createServiceError = (error: string, message: string = 'Operation f
 });
 
 /**
- * Type-safe success creation utility with Context7 patterns
+ * Type-safe success creation utility with TypeSafeAPI patterns
  * 
  * Creates a standardized success result for service operations.
  * Ensures data conforms to ServiceOutput constraint at compile-time.
@@ -421,7 +421,7 @@ export const validateServiceResult = <T extends ServiceOutput>(
     .otherwise(() => false);
 
 /**
- * Context7 type constraints validator
+ * TypeSafeAPI type constraints validator
  * 
  * Runtime enforcement of ServiceOutput constraints with compile-time type safety.
  * Ensures that all service outputs are proper objects that can be safely
@@ -481,7 +481,7 @@ export const enforceServiceOutput = <T>(data: T): T & ServiceOutput => {
 };
 
 /**
- * Production-ready error types following Context7 patterns
+ * Production-ready error types following TypeSafeAPI patterns
  * 
  * Standardized error classification system for consistent error handling
  * across all service operations. Each error type represents a specific
@@ -561,7 +561,7 @@ export type TypedServiceError = {
 };
 
 /**
- * Create typed service error with Context7 patterns
+ * Create typed service error with TypeSafeAPI patterns
  * 
  * Advanced error creation utility that includes error classification
  * and optional context details. Enables sophisticated error handling
@@ -601,7 +601,7 @@ export const createTypedServiceError = (
   errorType: ServiceErrorType,
   error: string,
   message: string = 'Operation failed',
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 ): TypedServiceError => ({
   success: false,
   error,
@@ -611,7 +611,7 @@ export const createTypedServiceError = (
 });
 
 /**
- * Performance Utilities for Context7 + ts-pattern Operations
+ * Performance Utilities for TypeSafeAPI + ts-pattern Operations
  * 
  * These utilities provide optimized paths for common operations
  * to reduce runtime overhead in high-throughput scenarios.
@@ -664,7 +664,7 @@ export const createServiceSuccessFast = <T extends ServiceOutput>(
  */
 export const processBatchResults = <T extends ServiceOutput>(
   results: ServiceResult<T>[]
-) => {
+): { successes: number; errors: number; successData: T[]; errorMessages: string[]; total: number } => {
   let successes = 0;
   let errors = 0;
   const successData: T[] = [];
@@ -686,8 +686,6 @@ export const processBatchResults = <T extends ServiceOutput>(
     errors,
     successData,
     errorMessages,
-    hasErrors: errors > 0,
-    allSucceeded: errors === 0,
   };
 };
 

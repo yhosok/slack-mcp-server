@@ -7,6 +7,7 @@ import {
   GetReactionStatisticsSchema,
   FindMessagesByReactionsSchema,
 } from '../../../utils/validation.js';
+import type { MCPToolResult } from '../../../mcp/types.js';
 import type { ReactionService, ReactionServiceDependencies } from './types.js';
 import { formatAddReactionResponse } from '../formatters/text-formatters.js';
 
@@ -23,7 +24,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
   /**
    * Add a reaction emoji to a message
    */
-  const addReaction = (args: unknown) =>
+  const addReaction = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handleWithCustomFormat(AddReactionSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
 
@@ -44,7 +45,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
   /**
    * Remove a reaction emoji from a message
    */
-  const removeReaction = (args: unknown) =>
+  const removeReaction = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(RemoveReactionSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
 
@@ -66,7 +67,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
   /**
    * Get all reactions on a specific message
    */
-  const getReactions = (args: unknown) =>
+  const getReactions = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(GetReactionsSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
@@ -128,7 +129,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
   /**
    * Get reaction statistics and trends for workspace or channel
    */
-  const getReactionStatistics = (args: unknown) =>
+  const getReactionStatistics = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(GetReactionStatisticsSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
@@ -318,7 +319,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
   /**
    * Find messages that have specific reaction patterns
    */
-  const findMessagesByReactions = (args: unknown) =>
+  const findMessagesByReactions = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(FindMessagesByReactionsSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
@@ -427,7 +428,7 @@ export const createReactionService = (deps: ReactionServiceDependencies): Reacti
           if (message.user) {
             try {
               const userInfo = await deps.userService.getUserInfo(message.user);
-              userName = userInfo.displayName;
+              userName = userInfo.profile?.display_name || userInfo.real_name || userInfo.name || userInfo.id;
             } catch {
               // Keep original user ID if lookup fails
             }

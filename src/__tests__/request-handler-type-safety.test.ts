@@ -1,7 +1,7 @@
 /**
  * TDD Green Phase: RequestHandler Type Safety Success
  * 
- * This test file validates that Context7's TypeScript Generic constraint best practices
+ * This test file validates that TypeSafeAPI's TypeScript Generic constraint best practices
  * have been successfully implemented in the RequestHandler.
  * 
  * Expected Result: All tests should PASS, proving type safety improvements are working.
@@ -49,9 +49,9 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
     jest.clearAllMocks();
   });
 
-  describe('Context7 generic constraints implementation', () => {
+  describe('TypeSafeAPI generic constraints implementation', () => {
     it('should enforce Record<string, any> constraint and reject primitive types', async () => {
-      // SUCCESS: Context7 implementation now enforces proper constraints
+      // SUCCESS: TypeSafeAPI implementation now enforces proper constraints
       // Generic constraint T extends Record<string, any> prevents primitive types
       
       const handler = createRequestHandler(mockDependencies);
@@ -70,12 +70,12 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
 
       // TEST ASSERTION: The constraint now works at compile-time
       // Note: Primitive type operations would cause TypeScript compilation errors
-      // This proves the Context7 pattern is successfully implemented
+      // This proves the TypeSafeAPI pattern is successfully implemented
       expect(true).toBe(true); // Success - type constraints are working
     });
 
     it('should provide runtime type validation capabilities', async () => {
-      // SUCCESS: Context7 implementation includes runtime validation functions
+      // SUCCESS: TypeSafeAPI implementation includes runtime validation functions
       // Type helper functions provide runtime safety checks
       
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -103,7 +103,7 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
     });
 
     it('should provide strong type inference for service method outputs', () => {
-      // SUCCESS: Context7 implementation improves type inference
+      // SUCCESS: TypeSafeAPI implementation improves type inference
       // Generic constraints ensure better IDE support and type safety
       
       const handler = createRequestHandler(mockDependencies);
@@ -124,7 +124,7 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
       // Type inference is now enforced by the constraint
       type _InferredReturnType = Awaited<ReturnType<typeof serviceMethod>>;
       
-      // With Context7 constraints, we get better type safety
+      // With TypeSafeAPI constraints, we get better type safety
       const exampleUsage = async () => {
         const schema = z.object({ channel: z.string() });
         const result = await handler.handle(schema, { channel: 'C123' }, serviceMethod);
@@ -142,7 +142,7 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
   describe('Service output types implementation', () => {
     it('should have well-defined deleteFile output type', async () => {
       // SUCCESS: DeleteFileOutput type is now defined in outputs/files.ts
-      // Follows Context7 pattern with Record<string, any> constraint
+      // Follows TypeSafeAPI pattern with Record<string, any> constraint
       
       const handler = createRequestHandler(mockDependencies);
       (mockDependencies.validateInput as jest.Mock).mockReturnValue({ file_id: 'F123' });
@@ -170,7 +170,7 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
 
     it('should have well-defined uploadFile output type', async () => {
       // SUCCESS: UploadFileOutput type is now defined in outputs/files.ts
-      // Follows Context7 pattern with comprehensive file information
+      // Follows TypeSafeAPI pattern with comprehensive file information
       
       const handler = createRequestHandler(mockDependencies);
       (mockDependencies.validateInput as jest.Mock).mockReturnValue({ 
@@ -259,14 +259,14 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
     });
   });
 
-  describe('Context7 pattern compliance', () => {
-    it('should follow Context7 generic constraint best practices', () => {
-      // SUCCESS: Generic definition now follows Context7 recommended patterns
+  describe('TypeSafeAPI pattern compliance', () => {
+    it('should follow TypeSafeAPI generic constraint best practices', () => {
+      // SUCCESS: Generic definition now follows TypeSafeAPI recommended patterns
       
       // Implemented signature (in types.ts):
       // handle<TInput, TOutput extends Record<string, any>>(...)
       
-      // Context7 patterns successfully implemented:
+      // TypeSafeAPI patterns successfully implemented:
       // ✅ 1. handle<TInput, TOutput extends Record<string, any>>(...)
       // ✅ 2. Excludes primitives (string, number, boolean, etc.)
       // ✅ 3. Ensures JSON serialization safety
@@ -282,7 +282,7 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
         // Primitive handlers would cause compilation errors
         const validHandler: CurrentSignature = null as any;
         
-        // Context7 constraints are now working
+        // TypeSafeAPI constraints are now working
         return { validHandler };
       };
 
@@ -290,9 +290,9 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
       expect(true).toBe(true); // Success - proper constraints are implemented
     });
 
-    it('should provide Context7 type helper functions', () => {
+    it('should provide TypeSafeAPI type helper functions', async () => {
       // SUCCESS: Type helper functions are now implemented in type-helpers.ts
-      // Context7 pattern: createTypedMCPResult<T extends Record<string, any>>()
+      // TypeSafeAPI pattern: createTypedMCPResult<T extends Record<string, any>>()
       
       // Import the helper functions to verify they exist
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -302,7 +302,7 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
         isValidServiceOutput, 
         createTypedErrorResult, 
         createTypedSuccessResult 
-      } = require('../slack/infrastructure/validation/type-helpers.js');
+      } = await import('../slack/infrastructure/validation/type-helpers.js');
 
       // These helpers provide:
       // ✅ 1. Type safety at runtime
@@ -321,12 +321,12 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
     });
 
     it('should enforce compile-time service output contracts', () => {
-      // SUCCESS: Context7 patterns provide better output contract enforcement
+      // SUCCESS: TypeSafeAPI patterns provide better output contract enforcement
       // Service methods now have defined output interfaces and constraints
       
       const _handler = createRequestHandler(mockDependencies);
       
-      // Service with consistent output type (follows Context7 patterns)
+      // Service with consistent output type (follows TypeSafeAPI patterns)
       const consistentService = async (_input: { test: string }): Promise<{
         success: boolean;
         data: string;
@@ -355,9 +355,9 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
     });
   });
 
-  describe('Type system improvements with Context7 patterns', () => {
+  describe('Type system improvements with TypeSafeAPI patterns', () => {
     it('should prevent void operations in handle method through type constraints', async () => {
-      // SUCCESS: Context7 constraints now prevent void operations
+      // SUCCESS: TypeSafeAPI constraints now prevent void operations
       // Record<string, any> constraint excludes void return types
       
       const handler = createRequestHandler(mockDependencies);
@@ -386,7 +386,7 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
     });
 
     it('should handle properly structured async operations', async () => {
-      // SUCCESS: Context7 constraints ensure proper Promise handling
+      // SUCCESS: TypeSafeAPI constraints ensure proper Promise handling
       // Operations return proper Promise<Record<string, any>> structure
       
       const handler = createRequestHandler(mockDependencies);
@@ -407,17 +407,17 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
 
       const schema = z.object({ id: z.string() });
       
-      // This works correctly with Context7 constraints
+      // This works correctly with TypeSafeAPI constraints
       await handler.handle(schema, { id: '123' }, properOperation);
       
       expect(true).toBe(true); // Success - proper Promise handling enforced
     });
 
     it('should support discriminated union response types', () => {
-      // SUCCESS: Context7 patterns support discriminated unions
+      // SUCCESS: TypeSafeAPI patterns support discriminated unions
       // Type-safe handling of operations with different response shapes
       
-      // Discriminated union following Context7 patterns
+      // Discriminated union following TypeSafeAPI patterns
       type OperationResult = 
         | { type: 'success'; data: Record<string, any>; success: boolean }
         | { type: 'error'; error: string; success: boolean }
@@ -437,7 +437,7 @@ describe('RequestHandler Type Safety Success (Green Phase)', () => {
         }
       };
 
-      // Context7 type system handles discriminated unions properly
+      // TypeSafeAPI type system handles discriminated unions properly
       const _schema = z.object({ mode: z.string() });
       
       expect(typeof unionOperation).toBe('function');

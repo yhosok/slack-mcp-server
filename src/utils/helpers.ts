@@ -147,7 +147,7 @@ export function extractTextContent(content: MCPContent | undefined): string {
 }
 
 /**
- * Parse JSON response from Context7-style services and extract data
+ * Parse JSON response from TypeSafeAPI-style services and extract data
  * Returns parsed object for success responses (statusCode: "10000")
  * Returns error object for error responses (statusCode: "10001")
  */
@@ -155,7 +155,7 @@ export function parseJsonResponse(content: MCPContent | undefined): {
   success: boolean;
   statusCode?: string;
   message?: string;
-  data?: any;
+  data?: unknown;
   error?: string;
 } {
   const textContent = extractTextContent(content);
@@ -179,10 +179,10 @@ export function parseJsonResponse(content: MCPContent | undefined): {
 }
 
 /**
- * Extract data from Context7-style JSON responses
+ * Extract data from TypeSafeAPI-style JSON responses
  * For tests that need to check specific data fields
  */
-export function extractJsonData(content: MCPContent | undefined): any {
+export function extractJsonData(content: MCPContent | undefined): unknown {
   const parsed = parseJsonResponse(content);
   return parsed.data;
 }

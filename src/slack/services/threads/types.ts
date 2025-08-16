@@ -38,7 +38,7 @@ export interface ThreadServiceConfig {
 }
 
 /**
- * Context7 + ts-pattern type-safe thread service interface
+ * TypeSafeAPI + ts-pattern type-safe thread service interface
  * Returns ServiceResult discriminated unions for exhaustive pattern matching
  */
 export interface ThreadService {

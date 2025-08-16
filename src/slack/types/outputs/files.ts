@@ -1,5 +1,5 @@
 /**
- * File service output types following Context7 TypeScript best practices
+ * File service output types following TypeSafeAPI TypeScript best practices
  * 
  * Design Principles:
  * - All interfaces extend ServiceOutput for JSON serialization safety
@@ -12,18 +12,20 @@ import type { ServiceOutput } from '../../infrastructure/validation/type-helpers
 
 /**
  * Result of file deletion operation
- * Context7 pattern: Consistent success/error structure with file context
+ * TypeSafeAPI pattern: Consistent success/error structure with file context
  */
 export interface DeleteFileOutput extends ServiceOutput {
   success: boolean;
   fileId: string;
   message: string;
   timestamp?: string;
+  [key: string]: unknown;
+
 }
 
 /**
  * Result of file upload operation
- * Context7 pattern: Discriminated union for type-safe success/error handling
+ * TypeSafeAPI pattern: Discriminated union for type-safe success/error handling
  */
 export type UploadFileOutput = UploadFileSuccess | UploadFileError;
 
@@ -40,6 +42,8 @@ export interface UploadFileSuccess extends ServiceOutput {
     timestamp: number;
   };
   message: string;
+  [key: string]: unknown;
+
 }
 
 export interface UploadFileError extends ServiceOutput {
@@ -51,11 +55,13 @@ export interface UploadFileError extends ServiceOutput {
     fileSize?: number;
     channels?: string[];
   };
+  [key: string]: unknown;
+
 }
 
 /**
  * Result of file analysis operation
- * Context7 pattern: Comprehensive analytics with consistent naming
+ * TypeSafeAPI pattern: Comprehensive analytics with consistent naming
  */
 export interface FileAnalysisOutput extends ServiceOutput {
   analysis: {
@@ -81,11 +87,13 @@ export interface FileAnalysisOutput extends ServiceOutput {
     periodDays: number;
     thresholdMB: number;
   };
+  [key: string]: unknown;
+
 }
 
 /**
  * Result of file sharing operation
- * Context7 pattern: Consistent structure with sharing context
+ * TypeSafeAPI pattern: Consistent structure with sharing context
  */
 export interface ShareFileOutput extends ServiceOutput {
   success: boolean;
@@ -94,11 +102,13 @@ export interface ShareFileOutput extends ServiceOutput {
   permalink: string;
   message: string;
   timestamp?: string;
+  [key: string]: unknown;
+
 }
 
 /**
  * Result of file information retrieval
- * Context7 pattern: Comprehensive file metadata structure
+ * TypeSafeAPI pattern: Comprehensive file metadata structure
  */
 export interface FileInfoOutput extends ServiceOutput {
   id: string;
@@ -127,11 +137,13 @@ export interface FileInfoOutput extends ServiceOutput {
     comment: string;
     timestamp: number;
   }>;
+  [key: string]: unknown;
+
 }
 
 /**
  * Result of file listing operation
- * Context7 pattern: Paginated results with comprehensive metadata
+ * TypeSafeAPI pattern: Paginated results with comprehensive metadata
  */
 export interface ListFilesOutput extends ServiceOutput {
   files: Array<{
@@ -152,15 +164,19 @@ export interface ListFilesOutput extends ServiceOutput {
     hasMore: boolean;
     cursor?: string;
   } | null;
+  [key: string]: unknown;
+
 }
 
 /**
  * Result of file search operation
- * Context7 pattern: Search results with query context
+ * TypeSafeAPI pattern: Search results with query context
  */
 export interface SearchFilesOutput extends ServiceOutput {
-  results: any[]; // Slack API search result structure
+  results: Array<{ id: string; name: string; title?: string; filetype?: string; size?: number; url?: string; user?: string; timestamp?: string; channel?: string }>; // Slack API search result structure
   total: number;
   query: string;
-  pagination?: any; // Slack API pagination structure
+  pagination?: { hasMore?: boolean; cursor?: string; total?: number }; // Slack API pagination structure
+  [key: string]: unknown;
+
 }

@@ -1,9 +1,9 @@
 /**
- * Reaction service output types following Context7 TypeScript best practices
+ * Reaction service output types following TypeSafeAPI TypeScript best practices
  * All types extend ServiceOutput for JSON serialization safety
  */
 
-import type { ServiceOutput } from '../context7-patterns.js';
+import type { ServiceOutput } from '../typesafe-api-patterns';
 
 export interface AddReactionOutput extends ServiceOutput {
   success: boolean;
@@ -11,6 +11,8 @@ export interface AddReactionOutput extends ServiceOutput {
   message_ts: string;
   reaction_name: string;
   message: string;
+  [key: string]: unknown;
+
 }
 
 export interface RemoveReactionOutput extends ServiceOutput {
@@ -19,6 +21,8 @@ export interface RemoveReactionOutput extends ServiceOutput {
   message_ts: string;
   reaction_name: string;
   message: string;
+  [key: string]: unknown;
+
 }
 
 export interface GetReactionsOutput extends ServiceOutput {
@@ -34,6 +38,8 @@ export interface GetReactionsOutput extends ServiceOutput {
     ts: string;
   };
   channel: string;
+  [key: string]: unknown;
+
 }
 
 export interface ReactionStatisticsOutput extends ServiceOutput {
@@ -52,4 +58,6 @@ export interface ReactionStatisticsOutput extends ServiceOutput {
     count: number;
   }>;
   period: string;
+  [key: string]: unknown;
+
 }

@@ -1,12 +1,12 @@
 /**
- * TDD Green Phase: Message Services Context7 + ts-pattern Implementation Validation
+ * TDD Green Phase: Message Services TypeSafeAPI + ts-pattern Implementation Validation
  * 
- * This test file validates that Context7 + ts-pattern type safety patterns
+ * This test file validates that TypeSafeAPI + ts-pattern type safety patterns
  * have been successfully implemented in Message Services.
  * 
- * Expected Result: All tests should PASS, proving the Context7 implementation works.
+ * Expected Result: All tests should PASS, proving the TypeSafeAPI implementation works.
  * 
- * Context7 + ts-pattern Implementation Validation:
+ * TypeSafeAPI + ts-pattern Implementation Validation:
  * - Production-ready discriminated unions for success/error handling
  * - Exhaustive pattern matching with .exhaustive() for type coverage
  * - P.infer for type inference from patterns
@@ -21,7 +21,7 @@ import type {
   ServiceOutput,
   ApiResponse,
   InferPatternType as _InferPatternType,
-} from '../slack/types/context7-patterns.js';
+} from '../slack/types/typesafe-api-patterns.js';
 import type { 
   SendMessageOutput,
   MessageSearchOutput,
@@ -44,7 +44,7 @@ import {
   handleServiceResult,
   enforceServiceOutput,
   validateServiceResult,
-} from '../slack/types/context7-patterns.js';
+} from '../slack/types/typesafe-api-patterns.js';
 
 // Mock configuration to prevent environment dependencies
 jest.mock('../config/index.js', () => ({
@@ -66,8 +66,8 @@ jest.mock('../utils/logger.js', () => ({
   },
 }));
 
-describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', () => {
-  describe('Context7 Pattern Compliance Validation', () => {
+describe('Message Services TypeSafeAPI + ts-pattern Implementation (Green Phase)', () => {
+  describe('TypeSafeAPI Pattern Compliance Validation', () => {
     it('should have ServiceOutput Record<string, any> constraint enforced', () => {
       // VALIDATION: ServiceOutput constraints are now enforced
       
@@ -80,9 +80,9 @@ describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', 
       expect(serviceOutput).not.toBeNull();
       expect(Array.isArray(serviceOutput)).toBe(false);
       
-      // Context7 constraint validation
+      // TypeSafeAPI constraint validation
       const hasServiceOutputConstraints = true; // Now implemented
-      const shouldHaveServiceOutputConstraints = true; // Context7 target
+      const shouldHaveServiceOutputConstraints = true; // TypeSafeAPI target
       
       expect(hasServiceOutputConstraints).toBe(shouldHaveServiceOutputConstraints);
     });
@@ -190,7 +190,7 @@ describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', 
       
       const apiResponse: ApiResponse<SendMessageOutput> = handleServiceResult(testResult);
       
-      // Should follow Context7 response pattern
+      // Should follow TypeSafeAPI response pattern
       expect(apiResponse).toHaveProperty('statusCode');
       expect(apiResponse).toHaveProperty('message');
       expect(apiResponse.statusCode).toBe('10000');
@@ -200,7 +200,7 @@ describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', 
       
       // Consistent response structure validation
       const hasConsistentResponseStructure = true; // Now implemented
-      const shouldHaveConsistentStructure = true; // Context7 target
+      const shouldHaveConsistentStructure = true; // TypeSafeAPI target
       
       expect(hasConsistentResponseStructure).toBe(shouldHaveConsistentStructure);
     });
@@ -224,14 +224,14 @@ describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', 
       
       // Consistent error handling validation
       const hasConsistentErrorHandling = true; // Now implemented
-      const shouldHaveConsistentErrors = true; // Context7 target
+      const shouldHaveConsistentErrors = true; // TypeSafeAPI target
       
       expect(hasConsistentErrorHandling).toBe(shouldHaveConsistentErrors);
     });
   });
 
   describe('Type Safety Integration Validation', () => {
-    it('should have properly typed service interfaces with Context7 patterns', () => {
+    it('should have properly typed service interfaces with TypeSafeAPI patterns', () => {
       // VALIDATION: Service interfaces now use proper types instead of unknown/MCPToolResult
       
       // Test that MessageService interface is properly typed
@@ -277,14 +277,14 @@ describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', 
       
       // ServiceResult validation
       const serviceResultValidationWorks = true; // Now implemented
-      const shouldValidateServiceResults = true; // Context7 target
+      const shouldValidateServiceResults = true; // TypeSafeAPI target
       
       expect(serviceResultValidationWorks).toBe(shouldValidateServiceResults);
     });
   });
 
   describe('Output Type Integration Validation', () => {
-    it('should have existing output types properly integrated with Context7 patterns', () => {
+    it('should have existing output types properly integrated with TypeSafeAPI patterns', () => {
       // VALIDATION: Output types from types/outputs/messages.ts are now integrated
       
       // Test that all output types extend ServiceOutput
@@ -315,7 +315,7 @@ describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', 
       
       // Output types integration validation
       const outputTypesAreIntegrated = true; // Now integrated
-      const shouldBeIntegrated = true; // Context7 target
+      const shouldBeIntegrated = true; // TypeSafeAPI target
       
       expect(outputTypesAreIntegrated).toBe(shouldBeIntegrated);
     });
@@ -333,17 +333,17 @@ describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', 
       
       // Should be discriminated union types
       const resultTypesAreDiscriminatedUnions = true; // Now implemented
-      const shouldBeDiscriminatedUnions = true; // Context7 target
+      const shouldBeDiscriminatedUnions = true; // TypeSafeAPI target
       
       expect(resultTypesAreDiscriminatedUnions).toBe(shouldBeDiscriminatedUnions);
     });
   });
 
   describe('Architecture Pattern Validation', () => {
-    it('should have Context7 production-ready backend patterns implemented', () => {
-      // VALIDATION: Context7 patterns are now implemented
+    it('should have TypeSafeAPI production-ready backend patterns implemented', () => {
+      // VALIDATION: TypeSafeAPI patterns are now implemented
       
-      // Test that we have all the Context7 architectural components
+      // Test that we have all the TypeSafeAPI architectural components
       const hasServiceOutput = true; // ServiceOutput constraint
       const hasDiscriminatedUnions = true; // ServiceResult<T> unions
       const hasProductionApiResponse = true; // ApiResponse<T> structure
@@ -356,11 +356,11 @@ describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', 
       expect(hasTypeSafePatternMatching).toBe(true);
       expect(hasUtilityFunctions).toBe(true);
       
-      // Context7 patterns validation
-      const hasContext7Patterns = true; // Now implemented
-      const shouldHaveContext7Patterns = true; // Target architecture
+      // TypeSafeAPI patterns validation
+      const hasTypeSafeAPIPatterns = true; // Now implemented
+      const shouldHaveTypeSafeAPIPatterns = true; // Target architecture
       
-      expect(hasContext7Patterns).toBe(shouldHaveContext7Patterns);
+      expect(hasTypeSafeAPIPatterns).toBe(shouldHaveTypeSafeAPIPatterns);
     });
 
     it('should have type-safe success/error handling with ts-pattern', () => {
@@ -397,9 +397,9 @@ describe('Message Services Context7 + ts-pattern Implementation (Green Phase)', 
 
   describe('Backward Compatibility Validation', () => {
     it('should maintain MCP compatibility through adapter pattern', () => {
-      // VALIDATION: MCP compatibility is maintained while adding Context7 benefits
+      // VALIDATION: MCP compatibility is maintained while adding TypeSafeAPI benefits
       
-      // The MCP adapter should convert Context7 results to MCPToolResult format
+      // The MCP adapter should convert TypeSafeAPI results to MCPToolResult format
       // while maintaining the internal type safety benefits
       
       const mcpCompatibilityMaintained = true; // Through adapter pattern

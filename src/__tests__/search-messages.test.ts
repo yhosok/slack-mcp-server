@@ -195,7 +195,7 @@ describe('SlackService.searchMessages', () => {
       highlight: false,
     });
 
-    // Parse Context7 JSON response
+    // Parse TypeSafeAPI JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.statusCode).toBe('10000');
     expect(content.message).toBe('Message search completed successfully');
@@ -233,7 +233,7 @@ describe('SlackService.searchMessages', () => {
       highlight: false,
     });
 
-    // Parse Context7 JSON response
+    // Parse TypeSafeAPI JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.statusCode).toBe('10000');
     expect(content.message).toBe('Message search completed successfully'); // Empty matches still returns "completed successfully"
@@ -316,7 +316,7 @@ describe('SlackService.searchMessages', () => {
       highlight: false,
     });
 
-    // Parse Context7 JSON response
+    // Parse TypeSafeAPI JSON response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.statusCode).toBe('10000');
     expect(content.data.messages[0].channel).toBe('C3BVD6FPB'); // Actual channel ID from mock data

@@ -1,5 +1,6 @@
 import { match as _match } from 'ts-pattern';
 import type { SearchAllArguments } from '@slack/web-api';
+import type { MessageElement } from '@slack/web-api/dist/types/response/ConversationsHistoryResponse.js';
 import {
   FindThreadsInChannelSchema,
   GetThreadRepliesSchema,
@@ -29,7 +30,7 @@ import {
   createServiceError,
   enforceServiceOutput,
   type ServiceResult as _ServiceResult,
-} from '../../types/context7-patterns.js';
+} from '../../types/typesafe-api-patterns.js';
 import type {
   ThreadDiscoveryResult,
   ThreadRepliesResult,
@@ -53,15 +54,15 @@ import { SlackAPIError } from '../../../utils/errors.js';
 import type {
   SlackMessage,
   ThreadParticipant,
-  ThreadAnalysis,
-  ThreadSummary,
+  ThreadAnalysis as _ThreadAnalysis,
+  ThreadSummary as _ThreadSummary,
 } from '../../types/index.js';
 import {
   performComprehensiveAnalysis,
   performQuickAnalysis,
-  formatThreadAnalysis,
-  formatThreadSummary,
-  type ThreadSummaryFormatterOptions,
+  formatThreadAnalysis as _formatThreadAnalysis,
+  formatThreadSummary as _formatThreadSummary,
+  type ThreadSummaryFormatterOptions as _ThreadSummaryFormatterOptions,
 } from '../../analysis/index.js';
 import { countWordsInMessages } from '../../analysis/thread/sentiment-analysis.js';
 
@@ -72,7 +73,7 @@ import { countWordsInMessages } from '../../analysis/thread/sentiment-analysis.j
  */
 export const createThreadService = (deps: ThreadServiceDependencies): ThreadService => {
   /**
-   * Find all threads in a channel using Context7 + ts-pattern patterns
+   * Find all threads in a channel using TypeSafeAPI + ts-pattern patterns
    */
   const findThreadsInChannel = async (args: unknown): Promise<ThreadDiscoveryResult> => {
     try {
@@ -105,7 +106,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
               const messages = response.messages || [];
               // Filter messages that have replies (threads) - preserves business logic
               return messages.filter(
-                (msg: any) => msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
+(msg: any) => msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
               );
             },
             
@@ -164,7 +165,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Get all replies in a thread using Context7 + ts-pattern patterns
+   * Get all replies in a thread using TypeSafeAPI + ts-pattern patterns
    */
   const getThreadReplies = async (args: unknown): Promise<ThreadRepliesResult> => {
     try {
@@ -212,7 +213,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
                   ts: msg.ts,
                   thread_ts: msg.thread_ts,
                   reply_count: msg.reply_count,
-                  reactions: msg.reactions?.map((r: any) => ({
+                  reactions: msg.reactions?.map((r: { name: string; count: number; users?: string[] }) => ({
                     name: r.name,
                     count: r.count,
                     users: r.users || [],
@@ -238,7 +239,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Search for threads by keywords or content using Context7 + ts-pattern patterns
+   * Search for threads by keywords or content using TypeSafeAPI + ts-pattern patterns
    */
   const searchThreads = async (args: unknown): Promise<ThreadSearchResult> => {
     try {
@@ -293,7 +294,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       // Filter for messages that are part of threads
       const threadMessages = result.messages.matches.filter(
-        (match: any) => match.thread_ts || match.reply_count > 0
+(match: any) => match.thread_ts || match.reply_count > 0
       );
 
       const output = enforceServiceOutput({
@@ -319,7 +320,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Analyze a thread comprehensively using Context7 + ts-pattern patterns
+   * Analyze a thread comprehensively using TypeSafeAPI + ts-pattern patterns
    */
   const analyzeThread = async (args: unknown): Promise<ThreadAnalysisResult> => {
     try {
@@ -409,7 +410,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Generate an intelligent summary of thread content using Context7 + ts-pattern patterns
+   * Generate an intelligent summary of thread content using TypeSafeAPI + ts-pattern patterns
    */
   const summarizeThread = async (args: unknown): Promise<ThreadSummaryResult> => {
     try {
@@ -504,7 +505,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Extract action items from thread messages using Context7 + ts-pattern patterns
+   * Extract action items from thread messages using TypeSafeAPI + ts-pattern patterns
    */
   const extractActionItems = async (args: unknown): Promise<ActionItemsResult> => {
     try {
@@ -588,7 +589,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Post a reply to an existing thread using Context7 + ts-pattern patterns
+   * Post a reply to an existing thread using TypeSafeAPI + ts-pattern patterns
    */
   const postThreadReply = async (args: unknown): Promise<ThreadReplyResult> => {
     try {
@@ -627,7 +628,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Create a new thread by posting a parent message and optional first reply using Context7 + ts-pattern patterns
+   * Create a new thread by posting a parent message and optional first reply using TypeSafeAPI + ts-pattern patterns
    */
   const createThread = async (args: unknown): Promise<CreateThreadResult> => {
     try {
@@ -688,7 +689,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Mark a thread as important with reactions and notifications using Context7 + ts-pattern patterns
+   * Mark a thread as important with reactions and notifications using TypeSafeAPI + ts-pattern patterns
    */
   const markThreadImportant = async (args: unknown): Promise<MarkImportantResult> => {
     try {
@@ -738,7 +739,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Identify important or urgent threads in a channel using Context7 + ts-pattern patterns
+   * Identify important or urgent threads in a channel using TypeSafeAPI + ts-pattern patterns
    */
   const identifyImportantThreads = async (args: unknown): Promise<ImportantThreadsResult> => {
     try {
@@ -775,7 +776,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       // Find thread parents
       const threadParents = historyResult.messages.filter(
-        (message: any) => message.reply_count && message.reply_count > 0
+(message: any) => message.reply_count && message.reply_count > 0
       );
 
       const importantThreads = [];
@@ -868,7 +869,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Export thread content in various formats using Context7 + ts-pattern patterns
+   * Export thread content in various formats using TypeSafeAPI + ts-pattern patterns
    */
   const exportThread = async (args: unknown): Promise<ThreadExportResult> => {
     try {
@@ -896,7 +897,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         );
         for (const userId of uniqueUsers) {
           const userInfo = await deps.userService.getUserInfo(userId);
-          userInfoMap.set(userId, { displayName: userInfo.display_name || userInfo.real_name || userId });
+          userInfoMap.set(userId, { displayName: userInfo.profile?.display_name || userInfo.real_name || userId });
         }
       }
 
@@ -930,7 +931,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Find threads related to a given thread using Context7 + ts-pattern patterns
+   * Find threads related to a given thread using TypeSafeAPI + ts-pattern patterns
    */
   const findRelatedThreads = async (args: unknown): Promise<RelatedThreadsResult> => {
     try {
@@ -971,7 +972,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       }
 
       const threadParents = historyResult.messages.filter(
-        (message: any) =>
+        (message: MessageElement) =>
           message.reply_count && message.reply_count > 0 && message.ts !== input.thread_ts
       );
 
@@ -1089,7 +1090,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Get statistics and metrics about threads using Context7 + ts-pattern patterns
+   * Get statistics and metrics about threads using TypeSafeAPI + ts-pattern patterns
    */
   const getThreadMetrics = async (args: unknown): Promise<ThreadMetricsResult> => {
     try {
@@ -1119,7 +1120,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
         if (historyResult.messages) {
           const threadParents = historyResult.messages.filter(
-            (message: any) => message.reply_count && message.reply_count > 0
+    (message: any) => message.reply_count && message.reply_count > 0
           );
           allThreads = threadParents;
         }
@@ -1214,7 +1215,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
-   * Find threads that include specific participants using Context7 + ts-pattern patterns
+   * Find threads that include specific participants using TypeSafeAPI + ts-pattern patterns
    */
   const getThreadsByParticipants = async (args: unknown): Promise<ThreadsByParticipantsResult> => {
     try {
@@ -1294,7 +1295,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       for (const match of searchResult.messages.matches) {
         const threadTs =
-          (match as any).thread_ts || ((match as any).reply_count > 0 ? (match as any).ts : null);
+          (match as any).thread_ts || ((match as any).reply_count && (match as any).reply_count > 0 ? (match as any).ts : null);
         if (!threadTs) continue;
 
         const threadKey = `${match.channel?.id || match.channel?.name}-${threadTs}`;

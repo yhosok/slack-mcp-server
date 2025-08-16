@@ -95,11 +95,11 @@ export const createUserService = (dependencies: UserServiceDependencies): UserSe
   /**
    * Get full user information for a user ID
    */
-  const getUserInfo = async (userId: string): Promise<any> => {
+  const getUserInfo = async (userId: string): Promise<{ id: string; name?: string; real_name?: string; profile?: { display_name?: string; email?: string } }> => {
     try {
       const client = dependencies.getClient();
       const result = await client.users.info({ user: userId });
-      return result.user;
+      return result.user as { id: string; name?: string; real_name?: string; profile?: { display_name?: string; email?: string } };
     } catch (error) {
       logger.debug(`Failed to get user info for ${userId}: ${error}`);
       throw error;

@@ -1,7 +1,7 @@
 /**
  * Centralized type exports for Slack MCP Server
  * 
- * This module implements the Context7 re-export pattern, providing a single
+ * This module implements the TypeSafeAPI re-export pattern, providing a single
  * source of truth for all Slack-related type definitions. The modular structure
  * enables better maintainability while preserving backward compatibility.
  * 
@@ -52,7 +52,7 @@ export type {
 } from './core/threads.js';
 
 // ===================================================================
-// SERVICE OUTPUT TYPES (Context7 Pattern)
+// SERVICE OUTPUT TYPES (TypeSafeAPI Pattern)
 // ===================================================================
 
 // File service outputs

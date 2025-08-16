@@ -9,6 +9,7 @@ import {
   AnalyzeFilesSchema,
   SearchFilesSchema,
 } from '../../../utils/validation.js';
+import type { MCPToolResult } from '../../../mcp/types.js';
 import type { FileService, FileServiceDependencies } from './types.js';
 import { executePagination } from '../../infrastructure/generic-pagination.js';
 
@@ -48,7 +49,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
    * - Multiple channels require separate upload calls
    * - Response structure uses files array instead of single file object
    */
-  const uploadFile = (args: unknown) =>
+  const uploadFile = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(UploadFileSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
 
@@ -173,7 +174,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   /**
    * List files in workspace with filtering options
    */
-  const listFiles = (args: unknown) =>
+  const listFiles = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(ListFilesSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
@@ -241,7 +242,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   /**
    * Get detailed information about a specific file
    */
-  const getFileInfo = (args: unknown) =>
+  const getFileInfo = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(GetFileInfoSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
@@ -254,7 +255,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       }
 
       // Get file comments if requested
-      let comments: any[] = [];
+      let comments: Array<{ comment: string; user: string; timestamp: string; id: string }> = [];
       if (input.include_comments) {
         try {
           // Note: files.comments is deprecated, skip for now
@@ -289,7 +290,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         comments:
           comments.length > 0
             ? comments.map(
-                (comment: { id: string; user: string; comment: string; timestamp: number }) => ({
+                (comment: { id: string; user: string; comment: string; timestamp: string }) => ({
                   id: comment.id,
                   user: comment.user,
                   comment: comment.comment,
@@ -303,7 +304,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   /**
    * Delete a file (where permitted)
    */
-  const deleteFile = (args: unknown) =>
+  const deleteFile = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(DeleteFileSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
 
@@ -321,7 +322,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   /**
    * Share an existing file to additional channels
    */
-  const shareFile = (args: unknown) =>
+  const shareFile = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(ShareFileSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('write');
 
@@ -361,7 +362,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
   /**
    * Analyze file types, sizes, and usage patterns in workspace
    */
-  const analyzeFiles = (args: unknown) =>
+  const analyzeFiles = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(AnalyzeFilesSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
@@ -448,13 +449,23 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         precision: 1,
       };
 
-      return formatFileAnalysis(analysis, formatOptions);
+      const analysisResult = formatFileAnalysis(analysis, formatOptions);
+      return {
+        analysis: {
+          content: analysisResult.content,
+          lineCount: analysisResult.lineCount,
+          characterCount: analysisResult.characterCount,
+          includesEmojis: analysisResult.includesEmojis,
+        },
+        summary: `File analysis completed for ${daysBack} days`,
+        success: true,
+      };
     });
 
   /**
    * Search for files by name, type, or content
    */
-  const searchFiles = (args: unknown) =>
+  const searchFiles = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(SearchFilesSchema, args, async (input) => {
       // Check if search API is available
       deps.clientManager.checkSearchApiAvailability(

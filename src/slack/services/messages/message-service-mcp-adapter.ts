@@ -1,10 +1,10 @@
 /**
  * MCP Compatibility Adapter for Message Services
  * 
- * Converts Context7 + ts-pattern ServiceResult types back to MCPToolResult
+ * Converts TypeSafeAPI + ts-pattern ServiceResult types back to MCPToolResult
  * for backward compatibility with existing MCP protocol routing.
  * 
- * This adapter maintains the Context7 type safety benefits while ensuring
+ * This adapter maintains the TypeSafeAPI type safety benefits while ensuring
  * seamless integration with the existing SlackService facade.
  */
 
@@ -16,15 +16,15 @@ import {
   handleServiceResult,
   type ServiceResult,
   type ServiceOutput,
-} from '../../types/context7-patterns.js';
+} from '../../types/typesafe-api-patterns.js';
 
 /**
  * Create MCP-compatible message service adapter
- * Wraps the Context7 message service to provide MCPToolResult compatibility
+ * Wraps the TypeSafeAPI message service to provide MCPToolResult compatibility
  */
 export const createMessageServiceMCPAdapter = (deps: MessageServiceDependencies): MessageServiceMCPCompat => {
-  // Get the Context7 type-safe message service
-  const context7Service: MessageService = createMessageService(deps);
+  // Get the TypeSafeAPI type-safe message service
+  const typeSafeApiService: MessageService = createMessageService(deps);
 
   /**
    * Convert ServiceResult to MCPToolResult with production-ready response structure
@@ -62,43 +62,43 @@ export const createMessageServiceMCPAdapter = (deps: MessageServiceDependencies)
   };
 
   /**
-   * MCP-compatible service methods that maintain Context7 type safety internally
+   * MCP-compatible service methods that maintain TypeSafeAPI type safety internally
    */
   return {
     async sendMessage(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.sendMessage(args);
+      const result = await typeSafeApiService.sendMessage(args);
       return convertToMCPResult(result);
     },
 
     async listChannels(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.listChannels(args);
+      const result = await typeSafeApiService.listChannels(args);
       return convertToMCPResult(result);
     },
 
     async getChannelHistory(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.getChannelHistory(args);
+      const result = await typeSafeApiService.getChannelHistory(args);
       return convertToMCPResult(result);
     },
 
     async getUserInfo(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.getUserInfo(args);
+      const result = await typeSafeApiService.getUserInfo(args);
       return convertToMCPResult(result);
     },
 
     async searchMessages(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.searchMessages(args);
+      const result = await typeSafeApiService.searchMessages(args);
       return convertToMCPResult(result);
     },
 
     async getChannelInfo(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.getChannelInfo(args);
+      const result = await typeSafeApiService.getChannelInfo(args);
       return convertToMCPResult(result);
     },
   };
 };
 
 /**
- * Export both the Context7 service and MCP adapter for different use cases
+ * Export both the TypeSafeAPI service and MCP adapter for different use cases
  */
 export { createMessageService } from './message-service.js';
 export type { MessageService, MessageServiceMCPCompat } from './types.js';

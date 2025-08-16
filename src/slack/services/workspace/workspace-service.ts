@@ -5,6 +5,7 @@ import {
   GetWorkspaceActivitySchema,
   GetServerHealthSchema,
 } from '../../../utils/validation.js';
+import type { MCPToolResult } from '../../../mcp/types.js';
 import type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
 import { executePagination } from '../../infrastructure/generic-pagination.js';
 
@@ -22,7 +23,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
   /**
    * Get workspace/team information and settings
    */
-  const getWorkspaceInfo = (args: unknown) =>
+  const getWorkspaceInfo = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(GetWorkspaceInfoSchema, args, async () => {
       const client = deps.clientManager.getClientForOperation('read');
 
@@ -54,7 +55,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
   /**
    * List all team members with their roles and status
    */
-  const listTeamMembers = (args: unknown) =>
+  const listTeamMembers = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(ListTeamMembersSchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
@@ -141,7 +142,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
   /**
    * Generate comprehensive workspace activity report
    */
-  const getWorkspaceActivity = (args: unknown) =>
+  const getWorkspaceActivity = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(GetWorkspaceActivitySchema, args, async (input) => {
       const client = deps.clientManager.getClientForOperation('read');
 
@@ -271,7 +272,9 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         for (const [userId] of topUsers) {
           try {
             const userInfo = await deps.userService.getUserInfo(userId);
-            userDetails.set(userId, userInfo);
+            userDetails.set(userId, { 
+              displayName: userInfo.profile?.display_name || userInfo.real_name || userInfo.name || userInfo.id 
+            });
           } catch {
             // Skip users we can't look up
           }
@@ -335,7 +338,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
   /**
    * Get MCP server health status and performance metrics
    */
-  const getServerHealth = (args: unknown) =>
+  const getServerHealth = (args: unknown): Promise<MCPToolResult> =>
     deps.requestHandler.handle(GetServerHealthSchema, args, async () => {
       // Get rate limiting metrics from the infrastructure
       const rateLimitMetrics = deps.rateLimitService.getMetrics();

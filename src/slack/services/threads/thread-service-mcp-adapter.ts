@@ -1,10 +1,10 @@
 /**
  * MCP Compatibility Adapter for Thread Services
  * 
- * Converts Context7 + ts-pattern ServiceResult types back to MCPToolResult
+ * Converts TypeSafeAPI + ts-pattern ServiceResult types back to MCPToolResult
  * for backward compatibility with existing MCP protocol routing.
  * 
- * This adapter maintains the Context7 type safety benefits while ensuring
+ * This adapter maintains the TypeSafeAPI type safety benefits while ensuring
  * seamless integration with the existing SlackService facade.
  */
 
@@ -16,15 +16,15 @@ import {
   handleServiceResult,
   type ServiceResult,
   type ServiceOutput,
-} from '../../types/context7-patterns.js';
+} from '../../types/typesafe-api-patterns.js';
 
 /**
  * Create MCP-compatible thread service adapter
- * Wraps the Context7 thread service to provide MCPToolResult compatibility
+ * Wraps the TypeSafeAPI thread service to provide MCPToolResult compatibility
  */
 export const createThreadServiceMCPAdapter = (deps: ThreadServiceDependencies): ThreadServiceMCPCompat => {
-  // Get the Context7 type-safe thread service
-  const context7Service: ThreadService = createThreadService(deps);
+  // Get the TypeSafeAPI type-safe thread service
+  const typeSafeApiService: ThreadService = createThreadService(deps);
 
   /**
    * Convert ServiceResult to MCPToolResult with production-ready response structure
@@ -62,83 +62,83 @@ export const createThreadServiceMCPAdapter = (deps: ThreadServiceDependencies): 
   };
 
   /**
-   * MCP-compatible service methods that maintain Context7 type safety internally
+   * MCP-compatible service methods that maintain TypeSafeAPI type safety internally
    */
   return {
     async findThreadsInChannel(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.findThreadsInChannel(args);
+      const result = await typeSafeApiService.findThreadsInChannel(args);
       return convertToMCPResult(result);
     },
 
     async getThreadReplies(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.getThreadReplies(args);
+      const result = await typeSafeApiService.getThreadReplies(args);
       return convertToMCPResult(result);
     },
 
     async searchThreads(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.searchThreads(args);
+      const result = await typeSafeApiService.searchThreads(args);
       return convertToMCPResult(result);
     },
 
     async analyzeThread(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.analyzeThread(args);
+      const result = await typeSafeApiService.analyzeThread(args);
       return convertToMCPResult(result);
     },
 
     async summarizeThread(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.summarizeThread(args);
+      const result = await typeSafeApiService.summarizeThread(args);
       return convertToMCPResult(result);
     },
 
     async extractActionItems(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.extractActionItems(args);
+      const result = await typeSafeApiService.extractActionItems(args);
       return convertToMCPResult(result);
     },
 
     async postThreadReply(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.postThreadReply(args);
+      const result = await typeSafeApiService.postThreadReply(args);
       return convertToMCPResult(result);
     },
 
     async createThread(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.createThread(args);
+      const result = await typeSafeApiService.createThread(args);
       return convertToMCPResult(result);
     },
 
     async markThreadImportant(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.markThreadImportant(args);
+      const result = await typeSafeApiService.markThreadImportant(args);
       return convertToMCPResult(result);
     },
 
     async identifyImportantThreads(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.identifyImportantThreads(args);
+      const result = await typeSafeApiService.identifyImportantThreads(args);
       return convertToMCPResult(result);
     },
 
     async exportThread(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.exportThread(args);
+      const result = await typeSafeApiService.exportThread(args);
       return convertToMCPResult(result);
     },
 
     async findRelatedThreads(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.findRelatedThreads(args);
+      const result = await typeSafeApiService.findRelatedThreads(args);
       return convertToMCPResult(result);
     },
 
     async getThreadMetrics(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.getThreadMetrics(args);
+      const result = await typeSafeApiService.getThreadMetrics(args);
       return convertToMCPResult(result);
     },
 
     async getThreadsByParticipants(args: unknown): Promise<MCPToolResult> {
-      const result = await context7Service.getThreadsByParticipants(args);
+      const result = await typeSafeApiService.getThreadsByParticipants(args);
       return convertToMCPResult(result);
     },
   };
 };
 
 /**
- * Export both the Context7 service and MCP adapter for different use cases
+ * Export both the TypeSafeAPI service and MCP adapter for different use cases
  */
 export { createThreadService } from './thread-service.js';
 export type { ThreadService, ThreadServiceMCPCompat } from './types.js';

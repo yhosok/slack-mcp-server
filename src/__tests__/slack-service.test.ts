@@ -137,7 +137,7 @@ describe('SlackService', () => {
         thread_ts: undefined,
       });
 
-      // Parse the JSON response from Context7 implementation
+      // Parse the JSON response from TypeSafeAPI implementation
       const responseText = extractTextContent(result.content?.[0]);
       const parsedResponse = JSON.parse(responseText);
       
@@ -269,7 +269,7 @@ describe('SlackService', () => {
         limit: 10,
       });
 
-      // Parse the JSON response from Context7 implementation
+      // Parse the JSON response from TypeSafeAPI implementation
       const responseText = extractTextContent(result.content?.[0]);
       const parsedResponse = JSON.parse(responseText);
       
@@ -399,9 +399,9 @@ describe('SlackService', () => {
         const response = parseJsonResponse(result.content?.[0]);
         expect(response.success).toBe(true);
         expect(response.statusCode).toBe("10000");
-        expect(response.data?.threads).toHaveLength(1);
-        expect(response.data?.threads[0]?.threadTs).toBe('1234567890.123456');
-        expect(response.data?.total).toBe(1);
+        expect((response.data as any)?.threads).toHaveLength(1);
+        expect((response.data as any)?.threads[0]?.threadTs).toBe('1234567890.123456');
+        expect((response.data as any)?.total).toBe(1);
       });
     });
 
@@ -455,9 +455,9 @@ describe('SlackService', () => {
         const response = parseJsonResponse(result.content?.[0]);
         expect(response.success).toBe(true);
         expect(response.statusCode).toBe("10000");
-        expect(response.data?.messages).toHaveLength(3);
-        expect(response.data?.messages[0]?.ts).toBe('1234567890.123456');
-        expect(response.data?.messages[0]?.text).toBe('Parent message');
+        expect((response.data as any)?.messages).toHaveLength(3);
+        expect((response.data as any)?.messages[0]?.ts).toBe('1234567890.123456');
+        expect((response.data as any)?.messages[0]?.text).toBe('Parent message');
       });
     });
 
@@ -559,7 +559,7 @@ describe('SlackService', () => {
         // Check if it's a success or error response
         if (response.success) {
           expect(response.statusCode).toBe("10000");
-          expect(response.data?.participants).toBeDefined();
+          expect((response.data as any)?.participants).toBeDefined();
         } else {
           expect(response.statusCode).toBe("10001");
           expect(response.error).toBeDefined();
@@ -626,9 +626,9 @@ describe('SlackService', () => {
         if (response.success) {
           // Extract duration from JSON data structure
           expect(response.statusCode).toBe("10000");
-          expect(response.data?.durationHours).toBeDefined();
+          expect((response.data as any)?.durationHours).toBeDefined();
           
-          const actualDurationHours = response.data.durationHours;
+          const actualDurationHours = (response.data as any).durationHours;
           expect(typeof actualDurationHours).toBe('number');
           
           // The duration should be calculated from first to last message, not from thread start to now
@@ -695,9 +695,9 @@ describe('SlackService', () => {
         if (response.success) {
           // Extract word count from JSON data structure
           expect(response.statusCode).toBe("10000");
-          expect(response.data?.wordCount).toBeDefined();
+          expect((response.data as any)?.wordCount).toBeDefined();
           
-          const actualWordCount = response.data.wordCount;
+          const actualWordCount = (response.data as any).wordCount;
           expect(typeof actualWordCount).toBe('number');
           
           // The word count should be calculated from actual message content, not estimated
@@ -754,7 +754,7 @@ describe('SlackService', () => {
         // Check if it's a success or error response
         if (response.success) {
           expect(response.statusCode).toBe("10000");
-          expect(response.data?.summary).toBeDefined();
+          expect((response.data as any)?.summary).toBeDefined();
         } else {
           expect(response.statusCode).toBe("10001");
           expect(response.error).toBeDefined();
@@ -807,7 +807,7 @@ describe('SlackService', () => {
         // Check if it's a success or error response
         if (response.success) {
           expect(response.statusCode).toBe("10000");
-          expect(response.data?.actionItems).toBeDefined();
+          expect((response.data as any)?.actionItems).toBeDefined();
         } else {
           expect(response.statusCode).toBe("10001");
           expect(response.error).toBeDefined();
@@ -926,8 +926,8 @@ describe('SlackService', () => {
         expect(response.success).toBe(true);
         expect(response.statusCode).toBe("10000");
         expect(response.message).toContain('Thread created successfully');
-        expect(response.data?.threadTs).toBe('1234567890.123456');
-        expect(response.data?.parentMessage?.timestamp).toBe('1234567890.123456');
+        expect((response.data as any)?.threadTs).toBe('1234567890.123456');
+        expect((response.data as any)?.parentMessage?.timestamp).toBe('1234567890.123456');
       });
 
       it('should create thread without reply', async () => {
@@ -949,9 +949,9 @@ describe('SlackService', () => {
         expect(response.success).toBe(true);
         expect(response.statusCode).toBe("10000");
         expect(response.message).toContain('Thread created successfully');
-        expect(response.data?.threadTs).toBe('1234567890.123456');
-        expect(response.data?.parentMessage?.timestamp).toBe('1234567890.123456');
-        expect(response.data?.reply).toBeNull();
+        expect((response.data as any)?.threadTs).toBe('1234567890.123456');
+        expect((response.data as any)?.parentMessage?.timestamp).toBe('1234567890.123456');
+        expect((response.data as any)?.reply).toBeNull();
       });
     });
 

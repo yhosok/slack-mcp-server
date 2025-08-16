@@ -6,14 +6,14 @@ import { SlackAPIError } from '../../../utils/errors.js';
 import { createTypedMCPResult, toSerializableOutput, createTypedErrorResult } from './type-helpers.js';
 
 /**
- * Context7 utility type for service output constraints
+ * TypeSafeAPI utility type for service output constraints
  * Simplifies the verbose "extends Record<string, any>" pattern
  */
-type ServiceOutput = Record<string, any>;
+type ServiceOutput = Record<string, unknown>;
 
 /**
  * Enhanced error handling utility for request operations
- * Context7 pattern: Centralized error logging and formatting
+ * TypeSafeAPI pattern: Centralized error logging and formatting
  * @param error - The error to handle
  * @param context - Additional context for debugging
  * @param dependencies - Handler dependencies for error formatting
@@ -41,20 +41,20 @@ const handleOperationError = (
 /**
  * Create a request handler with consistent error handling and response formatting
  * 
- * Context7 Implementation Features:
+ * TypeSafeAPI Implementation Features:
  * - Generic constraints ensure JSON serialization safety
  * - Centralized error handling reduces code duplication
  * - Type-safe operations with comprehensive logging
  * - Performance-optimized validation pipeline
  * 
  * @param dependencies - Required dependencies for the handler
- * @returns A new RequestHandler instance with Context7 patterns
+ * @returns A new RequestHandler instance with TypeSafeAPI patterns
  */
 export const createRequestHandler = (dependencies: RequestHandlerDependencies): RequestHandler => {
   /**
    * Handle an API request with validation, error handling, and response formatting
    * 
-   * Context7 Pattern Implementation:
+   * TypeSafeAPI Pattern Implementation:
    * - TOutput extends ServiceOutput ensures object structure and JSON safety
    * - Centralized error handling with enhanced logging context
    * - Performance-optimized validation pipeline
@@ -71,13 +71,13 @@ export const createRequestHandler = (dependencies: RequestHandlerDependencies): 
     operation: (input: TInput) => Promise<TOutput>
   ): Promise<MCPToolResult> => {
     try {
-      // Step 1: Input validation with Context7 type safety
+      // Step 1: Input validation with TypeSafeAPI type safety
       const input = dependencies.validateInput(schema, args);
 
       // Step 2: Execute operation with validated input
       const result = await operation(input);
 
-      // Step 3: Runtime safety validation (Context7 constraint enforcement)
+      // Step 3: Runtime safety validation (TypeSafeAPI constraint enforcement)
       const safeResult = toSerializableOutput<TOutput>(result);
 
       // Step 4: Type-safe response formatting
@@ -90,7 +90,7 @@ export const createRequestHandler = (dependencies: RequestHandlerDependencies): 
   /**
    * Handle an API request with validation and error handling, but custom response formatting
    * 
-   * Context7 Pattern: Allows services to return MCPToolResult directly while maintaining
+   * TypeSafeAPI Pattern: Allows services to return MCPToolResult directly while maintaining
    * consistent error handling and logging patterns across the application.
    * 
    * Use Case: For operations that need complex response formatting or multiple content types
@@ -124,14 +124,14 @@ export const createRequestHandler = (dependencies: RequestHandlerDependencies): 
 
 /**
  * Default response formatter for successful operations
- * Context7 pattern: Type-safe response formatting with enhanced error handling
+ * TypeSafeAPI pattern: Type-safe response formatting with enhanced error handling
  * 
  * @param data - The data to include in the response
  * @returns Formatted MCP tool response with JSON safety guarantees
  */
 export const defaultResponseFormatter = (data: unknown): MCPToolResult => {
   try {
-    // Context7 pattern: Ensure data is safely serializable
+    // TypeSafeAPI pattern: Ensure data is safely serializable
     const formattedText = typeof data === 'string' 
       ? data 
       : JSON.stringify(data, null, 2);
@@ -143,7 +143,7 @@ export const defaultResponseFormatter = (data: unknown): MCPToolResult => {
       }],
     };
   } catch (error) {
-    // Fallback for non-serializable data (Context7 safety pattern)
+    // Fallback for non-serializable data (TypeSafeAPI safety pattern)
     logger.warn('Response formatting fallback triggered', {
       error: error instanceof Error ? error.message : String(error),
       dataType: typeof data,
@@ -161,7 +161,7 @@ export const defaultResponseFormatter = (data: unknown): MCPToolResult => {
 
 /**
  * Enhanced error formatter for failed operations
- * Context7 pattern: Type-safe error formatting with comprehensive error context
+ * TypeSafeAPI pattern: Type-safe error formatting with comprehensive error context
  * 
  * @param error - The error to format
  * @returns Formatted MCP tool error response with enhanced debugging information
@@ -169,7 +169,7 @@ export const defaultResponseFormatter = (data: unknown): MCPToolResult => {
 export const defaultErrorFormatter = (error: Error): MCPToolResult => {
   const isSlackAPIError = error instanceof SlackAPIError;
   
-  // Context7 pattern: Enhanced error messaging with context
+  // TypeSafeAPI pattern: Enhanced error messaging with context
   const errorContext = {
     type: isSlackAPIError ? 'SlackAPIError' : 'ApplicationError',
     message: error.message,

@@ -1,7 +1,7 @@
 /**
- * Context7-compatible Request Handler
+ * TypeSafeAPI-compatible Request Handler
  * 
- * Extends the existing request handler to support Context7 + ts-pattern patterns
+ * Extends the existing request handler to support TypeSafeAPI + ts-pattern patterns
  * while maintaining backward compatibility with MCPToolResult.
  */
 
@@ -15,32 +15,33 @@ import {
   type ServiceOutput,
   handleServiceResult,
   validateServiceResult,
-} from '../../types/context7-patterns.js';
+} from '../../types/typesafe-api-patterns.js';
 
 /**
- * Context7 Request Handler Dependencies
+ * TypeSafeAPI Request Handler Dependencies
  */
-export interface Context7RequestHandlerDependencies extends RequestHandlerDependencies {
-  // Extended with Context7-specific capabilities
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface TypeSafeAPIRequestHandlerDependencies extends RequestHandlerDependencies {
+  // Extended with TypeSafeAPI-specific capabilities
 }
 
 /**
- * Context7 Request Handler Interface
+ * TypeSafeAPI Request Handler Interface
  */
-export interface Context7RequestHandler {
+export interface TypeSafeAPIRequestHandler {
   /**
-   * Handle request with Context7 ServiceResult pattern
+   * Handle request with TypeSafeAPI ServiceResult pattern
    */
-  handleContext7<TInput, TOutput extends ServiceOutput>(
+  handleTypeSafeAPI<TInput, TOutput extends ServiceOutput>(
     schema: ZodSchema<TInput>,
     args: unknown,
     operation: (input: TInput) => Promise<ServiceResult<TOutput>>
   ): Promise<ServiceResult<TOutput>>;
 
   /**
-   * Handle request with Context7 pattern and convert to MCP format
+   * Handle request with TypeSafeAPI pattern and convert to MCP format
    */
-  handleContext7ToMCP<TInput, TOutput extends ServiceOutput>(
+  handleTypeSafeAPIToMCP<TInput, TOutput extends ServiceOutput>(
     schema: ZodSchema<TInput>,
     args: unknown,
     operation: (input: TInput) => Promise<ServiceResult<TOutput>>
@@ -66,16 +67,16 @@ export interface Context7RequestHandler {
 }
 
 /**
- * Enhanced error handling for Context7 patterns
+ * Enhanced error handling for TypeSafeAPI patterns
  */
-const handleContext7Error = (
+const handleTypeSafeAPIError = (
   error: unknown, 
   context: { args?: unknown; operation?: string }
 ): ServiceResult<never> => {
   const normalizedError = error instanceof Error ? error : new Error(String(error));
   
   // Enhanced logging with operation context
-  logger.error('Context7 request handler operation failed', {
+  logger.error('TypeSafeAPI request handler operation failed', {
     error: normalizedError.message,
     operation: context.operation || 'unknown',
     args: context.args,
@@ -144,19 +145,19 @@ const convertServiceResultToMCP = <T extends ServiceOutput>(result: ServiceResul
 };
 
 /**
- * Create a Context7-compatible request handler
+ * Create a TypeSafeAPI-compatible request handler
  */
-export const createContext7RequestHandler = (dependencies: Context7RequestHandlerDependencies): Context7RequestHandler => {
+export const createTypeSafeAPIRequestHandler = (dependencies: TypeSafeAPIRequestHandlerDependencies): TypeSafeAPIRequestHandler => {
   /**
-   * Handle request with Context7 ServiceResult pattern
+   * Handle request with TypeSafeAPI ServiceResult pattern
    */
-  const handleContext7 = async <TInput, TOutput extends ServiceOutput>(
+  const handleTypeSafeAPI = async <TInput, TOutput extends ServiceOutput>(
     schema: ZodSchema<TInput>,
     args: unknown,
     operation: (input: TInput) => Promise<ServiceResult<TOutput>>
   ): Promise<ServiceResult<TOutput>> => {
     try {
-      // Step 1: Input validation with Context7 type safety
+      // Step 1: Input validation with TypeSafeAPI type safety
       const input = dependencies.validateInput(schema, args);
 
       // Step 2: Execute operation with validated input
@@ -165,27 +166,27 @@ export const createContext7RequestHandler = (dependencies: Context7RequestHandle
       // Step 3: Validate ServiceResult format
       if (!validateServiceResult(result)) {
         logger.error('Operation returned invalid ServiceResult format', { result });
-        return handleContext7Error(
+        return handleTypeSafeAPIError(
           new Error('Operation returned invalid ServiceResult format'),
-          { args, operation: 'handleContext7' }
+          { args, operation: 'handleTypeSafeAPI' }
         );
       }
 
       return result;
     } catch (error) {
-      return handleContext7Error(error, { args, operation: 'handleContext7' });
+      return handleTypeSafeAPIError(error, { args, operation: 'handleTypeSafeAPI' });
     }
   };
 
   /**
-   * Handle request with Context7 pattern and convert to MCP format
+   * Handle request with TypeSafeAPI pattern and convert to MCP format
    */
-  const handleContext7ToMCP = async <TInput, TOutput extends ServiceOutput>(
+  const handleTypeSafeAPIToMCP = async <TInput, TOutput extends ServiceOutput>(
     schema: ZodSchema<TInput>,
     args: unknown,
     operation: (input: TInput) => Promise<ServiceResult<TOutput>>
   ): Promise<MCPToolResult> => {
-    const result = await handleContext7(schema, args, operation);
+    const result = await handleTypeSafeAPI(schema, args, operation);
     return convertServiceResultToMCP(result);
   };
 
@@ -252,8 +253,8 @@ export const createContext7RequestHandler = (dependencies: Context7RequestHandle
   };
 
   return {
-    handleContext7,
-    handleContext7ToMCP,
+    handleTypeSafeAPI,
+    handleTypeSafeAPIToMCP,
     handle,
     handleWithCustomFormat,
   };

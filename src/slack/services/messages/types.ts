@@ -23,7 +23,7 @@ export interface MessageServiceConfig {
 }
 
 /**
- * Message service interface with Context7 + ts-pattern type safety
+ * Message service interface with TypeSafeAPI + ts-pattern type safety
  * Following production-ready discriminated union patterns for type-safe service results
  */
 export interface MessageService {

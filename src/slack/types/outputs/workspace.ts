@@ -1,9 +1,9 @@
 /**
- * Workspace service output types following Context7 TypeScript best practices
+ * Workspace service output types following TypeSafeAPI TypeScript best practices
  * All types extend ServiceOutput for JSON serialization safety
  */
 
-import type { ServiceOutput } from '../context7-patterns.js';
+import type { ServiceOutput } from '../typesafe-api-patterns';
 
 export interface WorkspaceInfoOutput extends ServiceOutput {
   team: {
@@ -15,6 +15,8 @@ export interface WorkspaceInfoOutput extends ServiceOutput {
   url: string;
   plan: string;
   memberCount: number;
+  [key: string]: unknown;
+
 }
 
 export interface TeamMembersOutput extends ServiceOutput {
@@ -33,6 +35,8 @@ export interface TeamMembersOutput extends ServiceOutput {
   }>;
   total: number;
   hasMore: boolean;
+  [key: string]: unknown;
+
 }
 
 export interface WorkspaceActivityOutput extends ServiceOutput {
@@ -56,6 +60,8 @@ export interface WorkspaceActivityOutput extends ServiceOutput {
     date: string;
     messageCount: number;
   }>;
+  [key: string]: unknown;
+
 }
 
 export interface ServerHealthOutput extends ServiceOutput {
@@ -74,4 +80,6 @@ export interface ServerHealthOutput extends ServiceOutput {
   };
   uptime: string;
   version: string;
+  [key: string]: unknown;
+
 }

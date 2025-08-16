@@ -1,8 +1,8 @@
-# Context7 + ts-pattern Implementation Guide
+# TypeSafeAPI + ts-pattern Implementation Guide
 
 ## 📋 Overview
 
-This guide documents the successful Context7 + ts-pattern implementation patterns established in Phase 4a for Message Services. Use this as a blueprint for applying the same patterns to other services.
+This guide documents the successful TypeSafeAPI + ts-pattern implementation patterns established in Phase 4a for Message Services. Use this as a blueprint for applying the same patterns to other services.
 
 ## 🎯 Core Patterns Implemented
 
@@ -45,7 +45,7 @@ const handleResult = <T>(result: ServiceResult<T>) =>
 ```typescript
 /**
  * Production-ready API response following Node.js backend best practices
- * Based on Context7 research: /janishar/nodejs-backend-architecture-typescript
+ * Based on TypeSafeAPI research: /janishar/nodejs-backend-architecture-typescript
  */
 export interface ApiResponse<T = any> extends ServiceOutput {
   statusCode: string;  // "10000" for success, "10001" for error
@@ -74,7 +74,7 @@ const createErrorResponse = (error: string, message: string): ApiResponse => ({
 
 ### 4. Service Method Implementation Pattern
 ```typescript
-// Type-safe service method with Context7 patterns
+// Type-safe service method with TypeSafeAPI patterns
 const sendMessage = (args: unknown) =>
   deps.requestHandler.handle(SendMessageSchema, args, async (input): Promise<SendMessageResult> => {
     try {
@@ -111,7 +111,7 @@ const sendMessage = (args: unknown) =>
 ```typescript
 /**
  * MCP adapter for backward compatibility
- * Converts Context7 ServiceResult to MCPToolResult format
+ * Converts TypeSafeAPI ServiceResult to MCPToolResult format
  */
 export const createMessageServiceMCPAdapter = (service: MessageService) => ({
   sendMessage: async (args: unknown): Promise<MCPToolResult> => {
@@ -150,7 +150,7 @@ export const createMessageServiceMCPAdapter = (service: MessageService) => ({
 
 ### Step 4: Comprehensive Testing
 1. Create TDD Red tests proving type safety gaps
-2. Implement TDD Green tests validating Context7 patterns
+2. Implement TDD Green tests validating TypeSafeAPI patterns
 3. Add TDD Refactor tests for production readiness
 
 ## 📊 Testing Strategy
@@ -171,9 +171,9 @@ describe('Service Type Safety Gaps (Red Phase)', () => {
 
 ### TDD Green Phase: Implementation Validation
 ```typescript
-describe('Service Context7 Implementation (Green Phase)', () => {
+describe('Service TypeSafeAPI Implementation (Green Phase)', () => {
   it('should pass: ServiceOutput constraints enforced', () => {
-    // Test validating Context7 implementation
+    // Test validating TypeSafeAPI implementation
     const hasServiceOutputConstraints = true; // Implementation reality
     const shouldHaveServiceOutputConstraints = true; // Target achieved
     
@@ -234,7 +234,7 @@ export const processBatchResults = <T>(
 ### JSDoc Template
 ```typescript
 /**
- * Sends a message to a Slack channel with Context7 type safety
+ * Sends a message to a Slack channel with TypeSafeAPI type safety
  * 
  * @param args - Unknown input arguments (validated by Zod schema)
  * @returns Promise<SendMessageResult> - Type-safe result with discriminated union
@@ -253,7 +253,7 @@ export const processBatchResults = <T>(
  *   .exhaustive();
  * ```
  * 
- * @implements Context7 ServiceOutput constraints
+ * @implements TypeSafeAPI ServiceOutput constraints
  * @implements ts-pattern discriminated unions
  * @implements Production-ready API response structure
  */

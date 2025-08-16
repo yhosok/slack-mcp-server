@@ -1,11 +1,11 @@
 /**
- * Thread service output types following Context7 + ts-pattern TypeScript best practices
- * All types extend ServiceOutput (Record<string, any>) for Context7 compliance
+ * Thread service output types following TypeSafeAPI + ts-pattern TypeScript best practices
+ * All types extend ServiceOutput (Record<string, any>) for TypeSafeAPI compliance
  */
 
-import type { ServiceOutput, ServiceResult } from '../context7-patterns.js';
-import type { ThreadParticipant, ActionItem } from '../index.js';
-import type { SentimentAnalysisResult } from '../../analysis/thread/types.js';
+import type { ServiceOutput, ServiceResult } from '../typesafe-api-patterns';
+import type { ThreadParticipant, ActionItem } from '../index';
+import type { SentimentAnalysisResult } from '../../analysis/thread/types';
 
 export interface ThreadDiscoveryOutput extends ServiceOutput {
   threads: Array<{
@@ -17,11 +17,13 @@ export interface ThreadDiscoveryOutput extends ServiceOutput {
     };
     replyCount: number;
     lastReply: string | undefined;
-    participants: any[];
+    participants: string[];
   }>;
   total: number;
   hasMore: boolean;
   cursor: string | undefined;
+  [key: string]: unknown;
+
 }
 
 export interface ThreadRepliesOutput extends ServiceOutput {
@@ -45,6 +47,8 @@ export interface ThreadRepliesOutput extends ServiceOutput {
     channel: string;
     threadTs: string;
   };
+  [key: string]: unknown;
+
 }
 
 export interface ThreadSearchOutput extends ServiceOutput {
@@ -63,6 +67,8 @@ export interface ThreadSearchOutput extends ServiceOutput {
   total: number;
   query: string;
   hasMore?: boolean;
+  [key: string]: unknown;
+
 }
 
 export interface ThreadAnalysisOutput extends ServiceOutput {
@@ -92,6 +98,8 @@ export interface ThreadAnalysisOutput extends ServiceOutput {
     includeActionItems: boolean;
     includeTopics: boolean;
   };
+  [key: string]: unknown;
+
 }
 
 export interface ThreadSummaryOutput extends ServiceOutput {
@@ -118,6 +126,8 @@ export interface ThreadSummaryOutput extends ServiceOutput {
   sentiment: SentimentAnalysisResult;
   language: string;
   summaryLength: 'brief' | 'detailed' | 'comprehensive';
+  [key: string]: unknown;
+
 }
 
 export interface ActionItemsOutput extends ServiceOutput {
@@ -139,6 +149,8 @@ export interface ActionItemsOutput extends ServiceOutput {
     in_progress: number;
     completed: number;
   };
+  [key: string]: unknown;
+
 }
 
 export interface ThreadReplyOutput extends ServiceOutput {
@@ -146,11 +158,13 @@ export interface ThreadReplyOutput extends ServiceOutput {
   timestamp?: string;
   channel?: string;
   threadTs: string;
-  message?: any;
+  message?: { text?: string; user?: string; timestamp?: string; };
   replyInfo: {
     posted: boolean;
     broadcast?: boolean;
   };
+  [key: string]: unknown;
+
 }
 
 export interface CreateThreadOutput extends ServiceOutput {
@@ -159,16 +173,18 @@ export interface CreateThreadOutput extends ServiceOutput {
   parentMessage: {
     timestamp?: string;
     channel?: string;
-    message?: any;
+    message?: { text?: string; user?: string; timestamp?: string; };
   };
   reply?: {
     timestamp?: string;
-    message?: any;
+    message?: { text?: string; user?: string; timestamp?: string; };
   } | null;
   threadInfo: {
     created: boolean;
     hasReply: boolean;
   };
+  [key: string]: unknown;
+
 }
 
 export interface MarkImportantOutput extends ServiceOutput {
@@ -179,6 +195,8 @@ export interface MarkImportantOutput extends ServiceOutput {
   reactionAdded: string;
   commentPosted: boolean;
   reason?: string;
+  [key: string]: unknown;
+
 }
 
 export interface ImportantThreadsOutput extends ServiceOutput {
@@ -207,6 +225,8 @@ export interface ImportantThreadsOutput extends ServiceOutput {
     from: string;
     to: string;
   };
+  [key: string]: unknown;
+
 }
 
 export interface ThreadExportOutput extends ServiceOutput {
@@ -221,7 +241,7 @@ export interface ThreadExportOutput extends ServiceOutput {
     user?: string;
     text?: string;
     timestamp?: string;
-    reactions?: any[];
+    reactions?: Array<{ name: string; count: number; users?: string[] }>;
   }>;
   userProfiles?: Record<string, { displayName: string }>;
   exportMetadata: {
@@ -229,6 +249,8 @@ export interface ThreadExportOutput extends ServiceOutput {
     includeUserProfiles: boolean;
     includeMetadata: boolean;
   };
+  [key: string]: unknown;
+
 }
 
 export interface RelatedThreadsOutput extends ServiceOutput {
@@ -252,6 +274,8 @@ export interface RelatedThreadsOutput extends ServiceOutput {
   referenceThread: string;
   similarityThreshold: number;
   relationshipCriteria: string[];
+  [key: string]: unknown;
+
 }
 
 export interface ThreadMetricsOutput extends ServiceOutput {
@@ -280,6 +304,8 @@ export interface ThreadMetricsOutput extends ServiceOutput {
     hourly: Record<number, number>;
     daily?: Record<string, number>;
   };
+  [key: string]: unknown;
+
 }
 
 export interface ThreadsByParticipantsOutput extends ServiceOutput {
@@ -305,10 +331,12 @@ export interface ThreadsByParticipantsOutput extends ServiceOutput {
       before?: string;
     };
   };
+  [key: string]: unknown;
+
 }
 
 /**
- * Context7 + ts-pattern discriminated union types for type-safe service results
+ * TypeSafeAPI + ts-pattern discriminated union types for type-safe service results
  */
 export type ThreadDiscoveryResult = ServiceResult<ThreadDiscoveryOutput>;
 export type ThreadRepliesResult = ServiceResult<ThreadRepliesOutput>;
