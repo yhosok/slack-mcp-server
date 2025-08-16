@@ -52,6 +52,49 @@ export type {
 } from './core/threads.js';
 
 // ===================================================================
+// SERVICE OUTPUT TYPES (Context7 Pattern)
+// ===================================================================
+
+// File service outputs
+export type {
+  DeleteFileOutput,
+  UploadFileOutput,
+  FileAnalysisOutput,
+  ShareFileOutput,
+} from './outputs/files.js';
+
+// Thread service outputs
+export type {
+  ThreadAnalysisOutput,
+  ThreadSummaryOutput,
+  CreateThreadOutput,
+  ThreadMetricsOutput,
+} from './outputs/threads.js';
+
+// Message service outputs
+export type {
+  SendMessageOutput,
+  MessageSearchOutput,
+  ChannelHistoryOutput,
+} from './outputs/messages.js';
+
+// Reaction service outputs
+export type {
+  AddReactionOutput,
+  RemoveReactionOutput,
+  GetReactionsOutput,
+  ReactionStatisticsOutput,
+} from './outputs/reactions.js';
+
+// Workspace service outputs
+export type {
+  WorkspaceInfoOutput,
+  TeamMembersOutput,
+  WorkspaceActivityOutput,
+  ServerHealthOutput,
+} from './outputs/workspace.js';
+
+// ===================================================================
 // LEGACY COMPATIBILITY LAYER
 // ===================================================================
 

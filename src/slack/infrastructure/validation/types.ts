@@ -1,5 +1,6 @@
 import type { ZodSchema } from 'zod';
 import type { MCPToolResult } from '../../../mcp/types.js';
+import type { ServiceOutput } from './type-helpers.js';
 
 /**
  * Generic request handler for consistent API operation patterns
@@ -7,12 +8,13 @@ import type { MCPToolResult } from '../../../mcp/types.js';
 export interface RequestHandler {
   /**
    * Handle an API request with validation, error handling, and response formatting
+   * Context7 pattern: TOutput extends ServiceOutput ensures JSON serialization safety
    * @param schema - Zod schema for input validation
    * @param args - Raw input arguments to validate
    * @param operation - Async operation to perform with validated input
    * @returns Formatted MCP tool response
    */
-  handle<TInput, TOutput>(
+  handle<TInput, TOutput extends ServiceOutput>(
     schema: ZodSchema<TInput>,
     args: unknown,
     operation: (input: TInput) => Promise<TOutput>
