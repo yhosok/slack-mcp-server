@@ -19,11 +19,14 @@ import { formatFileAnalysis } from '../../analysis/index.js';
 import { logger } from '../../../utils/logger.js';
 
 /**
- * Constants for file upload fallback handling
+ * Constants for file upload logging
  */
-const FALLBACK_ID_PREFIX = 'temp_';
-const FALLBACK_FILENAME_SANITIZER = /[^a-zA-Z0-9.-]/g;
-const FALLBACK_FILENAME_REPLACEMENT = '_';
+const API_CONTEXT = {
+  FILE_READ_ERROR: 'file_read_error',
+  API_ERROR: 'uploadV2_api_error',
+  EMPTY_RESPONSE: 'uploadV2_empty_response',
+  CHANNEL_LIMITATION: 'uploadV2_channel_limitation',
+} as const;
 
 /**
  * Type alias for the files.uploadV2 API response
@@ -62,7 +65,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           file_path: input.file_path,
           error_message: errorMessage,
           error_code: errorCode,
-          api_context: 'file_read_error',
+          api_context: API_CONTEXT.FILE_READ_ERROR,
           operation: 'uploadFile',
         });
         
@@ -92,7 +95,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             total_channels: input.channels.length,
             selected_channel: input.channels[0],
             ignored_channels: input.channels.slice(1),
-            api_context: 'uploadV2_channel_limitation',
+            api_context: API_CONTEXT.CHANNEL_LIMITATION,
           });
         }
       }
@@ -119,7 +122,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           file_size: fileContent.length,
           upload_channel: uploadOptions.channel_id || 'none',
           slack_error: result.error || 'Unknown error',
-          api_context: 'uploadV2_api_error',
+          api_context: API_CONTEXT.API_ERROR,
           operation: 'uploadFile',
         });
         
@@ -133,7 +136,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           filename,
           file_size: fileContent.length,
           upload_channel: uploadOptions.channel_id || 'none',
-          api_context: 'uploadV2_empty_response',
+          api_context: API_CONTEXT.EMPTY_RESPONSE,
           operation: 'uploadFile',
           response_structure: {
             has_files_array: !!result.files,
@@ -150,39 +153,12 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       // The files array is guaranteed to have at least one element due to the check above
       const uploadedFile = result.files[0]!
       
-      // Handle missing ID gracefully with fallback strategy
-      let fileId: string;
-      if (!uploadedFile.id) {
-        // Generate fallback ID using timestamp + filename pattern
-        const timestamp = uploadedFile.timestamp || Math.floor(Date.now() / 1000);
-        const sanitizedFilename = filename.replace(FALLBACK_FILENAME_SANITIZER, FALLBACK_FILENAME_REPLACEMENT);
-        const fallbackId = `${FALLBACK_ID_PREFIX}${timestamp}_${sanitizedFilename}`;
-        fileId = fallbackId;
-        
-        // Log structured warning about missing ID with comprehensive context
-        logger.warn('Slack API returned file without ID - using fallback strategy', {
-          fallback_id: fallbackId,
-          original_filename: filename,
-          sanitized_filename: sanitizedFilename,
-          file_timestamp: timestamp,
-          file_size: uploadedFile.size || fileContent.length,
-          upload_channel: uploadOptions.channel_id || 'none',
-          api_context: 'missing_file_id_fallback',
-          response_metadata: {
-            has_name: !!uploadedFile.name,
-            has_title: !!uploadedFile.title,
-            has_url: !!uploadedFile.url_private,
-            has_timestamp: !!uploadedFile.timestamp,
-          },
-        });
-      } else {
-        fileId = uploadedFile.id;
-      }
+      // Note: id is optional in Slack API response - this is normal behavior
 
       return {
         success: true,
         file: {
-          id: fileId,
+          ...(uploadedFile.id && { id: uploadedFile.id }),
           name: uploadedFile.name || filename,
           title: uploadedFile.title || filename,
           size: uploadedFile.size || fileContent.length,

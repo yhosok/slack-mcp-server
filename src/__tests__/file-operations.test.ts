@@ -461,13 +461,13 @@ describe('SlackService - File Operations', () => {
       expect(content).toContain('F1234567890'); // Should extract file ID from files array
     });
 
-    it('should handle missing ID gracefully with fallback strategy (TDD Green Phase)', async () => {
+    it('should handle missing ID as normal API behavior (simplified)', async () => {
       // Arrange
       const mockFileContent = Buffer.from('test content without id');
       mockReadFile.mockResolvedValue(mockFileContent);
 
-      // Mock successful API response but with file object missing 'id' field
-      // This simulates a legitimate Slack API response scenario where id field may be absent
+      // Mock successful API response with file object missing 'id' field
+      // This is normal Slack API behavior - id field is optional
       const mockV2ResultWithoutId = {
         ok: true,
         files: [
@@ -490,37 +490,29 @@ describe('SlackService - File Operations', () => {
       // Act
       const result = await slackService.uploadFile(validArgs);
 
-      // Assert - Should succeed with graceful fallback ID handling
+      // Assert - Should succeed without ID field (normal behavior)
       expect(mockWebClientInstance.filesUploadV2).toHaveBeenCalled();
       expect(result.isError).toBeUndefined(); // Successful operations don't have isError property
       expect(result.content).toBeDefined();
       
-      // Verify the response contains success and fallback ID
+      // Verify the response contains success but no ID field (since Slack didn't provide one)
       const content = extractTextContent(result.content?.[0]);
       expect(content).toContain('success');
       expect(content).toContain('true'); // success: true
-      expect(content).toContain('temp_1234567890_test-file.txt'); // fallback ID pattern
+      expect(content).toContain('test-file.txt'); // filename should be present
       
-      // Verify structured warning was logged about missing ID with enhanced metadata
-      const { logger } = await import('../utils/logger');
-      expect(logger.warn).toHaveBeenCalledWith(
-        'Slack API returned file without ID - using fallback strategy',
-        expect.objectContaining({
-          fallback_id: 'temp_1234567890_test-file.txt',
-          original_filename: 'test-file.txt',
-          sanitized_filename: 'test-file.txt',
-          file_timestamp: 1234567890,
-          file_size: mockFileContent.length,
-          upload_channel: 'C1234567890',
-          api_context: 'missing_file_id_fallback',
-          response_metadata: expect.objectContaining({
-            has_name: true,
-            has_title: true,
-            has_url: true,
-            has_timestamp: true,
-          }),
-        })
-      );
+      // Parse response to check file object structure
+      const responseMatch = content.match(/"file":\s*\{([^}]+)\}/);
+      expect(responseMatch).toBeTruthy();
+      const fileObject = responseMatch?.[1];
+      
+      // Verify ID field is absent (not generated artificially)
+      expect(fileObject).not.toContain('"id"');
+      
+      // Verify other fields are present
+      expect(fileObject).toContain('"name"');
+      expect(fileObject).toContain('"title"');
+      expect(fileObject).toContain('"size"');
     });
 
     it('should handle multiple channels with structured warning logging', async () => {
