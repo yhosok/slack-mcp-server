@@ -8,62 +8,20 @@
  * seamless integration with the existing SlackService facade.
  */
 
-import { match } from 'ts-pattern';
 import type { MCPToolResult } from '../../../mcp/types.js';
 import type { MessageService, MessageServiceMCPCompat, MessageServiceDependencies } from './types.js';
 import { createMessageService } from './message-service.js';
-import {
-  handleServiceResult,
-  type ServiceResult,
-  type ServiceOutput,
-} from '../../types/typesafe-api-patterns.js';
+import { convertToMCPResult } from '../../infrastructure/mcp-adapter-utils.js';
 
 /**
  * Create MCP-compatible message service adapter
- * Wraps the TypeSafeAPI message service to provide MCPToolResult compatibility
+ * Uses the shared conversion utilities to wrap the TypeSafeAPI message service
  */
 export const createMessageServiceMCPAdapter = (deps: MessageServiceDependencies): MessageServiceMCPCompat => {
   // Get the TypeSafeAPI type-safe message service
   const typeSafeApiService: MessageService = createMessageService(deps);
 
-  /**
-   * Convert ServiceResult to MCPToolResult with production-ready response structure
-   */
-  const convertToMCPResult = <T extends ServiceOutput>(result: ServiceResult<T>): MCPToolResult => {
-    const apiResponse = handleServiceResult(result);
-    
-    return match(result)
-      .with({ success: true }, (_successResult) => ({
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              statusCode: apiResponse.statusCode,
-              message: apiResponse.message,
-              data: apiResponse.data,
-            }, null, 2),
-          },
-        ],
-      }))
-      .with({ success: false }, (_errorResult) => ({
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              statusCode: apiResponse.statusCode,
-              message: apiResponse.message,
-              error: apiResponse.error,
-            }, null, 2),
-          },
-        ],
-        isError: true,
-      }))
-      .exhaustive(); // Type-safe exhaustive matching
-  };
-
-  /**
-   * MCP-compatible service methods that maintain TypeSafeAPI type safety internally
-   */
+  // Manually wrap each method with the shared converter for type safety
   return {
     async sendMessage(args: unknown): Promise<MCPToolResult> {
       const result = await typeSafeApiService.sendMessage(args);

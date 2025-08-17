@@ -4,7 +4,7 @@ import { createInfrastructureServices } from './infrastructure/factory.js';
 import { createMessageServiceMCPAdapter } from './services/messages/message-service-mcp-adapter.js';
 import { createThreadServiceMCPAdapter } from './services/threads/thread-service-mcp-adapter.js';
 import { createFileServiceMCPAdapter } from './services/files/file-service-mcp-adapter.js';
-import { createReactionService } from './services/reactions/reaction-service.js';
+import { createReactionServiceMCPAdapter } from './services/reactions/reaction-service-mcp-adapter.js';
 import { createWorkspaceServiceMCPAdapter } from './services/workspace/workspace-service-mcp-adapter.js';
 
 /**
@@ -88,7 +88,7 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
   const messageService = createMessageServiceMCPAdapter(infrastructure);
   const threadService = createThreadServiceMCPAdapter(infrastructure);
   const fileService = createFileServiceMCPAdapter(infrastructure);
-  const reactionService = createReactionService(infrastructure);
+  const reactionService = createReactionServiceMCPAdapter(infrastructure);
   const workspaceService = createWorkspaceServiceMCPAdapter(infrastructure);
 
   const methods: ServiceMethodRegistry = {

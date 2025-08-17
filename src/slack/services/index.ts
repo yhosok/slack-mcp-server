@@ -23,7 +23,7 @@ export { createFileService } from './files/file-service.js';
 export type { FileService, FileServiceDependencies, FileServiceConfig } from './files/types.js';
 
 // Reaction service
-export { createReactionService } from './reactions/reaction-service.js';
+export { createReactionServiceTypeSafeAPI } from './reactions/reaction-service-typesafe.js';
 export type {
   ReactionService,
   ReactionServiceDependencies,
