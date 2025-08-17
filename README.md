@@ -81,7 +81,7 @@ MCP互換クライアントでの設定例を用途別に紹介します。
 ### ローカル開発
 ```bash
 # クローンとセットアップ
-git clone https://github.com/yourusername/slack-mcp-server.git
+git clone https://github.com/yhosok/slack-mcp-server.git
 cd slack-mcp-server
 ./setup.sh
 
@@ -223,6 +223,23 @@ npm start
   - 参加者行動パターン分析
 - **型安全なテスト**: Jest with ES modulesによる型安全なテスト環境
 
+## 🏗️ TypeSafeAPI + ts-pattern アーキテクチャ
+
+このプロジェクトは**TypeSafeAPI + ts-pattern**アーキテクチャパターンを採用し、完全な型安全性を実現しています：
+
+### 主要な特徴
+- **型安全なサービス結果**: すべてのサービス操作が判別共用体型（`ServiceResult<T>`）を返却
+- **網羅的パターンマッチング**: `ts-pattern`による堅牢なエラーハンドリングと結果処理
+- **ゼロ`any`型**: サービス層全体で完全な型安全性を実現
+- **後方互換性**: アダプターパターンによる既存MCPプロトコルとのシームレスな統合
+
+### アーキテクチャの詳細
+詳細な実装パターン、モジュラー設計、TypeSafeAPIの利点については**CLAUDE.md**をご参照ください。CLAUDE.mdには以下の詳細情報が含まれています：
+- Phase 1-6の段階的な実装プロセス
+- 各ドメインサービスの型安全パターン
+- MCPアダプターによる互換性維持戦略
+- パフォーマンス最適化とベストプラクティス
+
 ### 統合機能
 - **MCPプロトコル**: 完全なModel Context Protocolコンプライアンス
 - **権限処理**: Slackの権限とアクセス制御の尊重
@@ -290,7 +307,7 @@ npm run format
 ### プロジェクト構造
 ```
 src/
-├── __tests__/          # Jestテストファイル（13個のテストスイート）
+├── __tests__/          # Jestテストファイル（36個のテストスイート）
 ├── config/             # 設定管理（Zodベースの環境変数検証）
 ├── index.ts            # MCPサーバーエントリポイント
 ├── mcp/                # MCPプロトコル定義
@@ -299,10 +316,25 @@ src/
 │   └── types.ts        # MCP TypeScript型
 ├── slack/              # Slack統合
 │   ├── analysis/       # 分析関数（スレッド分析、トピック抽出等）
+│   │   ├── formatters/ # 分析結果フォーマッター
+│   │   └── thread/     # スレッド固有の分析
 │   ├── infrastructure/ # インフラストラクチャ層（クライアント管理、レート制限等）
+│   │   ├── client/     # クライアント管理とレート制限
+│   │   ├── user/       # ユーザーサービスインフラ
+│   │   └── validation/ # リクエスト検証とTypeSafeAPIハンドラー
 │   ├── services/       # ドメインサービス（messages、threads、files、reactions、workspace）
+│   │   ├── files/      # ファイル操作サービス
+│   │   ├── formatters/ # サービスレスポンスフォーマッター
+│   │   ├── messages/   # メッセージサービス
+│   │   ├── reactions/  # リアクション管理サービス
+│   │   ├── threads/    # スレッド管理サービス
+│   │   ├── users/      # ユーザー情報サービス
+│   │   └── workspace/  # ワークスペースサービス
+│   ├── types/          # TypeSafeAPI型定義
+│   │   ├── core/       # コアSlackエンティティ型
+│   │   └── outputs/    # TypeSafeAPIサービス出力型
 │   ├── service-factory.ts # サービスファクトリー（モジュラーアーキテクチャの構成）
-│   ├── slack-service.ts # 薄いファサード（296行、36メソッドのデリゲーション）
+│   ├── slack-service.ts # 薄いファサード（291行、36メソッドのデリゲーション）
 │   └── types.ts        # Slack固有の型定義
 └── utils/              # ユーティリティ
     ├── errors.ts       # カスタムエラークラス
