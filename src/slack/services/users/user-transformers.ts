@@ -29,7 +29,7 @@ import { enforceServiceOutput } from '../../types/typesafe-api-patterns.js';
  * if (userResult.success) {
  *   const displayName = await userService.getDisplayName('U1234567890');
  *   const output = transformSlackUserToUserInfoOutput(userResult.data, displayName);
- *   
+ *
  *   // output.isAdmin, output.isBot, output.profile are all properly typed
  *   console.log('Admin status:', output.isAdmin);
  *   console.log('Bot status:', output.isBot);
@@ -41,14 +41,14 @@ import { enforceServiceOutput } from '../../types/typesafe-api-patterns.js';
  * ```typescript
  * const getUserInfo = async (args: unknown): Promise<UserInfoOutputResult> => {
  *   const userResult = await deps.userService.getUserInfo(args);
- *   
+ *
  *   if (!userResult.success) {
  *     return createServiceError(userResult.error, 'Failed to retrieve user information');
  *   }
  *
  *   const displayName = await deps.userService.getDisplayName(userResult.data.id);
  *   const output = transformSlackUserToUserInfoOutput(userResult.data, displayName);
- *   
+ *
  *   return createServiceSuccess(output, 'User information retrieved successfully');
  * };
  * ```
@@ -93,19 +93,21 @@ export const transformSlackUserToUserInfoOutput = (
  * @example Privilege Checking
  * ```typescript
  * const userCapabilities = extractUserCapabilities(slackUser);
- * 
+ *
  * if (userCapabilities.isAdmin) {
  *   // User has admin privileges
  *   allowAdminOperation();
  * }
- * 
+ *
  * if (userCapabilities.isBot) {
  *   // Filter out bot messages or apply bot-specific logic
  *   applyBotHandling();
  * }
  * ```
  */
-export const extractUserCapabilities = (slackUser: SlackUser): {
+export const extractUserCapabilities = (
+  slackUser: SlackUser
+): {
   isAdmin: boolean;
   isOwner: boolean;
   isPrimaryOwner: boolean;
@@ -139,7 +141,7 @@ export const extractUserCapabilities = (slackUser: SlackUser): {
  * @example Profile Display
  * ```typescript
  * const profile = extractUserProfile(slackUser);
- * 
+ *
  * const profileView = {
  *   displayName: profile.displayName,
  *   realName: profile.realName,
@@ -150,7 +152,9 @@ export const extractUserCapabilities = (slackUser: SlackUser): {
  * };
  * ```
  */
-export const extractUserProfile = (slackUser: SlackUser): {
+export const extractUserProfile = (
+  slackUser: SlackUser
+): {
   displayName: string;
   realName: string;
   email?: string;

@@ -1,10 +1,6 @@
 import type { SearchAllArguments } from '@slack/web-api';
-import type { 
-  MessageElement
-} from '@slack/web-api/dist/types/response/ConversationsHistoryResponse.js';
-import type { 
-  Match as SearchMessageElement 
-} from '@slack/web-api/dist/types/response/SearchMessagesResponse.js';
+import type { MessageElement } from '@slack/web-api/dist/types/response/ConversationsHistoryResponse.js';
+import type { Match as SearchMessageElement } from '@slack/web-api/dist/types/response/SearchMessagesResponse.js';
 import {
   SendMessageSchema,
   ListChannelsSchema,
@@ -249,6 +245,22 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         getItems: (response) => response.messages || [],
 
         formatResponse: async (data) => {
+          // Phase 5: Apply Phase 3 success pattern for display name conversion
+          // Get all unique user IDs for efficient bulk display name retrieval
+          const uniqueUserIds = [
+            ...new Set(
+              data.items
+                .map((message: MessageElement) => message.user)
+                .filter((user): user is string => Boolean(user))
+            ),
+          ];
+
+          // Use Phase 3 pattern: bulkGetDisplayNames for efficient display name conversion
+          const displayNameMap =
+            uniqueUserIds.length > 0
+              ? await deps.userService.bulkGetDisplayNames(uniqueUserIds)
+              : new Map<string, string>();
+
           const messages = data.items.map((message: MessageElement) => ({
             type: message.type || '',
             user: message.user || '',
@@ -259,6 +271,10 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
             reactions: message.reactions,
             edited: message.edited,
             files: message.files,
+            // Phase 5: Add user-friendly display name with graceful fallback
+            userDisplayName: message.user
+              ? displayNameMap.get(message.user) || message.user
+              : undefined,
           }));
 
           // Create TypeSafeAPI-compliant output
@@ -267,6 +283,11 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
             hasMore: data.hasMore,
             responseMetadata: data.cursor ? { nextCursor: data.cursor } : undefined,
             channel: input.channel,
+            // Phase 5: Add formatted message list for user-friendly display
+            formattedMessages: messages
+              .filter((msg) => msg.text && msg.userDisplayName)
+              .map((msg) => `${msg.userDisplayName}: ${msg.text}`)
+              .join('\n'),
           });
 
           return output;
@@ -288,7 +309,6 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       );
     }
   };
-
 
   /**
    * Search for messages in the workspace with TypeSafeAPI + ts-pattern type safety

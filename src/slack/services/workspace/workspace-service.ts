@@ -277,7 +277,9 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
           }
 
           // Filter out members without required fields
-          filteredMembers = filteredMembers.filter((member: SlackMember) => member.id && member.name);
+          filteredMembers = filteredMembers.filter(
+            (member: SlackMember) => member.id && member.name
+          );
 
           const processedMembers = filteredMembers.map((member: SlackMember) => ({
             id: member.id!,
@@ -511,14 +513,17 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
       }
 
       // Get user details if requested
-      const userDetails = new Map<string, { 
-        displayName: string;
-        isAdmin?: boolean;
-        isBot?: boolean;
-        isDeleted?: boolean;
-        isRestricted?: boolean;
-        userType?: 'admin' | 'owner' | 'bot' | 'restricted' | 'user' | 'unknown';
-      }>();
+      const userDetails = new Map<
+        string,
+        {
+          displayName: string;
+          isAdmin?: boolean;
+          isBot?: boolean;
+          isDeleted?: boolean;
+          isRestricted?: boolean;
+          userType?: 'admin' | 'owner' | 'bot' | 'restricted' | 'user' | 'unknown';
+        }
+      >();
       if (input.include_user_details) {
         const topUsers = Array.from(activity.userActivity.entries())
           .sort((a, b) => b[1].messages - a[1].messages)
@@ -526,11 +531,16 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
 
         for (const [userId] of topUsers) {
           try {
-            const userResult = await deps.userService.getUserInfo(userId);
+            // Use infrastructureUserService for lightweight display name
+            const displayName = await deps.infrastructureUserService.getDisplayName(userId);
+
+            // Use domainUserService for detailed user information when needed
+            const userResult = await deps.domainUserService.getUserInfo(userId);
             if (userResult.success) {
               const userInfo = userResult.data as SlackUser;
               userDetails.set(userId, {
                 displayName:
+                  displayName ||
                   userInfo.profile?.display_name ||
                   userInfo.real_name ||
                   userInfo.name ||
@@ -540,15 +550,15 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
                 isBot: userInfo.is_bot,
                 isDeleted: userInfo.deleted,
                 isRestricted: userInfo.is_restricted,
-                userType: userInfo.is_admin 
-                  ? 'admin' 
-                  : userInfo.is_owner 
-                  ? 'owner' 
-                  : userInfo.is_bot 
-                  ? 'bot' 
-                  : userInfo.is_restricted 
-                  ? 'restricted' 
-                  : 'user',
+                userType: userInfo.is_admin
+                  ? 'admin'
+                  : userInfo.is_owner
+                    ? 'owner'
+                    : userInfo.is_bot
+                      ? 'bot'
+                      : userInfo.is_restricted
+                        ? 'restricted'
+                        : 'user',
               });
             }
           } catch {

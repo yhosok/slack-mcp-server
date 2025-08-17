@@ -14,10 +14,15 @@ export interface ThreadDiscoveryOutput extends ServiceOutput {
       text: string | undefined;
       user: string | undefined;
       timestamp: string | undefined;
+      userDisplayName?: string;
     };
     replyCount: number;
     lastReply: string | undefined;
     participants: string[];
+    participantDisplayNames?: Array<{
+      id: string;
+      displayName: string;
+    }>;
   }>;
   total: number;
   hasMore: boolean;

@@ -50,7 +50,6 @@ export const createMessageServiceMCPAdapter = (
       return convertToMCPResult(result);
     },
 
-
     async searchMessages(args: unknown): Promise<MCPToolResult> {
       const result = await typeSafeApiService.searchMessages(args);
       return convertToMCPResult(result);

@@ -77,7 +77,10 @@ export const createMCPAdapter = <T>(
     }
   }
 
-  return adapter as T extends Record<string, (...args: unknown[]) => Promise<ServiceResult<ServiceOutput>>>
+  return adapter as T extends Record<
+    string,
+    (...args: unknown[]) => Promise<ServiceResult<ServiceOutput>>
+  >
     ? { [K in keyof T]: (args: unknown) => Promise<MCPToolResult> }
     : never;
 };

@@ -1,13 +1,7 @@
 import { match as _match } from 'ts-pattern';
-import type { 
-  SearchAllArguments
-} from '@slack/web-api';
-import type { 
-  MessageElement
-} from '@slack/web-api/dist/types/response/ConversationsHistoryResponse.js';
-import type { 
-  MessagesMatch as SearchMessageElement 
-} from '@slack/web-api/dist/types/response/SearchAllResponse.js';
+import type { SearchAllArguments } from '@slack/web-api';
+import type { MessageElement } from '@slack/web-api/dist/types/response/ConversationsHistoryResponse.js';
+import type { MessagesMatch as SearchMessageElement } from '@slack/web-api/dist/types/response/SearchAllResponse.js';
 import {
   FindThreadsInChannelSchema,
   GetThreadRepliesSchema,
@@ -114,7 +108,8 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           const messages = response.messages || [];
           // Filter messages that have replies (threads) - preserves business logic
           return messages.filter(
-            (msg: MessageElement) => msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
+            (msg: MessageElement) =>
+              msg.thread_ts && msg.ts === msg.thread_ts && (msg.reply_count || 0) > 0
           );
         },
 
@@ -134,16 +129,36 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
               const [parent, ...replies] = repliesResult.messages;
 
               if (parent) {
+                const participants = [
+                  ...new Set(
+                    replies
+                      .map((r: MessageElement) => r.user)
+                      .filter((user): user is string => Boolean(user))
+                  ),
+                ];
+
+                // Get display names for participants efficiently using infrastructure service
+                const allUserIds = [parent.user, ...participants].filter((user): user is string =>
+                  Boolean(user)
+                );
+                const displayNameMap =
+                  await deps.infrastructureUserService.bulkGetDisplayNames(allUserIds);
+
                 threads.push({
                   threadTs: parent.ts,
                   parentMessage: {
                     text: parent.text,
                     user: parent.user,
                     timestamp: parent.ts,
+                    userDisplayName: parent.user ? displayNameMap.get(parent.user) : undefined,
                   },
                   replyCount: replies.length,
                   lastReply: replies[replies.length - 1]?.ts || parent.ts,
-                  participants: [...new Set(replies.map((r: MessageElement) => r.user).filter((user): user is string => Boolean(user)))],
+                  participants,
+                  participantDisplayNames: participants.map((userId) => ({
+                    id: userId,
+                    displayName: displayNameMap.get(userId) || userId,
+                  })),
                 });
               }
             }
@@ -158,14 +173,54 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         },
       });
 
-      const output = enforceServiceOutput({
-        threads: paginationResult.threads,
-        total: paginationResult.total,
-        hasMore: paginationResult.hasMore,
-        cursor: paginationResult.cursor,
-      });
+      // Phase 5: Enable user-friendly formatted output using the restored formatter
+      // Apply Phase 3 success pattern: use infrastructureUserService for display names
+      const getUserDisplayName = async (userId: string): Promise<string> => {
+        return await deps.infrastructureUserService.getDisplayName(userId);
+      };
 
-      return createServiceSuccess(output, 'Threads retrieved successfully');
+      // Check if user wants formatted output (backward compatible)
+      const shouldUseFormatter = paginationResult.threads.length > 0;
+
+      if (shouldUseFormatter) {
+        // Use the restored formatter for user-friendly output
+        const formattedResult = await _formatFindThreadsResponse(
+          {
+            threads: paginationResult.threads,
+            total: paginationResult.total,
+            hasMore: paginationResult.hasMore,
+          },
+          getUserDisplayName
+        );
+
+        // Combine structured data with formatted output for best of both worlds
+        const output = enforceServiceOutput({
+          threads: paginationResult.threads,
+          total: paginationResult.total,
+          hasMore: paginationResult.hasMore,
+          cursor: paginationResult.cursor,
+          // Add formatted output for user-friendly display
+          formattedSummary:
+            formattedResult.content?.[0]?.type === 'text'
+              ? (formattedResult.content[0] as { text: string }).text
+              : undefined,
+        });
+
+        return createServiceSuccess(
+          output,
+          'Threads retrieved successfully with user-friendly formatting'
+        );
+      } else {
+        // Fallback to original output for empty results
+        const output = enforceServiceOutput({
+          threads: paginationResult.threads,
+          total: paginationResult.total,
+          hasMore: paginationResult.hasMore,
+          cursor: paginationResult.cursor,
+        });
+
+        return createServiceSuccess(output, 'Threads retrieved successfully');
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return createServiceError(errorMessage, 'Failed to find threads in channel');
@@ -219,13 +274,11 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
               ts: msg.ts,
               thread_ts: msg.thread_ts,
               reply_count: msg.reply_count,
-              reactions: msg.reactions?.map(
-                (r) => ({
-                  name: r.name || '',
-                  count: r.count || 0,
-                  users: r.users || [],
-                })
-              ),
+              reactions: msg.reactions?.map((r) => ({
+                name: r.name || '',
+                count: r.count || 0,
+                users: r.users || [],
+              })),
             })),
             hasMore: data.hasMore,
             cursor: data.cursor,
@@ -300,21 +353,32 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         return createServiceSuccess(output, 'No threads found matching search criteria');
       }
 
-      // Filter for messages that are part of threads  
+      // Filter for messages that are part of threads
       // Note: SearchMessageElement doesn't have thread_ts/reply_count, so we consider all matches
-      const threadMessages = result.messages.matches.filter(
-        (match: SearchMessageElement) => {
-          // For search results, we consider all matches as potential thread content
-          return match.text && match.text.length > 0;
-        }
-      );
+      const threadMessages = result.messages.matches.filter((match: SearchMessageElement) => {
+        // For search results, we consider all matches as potential thread content
+        return match.text && match.text.length > 0;
+      });
 
       const output = enforceServiceOutput({
         results: threadMessages.map((match: SearchMessageElement) => ({
           text: match.text || '',
-          user: typeof match.user === 'string' ? match.user : (typeof match.user === 'object' && match.user && 'id' in match.user ? String((match.user as Record<string, unknown>).id) : ''),
+          user:
+            typeof match.user === 'string'
+              ? match.user
+              : typeof match.user === 'object' && match.user && 'id' in match.user
+                ? String((match.user as Record<string, unknown>).id)
+                : '',
           ts: typeof match.ts === 'string' ? match.ts : String(match.ts) || '',
-          channel: { id: typeof match.channel === 'string' ? match.channel : (typeof match.channel === 'object' && match.channel && 'id' in match.channel ? String((match.channel as Record<string, unknown>).id) : ''), name: '' },
+          channel: {
+            id:
+              typeof match.channel === 'string'
+                ? match.channel
+                : typeof match.channel === 'object' && match.channel && 'id' in match.channel
+                  ? String((match.channel as Record<string, unknown>).id)
+                  : '',
+            name: '',
+          },
           thread_ts: '', // SearchMessageElement doesn't have thread_ts
           reply_count: 0, // SearchMessageElement doesn't have reply_count
           permalink: match.permalink || '',
@@ -359,7 +423,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       for (const message of messages) {
         if (message.user && !participantMap.has(message.user)) {
           try {
-            const userResult = await deps.userService.getUserInfo(message.user);
+            const userResult = await deps.domainUserService.getUserInfo({ user: message.user });
             if (userResult.success) {
               const userInfo = userResult.data as SlackUser;
               participantMap.set(message.user, {
@@ -491,7 +555,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         for (const message of messages) {
           if (message.user && !participantMap.has(message.user)) {
             try {
-              const userResult = await deps.userService.getUserInfo(message.user);
+              const userResult = await deps.domainUserService.getUserInfo({ user: message.user });
               if (userResult.success) {
                 const userInfo = userResult.data as SlackUser;
                 participantMap.set(message.user, {
@@ -620,7 +684,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       for (const message of messages) {
         if (message.user && !participantMap.has(message.user)) {
           try {
-            const userResult = await deps.userService.getUserInfo(message.user);
+            const userResult = await deps.domainUserService.getUserInfo({ user: message.user });
             if (userResult.success) {
               const userInfo = userResult.data as SlackUser;
               participantMap.set(message.user, {
@@ -724,16 +788,14 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       const input = validateInput(PostThreadReplySchema, args);
       const client = deps.clientManager.getClientForOperation('write');
 
+      // Using any for Slack API compatibility - ChatPostMessageArguments has complex union types
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const messageArgs: any = {
         channel: input.channel,
         text: input.text,
         thread_ts: input.thread_ts,
+        ...(input.reply_broadcast && { reply_broadcast: true }),
       };
-
-      if (input.reply_broadcast) {
-        messageArgs.reply_broadcast = input.reply_broadcast;
-      }
 
       const result = await client.chat.postMessage(messageArgs);
 
@@ -777,16 +839,14 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       // Post the first reply if provided
       let replyResult;
       if (input.reply_text) {
+        // Using any for Slack API compatibility - ChatPostMessageArguments has complex union types
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const replyArgs: any = {
           channel: input.channel,
           text: input.reply_text,
           thread_ts: parentResult.ts,
+          ...(input.broadcast && { reply_broadcast: true }),
         };
-
-        if (input.broadcast) {
-          replyArgs.reply_broadcast = input.broadcast;
-        }
 
         replyResult = await client.chat.postMessage(replyArgs);
       }
@@ -1020,20 +1080,23 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       const messages = threadResult.messages as SlackMessage[];
 
       // Get user info if requested
-      const userInfoMap = new Map<string, { 
-        displayName: string;
-        isAdmin?: boolean;
-        isBot?: boolean;
-        isDeleted?: boolean;
-        isRestricted?: boolean;
-      }>();
+      const userInfoMap = new Map<
+        string,
+        {
+          displayName: string;
+          isAdmin?: boolean;
+          isBot?: boolean;
+          isDeleted?: boolean;
+          isRestricted?: boolean;
+        }
+      >();
       if (input.include_user_profiles) {
         const uniqueUsers = new Set(
           messages.map((m) => m.user).filter((user): user is string => Boolean(user))
         );
         for (const userId of uniqueUsers) {
           try {
-            const userResult = await deps.userService.getUserInfo(userId);
+            const userResult = await deps.domainUserService.getUserInfo({ user: userId });
             if (userResult.success) {
               const userInfo = userResult.data as SlackUser;
               userInfoMap.set(userId, {
@@ -1317,7 +1380,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         for (const thread of allThreads.slice(0, 100)) {
           // Limit for performance - need to ensure we have a valid channel and timestamp
           if (!input.channel || !thread.ts) continue;
-          
+
           const threadResult = await client.conversations.replies({
             channel: input.channel,
             ts: thread.ts,

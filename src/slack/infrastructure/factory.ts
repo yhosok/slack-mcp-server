@@ -80,7 +80,10 @@ export const createInfrastructureServices = (
   // Create client manager
   const clientManager = createSlackClientManager(clientManagerDependencies, rateLimitService);
 
-  // Create user service (depends on client manager)
+  // Create Infrastructure User Service - Pure utility for shared user operations
+  // This service provides display name resolution and caching utilities
+  // Used by: thread-service, reaction-service, workspace-service, etc.
+  // Role: Infrastructure utility, NOT MCP tool implementation
   const userService = createUserService({
     getClient: () => clientManager.getClientForOperation('read'),
   });

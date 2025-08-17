@@ -48,22 +48,28 @@ import { logger } from '../../../utils/logger.js';
 export const createUserService = (deps: UserServiceDependencies): UserService => {
   // Immutable cache state management for display names
   let userDisplayNameCache = new Map<string, string>();
-  
+
   // Immutable cache state management for full user information
   let userInfoCache = new Map<string, SlackUser>();
 
   /**
    * Update display name cache with new user information (immutable)
+   * Performance optimization: Only create new Map if value differs
    */
   const updateDisplayNameCache = (userId: string, displayName: string): void => {
-    userDisplayNameCache = new Map(userDisplayNameCache).set(userId, displayName);
+    if (userDisplayNameCache.get(userId) !== displayName) {
+      userDisplayNameCache = new Map(userDisplayNameCache).set(userId, displayName);
+    }
   };
 
   /**
    * Update user info cache with complete SlackUser data (immutable)
+   * Performance optimization: Only create new Map if not already cached
    */
   const updateUserInfoCache = (userId: string, user: SlackUser): void => {
-    userInfoCache = new Map(userInfoCache).set(userId, user);
+    if (!userInfoCache.has(userId)) {
+      userInfoCache = new Map(userInfoCache).set(userId, user);
+    }
   };
 
   /**
@@ -78,7 +84,7 @@ export const createUserService = (deps: UserServiceDependencies): UserService =>
    * @example Basic Usage
    * ```typescript
    * const result = await getUserInfo({ user: 'U1234567890' });
-   * 
+   *
    * if (result.success) {
    *   console.log('User admin status:', result.data.is_admin);
    *   console.log('User bot status:', result.data.is_bot);
@@ -97,14 +103,19 @@ export const createUserService = (deps: UserServiceDependencies): UserService =>
         return createServiceSuccess(cachedUser, 'User information retrieved from cache');
       }
 
-      const client = deps.clientManager.getClientForOperation('read');
+      const client = deps.client;
       const result = await client.users.info({ user: input.user });
 
       if (!result.user) {
         return createServiceError('User not found', 'Requested user does not exist');
       }
 
-      // Map Slack API response to SlackUser domain type
+      // Enhanced validation: Ensure essential fields exist
+      if (!result.user.id) {
+        return createServiceError('Invalid user data', 'User data missing required ID field');
+      }
+
+      // Map Slack API response to SlackUser domain type with enhanced type safety
       const slackUser: SlackUser = enforceServiceOutput({
         id: result.user.id || '',
         team_id: result.user.team_id || '',
@@ -149,7 +160,8 @@ export const createUserService = (deps: UserServiceDependencies): UserService =>
       updateUserInfoCache(input.user, slackUser);
 
       // Also cache the display name for efficiency
-      const displayName = slackUser.profile.display_name || slackUser.real_name || slackUser.name || input.user;
+      const displayName =
+        slackUser.profile.display_name || slackUser.real_name || slackUser.name || input.user;
       updateDisplayNameCache(input.user, displayName);
 
       return createServiceSuccess(slackUser, 'User information retrieved successfully');
@@ -179,13 +191,14 @@ export const createUserService = (deps: UserServiceDependencies): UserService =>
       // Try to get from user info cache first
       if (userInfoCache.has(userId)) {
         const cachedUser = userInfoCache.get(userId)!;
-        const displayName = cachedUser.profile.display_name || cachedUser.real_name || cachedUser.name || userId;
+        const displayName =
+          cachedUser.profile.display_name || cachedUser.real_name || cachedUser.name || userId;
         updateDisplayNameCache(userId, displayName);
         return displayName;
       }
 
       // Fetch from API if not cached
-      const client = deps.clientManager.getClientForOperation('read');
+      const client = deps.client;
       const result = await client.users.info({ user: userId });
 
       if (result.user) {

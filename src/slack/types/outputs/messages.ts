@@ -59,7 +59,6 @@ export interface ListChannelsOutput extends ServiceOutput {
   [key: string]: unknown;
 }
 
-
 export interface ChannelInfoOutput extends ServiceOutput {
   id: string;
   name: string;

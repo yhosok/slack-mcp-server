@@ -331,11 +331,22 @@ export const createReactionServiceTypeSafeAPI = (
           let users = reaction.users || [];
 
           if (input.full && users.length > 0) {
-            // Get enhanced user details with capabilities
+            // Use infrastructureUserService for lightweight display name operations
+            const userDisplayNames = await Promise.all(
+              users.map(async (userId: string) => {
+                try {
+                  return await deps.infrastructureUserService.getDisplayName(userId);
+                } catch {
+                  return userId; // Fallback to userId if display name fails
+                }
+              })
+            );
+
+            // Get enhanced user details with capabilities using domainUserService
             const userDetails = await Promise.all(
               users.map(async (userId: string) => {
                 try {
-                  const userResult = await deps.userService.getUserInfo(userId);
+                  const userResult = await deps.domainUserService.getUserInfo(userId);
                   if (userResult.success) {
                     const userInfo = userResult.data as SlackUser;
                     return {
@@ -371,9 +382,9 @@ export const createReactionServiceTypeSafeAPI = (
                 }
               })
             );
-            // For backward compatibility, still return names array but also include enhanced details
-            users = userDetails.map((u) => u.name);
-            
+            // For backward compatibility, use display names but also include enhanced details
+            users = userDisplayNames;
+
             return {
               name,
               count,

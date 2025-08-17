@@ -6,11 +6,11 @@
 import type { SlackUser } from '../../types/core/users.js';
 import type { ServiceResult } from '../../types/typesafe-api-patterns.js';
 import type { UserInfoOutput } from '../../types/outputs/users.js';
-import type { SlackClientManager } from '../../infrastructure/client/types.js';
+import type { WebClient } from '@slack/web-api';
 
 /**
  * User service interface defining all user-related operations
- * 
+ *
  * Provides TypeSafeAPI-compliant methods for user information retrieval,
  * display name caching, and user data management.
  */
@@ -44,15 +44,15 @@ export interface UserService {
 
 /**
  * Dependencies required for user service creation
- * 
- * Infrastructure dependencies following dependency injection patterns
- * for TypeSafeAPI compliance and testability.
+ *
+ * Direct WebClient injection for Services layer independence from Infrastructure
+ * following TypeSafeAPI compliance and functional programming patterns.
  */
 export interface UserServiceDependencies {
   /**
-   * Client manager for Slack Web API operations
+   * Direct Slack Web API client for user operations
    */
-  clientManager: SlackClientManager;
+  client: WebClient;
 }
 
 /**

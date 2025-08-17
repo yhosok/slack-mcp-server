@@ -7,6 +7,10 @@ import { createFileServiceMCPAdapter } from './services/files/file-service-mcp-a
 import { createReactionServiceMCPAdapter } from './services/reactions/reaction-service-mcp-adapter.js';
 import { createWorkspaceServiceMCPAdapter } from './services/workspace/workspace-service-mcp-adapter.js';
 import { createUserServiceMCPAdapter } from './services/users/user-service-mcp-adapter.js';
+import { createUserService } from './services/users/user-service.js';
+import type { ThreadServiceDependencies } from './services/threads/types.js';
+import type { ReactionServiceDependencies } from './services/reactions/types.js';
+import type { WorkspaceServiceDependencies } from './services/workspace/types.js';
 
 /**
  * Method registry mapping method names to service implementations
@@ -85,13 +89,41 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
   // Create infrastructure services
   const infrastructure = createInfrastructureServices(infrastructureConfig);
 
+  // Create domain user service for complete TypeSafeAPI operations
+  const domainUserService = createUserService({
+    client: infrastructure.clientManager.getClientForOperation('read'),
+  });
+
+  // Create enhanced thread service dependencies with both user services
+  const threadServiceDeps: ThreadServiceDependencies = {
+    ...infrastructure,
+    infrastructureUserService: infrastructure.userService,
+    domainUserService,
+  };
+
+  // Create enhanced reaction service dependencies with both user services
+  const reactionServiceDeps: ReactionServiceDependencies = {
+    ...infrastructure,
+    infrastructureUserService: infrastructure.userService,
+    domainUserService,
+  };
+
+  // Create enhanced workspace service dependencies with both user services
+  const workspaceServiceDeps: WorkspaceServiceDependencies = {
+    ...infrastructure,
+    infrastructureUserService: infrastructure.userService,
+    domainUserService,
+  };
+
   // Create domain services
   const messageService = createMessageServiceMCPAdapter(infrastructure);
-  const threadService = createThreadServiceMCPAdapter(infrastructure);
+  const threadService = createThreadServiceMCPAdapter(threadServiceDeps);
   const fileService = createFileServiceMCPAdapter(infrastructure);
-  const reactionService = createReactionServiceMCPAdapter(infrastructure);
-  const workspaceService = createWorkspaceServiceMCPAdapter(infrastructure);
-  const userService = createUserServiceMCPAdapter(infrastructure);
+  const reactionService = createReactionServiceMCPAdapter(reactionServiceDeps);
+  const workspaceService = createWorkspaceServiceMCPAdapter(workspaceServiceDeps);
+  const userService = createUserServiceMCPAdapter(
+    infrastructure.clientManager.getClientForOperation('read')
+  );
 
   const methods: ServiceMethodRegistry = {
     // Message operations

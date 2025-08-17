@@ -37,7 +37,6 @@ import type {
   ChannelInfoResult,
 } from '../slack/types/outputs/messages.js';
 import type { MessageService } from '../slack/services/messages/types.js';
-import { createMessageService as _createMessageService } from '../slack/services/messages/message-service.js';
 import {
   createServiceSuccess,
   createServiceError,

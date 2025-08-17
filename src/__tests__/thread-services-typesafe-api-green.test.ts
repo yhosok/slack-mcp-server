@@ -163,11 +163,11 @@ describe('Thread Services TypeSafeAPI + ts-pattern Implementation (Green Phase)'
     it('should have ServiceOutput Record<string, any> constraint enforced', () => {
       // VALIDATION: ServiceOutput constraints are now enforced
 
-      const testData = { 
-        threads: [], 
-        total: 0, 
-        hasMore: false, 
-        cursor: undefined 
+      const testData = {
+        threads: [],
+        total: 0,
+        hasMore: false,
+        cursor: undefined,
       };
       const serviceOutput: ServiceOutput = enforceServiceOutput(testData);
 
@@ -190,17 +190,19 @@ describe('Thread Services TypeSafeAPI + ts-pattern Implementation (Green Phase)'
       // VALIDATION: Discriminated unions with ts-pattern are now available
 
       const successResult: ServiceResult<ThreadDiscoveryOutput> = createServiceSuccess({
-        threads: [{
-          threadTs: '1234567890.123',
-          parentMessage: {
-            text: 'Test thread message',
-            user: 'U123456',
-            timestamp: '1234567890.123',
+        threads: [
+          {
+            threadTs: '1234567890.123',
+            parentMessage: {
+              text: 'Test thread message',
+              user: 'U123456',
+              timestamp: '1234567890.123',
+            },
+            replyCount: 3,
+            lastReply: '1234567891.456',
+            participants: ['U123456', 'U789012'],
           },
-          replyCount: 3,
-          lastReply: '1234567891.456',
-          participants: ['U123456', 'U789012'],
-        }],
+        ],
         total: 1,
         hasMore: false,
         cursor: undefined,
@@ -244,21 +246,25 @@ describe('Thread Services TypeSafeAPI + ts-pattern Implementation (Green Phase)'
           threadTs: '1234567890.123',
           messageCount: 5,
         },
-        participants: [{
-          user_id: 'U123456',
-          username: 'testuser',
-          real_name: 'Test User',
-          message_count: 3,
-          first_message_ts: '1234567890.123',
-          last_message_ts: '1234567891.456',
-          avg_response_time_minutes: 15,
-        }],
-        timeline: [{
-          timestamp: '1234567890.123',
-          event_type: 'message',
-          user_id: 'U123456',
-          content: 'Test message',
-        }],
+        participants: [
+          {
+            user_id: 'U123456',
+            username: 'testuser',
+            real_name: 'Test User',
+            message_count: 3,
+            first_message_ts: '1234567890.123',
+            last_message_ts: '1234567891.456',
+            avg_response_time_minutes: 15,
+          },
+        ],
+        timeline: [
+          {
+            timestamp: '1234567890.123',
+            event_type: 'message',
+            user_id: 'U123456',
+            content: 'Test message',
+          },
+        ],
         keyTopics: ['discussion', 'project'],
         urgencyScore: 0.7,
         importanceScore: 0.8,
@@ -343,11 +349,13 @@ describe('Thread Services TypeSafeAPI + ts-pattern Implementation (Green Phase)'
           actionItemCount: 2,
         },
         keyPoints: ['Point 1', 'Point 2'],
-        decisionsMade: [{
-          decision: 'Decision made',
-          timestamp: '1234567890.123',
-          user: 'U123456',
-        }],
+        decisionsMade: [
+          {
+            decision: 'Decision made',
+            timestamp: '1234567890.123',
+            user: 'U123456',
+          },
+        ],
         actionItems: [],
         sentiment: {
           sentiment: 'positive',
@@ -405,11 +413,11 @@ describe('Thread Services TypeSafeAPI + ts-pattern Implementation (Green Phase)'
     it('should have custom formatters enforce type safety constraints', () => {
       // VALIDATION: Custom formatters now enforce ServiceOutput constraints
 
-      const testData = { 
-        success: true, 
-        threadTs: '1234567890.123', 
+      const testData = {
+        success: true,
+        threadTs: '1234567890.123',
         channel: 'C123456789',
-        message: 'Thread reply posted successfully'
+        message: 'Thread reply posted successfully',
       };
       const formattedOutput = enforceServiceOutput(testData);
 
@@ -561,31 +569,35 @@ describe('Thread Services TypeSafeAPI + ts-pattern Implementation (Green Phase)'
 
       // Test that all output types extend ServiceOutput
       const threadDiscoveryOutput: ThreadDiscoveryOutput = {
-        threads: [{
-          threadTs: '1234567890.123',
-          parentMessage: {
-            text: 'Test thread',
-            user: 'U123456',
-            timestamp: '1234567890.123',
+        threads: [
+          {
+            threadTs: '1234567890.123',
+            parentMessage: {
+              text: 'Test thread',
+              user: 'U123456',
+              timestamp: '1234567890.123',
+            },
+            replyCount: 3,
+            lastReply: '1234567891.456',
+            participants: ['U123456', 'U789012'],
           },
-          replyCount: 3,
-          lastReply: '1234567891.456',
-          participants: ['U123456', 'U789012'],
-        }],
+        ],
         total: 1,
         hasMore: false,
         cursor: undefined,
       };
 
       const actionItemsOutput: ActionItemsOutput = {
-        actionItems: [{
-          text: 'Complete the task',
-          mentioned_users: ['U123456'],
-          due_date: '2024-12-31',
-          priority: 'high',
-          status: 'open',
-          extracted_from_message_ts: '1234567890.123',
-        }],
+        actionItems: [
+          {
+            text: 'Complete the task',
+            mentioned_users: ['U123456'],
+            due_date: '2024-12-31',
+            priority: 'high',
+            status: 'open',
+            extracted_from_message_ts: '1234567890.123',
+          },
+        ],
         extractedAt: new Date().toISOString(),
         threadInfo: {
           channel: 'C123456789',
@@ -613,14 +625,16 @@ describe('Thread Services TypeSafeAPI + ts-pattern Implementation (Green Phase)'
           messageCount: 5,
           exportedAt: new Date().toISOString(),
         },
-        messages: [{
-          user: 'U123456',
-          text: 'Test message',
-          timestamp: '1234567890.123',
-          reactions: [{ name: 'thumbsup', count: 2, users: ['U789012'] }],
-        }],
+        messages: [
+          {
+            user: 'U123456',
+            text: 'Test message',
+            timestamp: '1234567890.123',
+            reactions: [{ name: 'thumbsup', count: 2, users: ['U789012'] }],
+          },
+        ],
         userProfiles: {
-          'U123456': { displayName: 'Test User' },
+          U123456: { displayName: 'Test User' },
         },
         exportMetadata: {
           includeReactions: true,
@@ -758,21 +772,25 @@ describe('Thread Services TypeSafeAPI + ts-pattern Implementation (Green Phase)'
           threadTs: '1234567890.123',
           messageCount: 10,
         },
-        participants: [{
-          user_id: 'U123456',
-          username: 'testuser',
-          real_name: 'Test User',
-          message_count: 5,
-          first_message_ts: '1234567890.123',
-          last_message_ts: '1234567895.789',
-          avg_response_time_minutes: 30,
-        }],
-        timeline: [{
-          timestamp: '1234567890.123',
-          event_type: 'message',
-          user_id: 'U123456',
-          content: 'Thread analysis test',
-        }],
+        participants: [
+          {
+            user_id: 'U123456',
+            username: 'testuser',
+            real_name: 'Test User',
+            message_count: 5,
+            first_message_ts: '1234567890.123',
+            last_message_ts: '1234567895.789',
+            avg_response_time_minutes: 30,
+          },
+        ],
+        timeline: [
+          {
+            timestamp: '1234567890.123',
+            event_type: 'message',
+            user_id: 'U123456',
+            content: 'Thread analysis test',
+          },
+        ],
         keyTopics: ['analysis', 'testing', 'threads'],
         urgencyScore: 0.8,
         importanceScore: 0.7,
@@ -782,14 +800,16 @@ describe('Thread Services TypeSafeAPI + ts-pattern Implementation (Green Phase)'
           negativeCount: 0,
           totalWords: 30,
         },
-        actionItems: [{
-          text: 'Review analysis results',
-          mentioned_users: ['U123456'],
-          due_date: '2024-12-31',
-          priority: 'high',
-          status: 'open',
-          extracted_from_message_ts: '1234567890.123',
-        }],
+        actionItems: [
+          {
+            text: 'Review analysis results',
+            mentioned_users: ['U123456'],
+            due_date: '2024-12-31',
+            priority: 'high',
+            status: 'open',
+            extracted_from_message_ts: '1234567890.123',
+          },
+        ],
         summary: 'Complex thread analysis with multiple participants',
         wordCount: 500,
         durationHours: 4.5,
@@ -820,15 +840,17 @@ describe('Thread Services TypeSafeAPI + ts-pattern Implementation (Green Phase)'
 
       // Test ThreadRepliesOutput with pagination
       const threadRepliesWithPagination: ThreadRepliesOutput = {
-        messages: [{
-          type: 'message',
-          user: 'U123456',
-          text: 'Paginated thread reply',
-          ts: '1234567890.123',
-          thread_ts: '1234567890.000',
-          reply_count: 0,
-          reactions: [{ name: 'thumbsup', count: 1, users: ['U789012'] }],
-        }],
+        messages: [
+          {
+            type: 'message',
+            user: 'U123456',
+            text: 'Paginated thread reply',
+            ts: '1234567890.123',
+            thread_ts: '1234567890.000',
+            reply_count: 0,
+            reactions: [{ name: 'thumbsup', count: 1, users: ['U789012'] }],
+          },
+        ],
         hasMore: true,
         cursor: 'cursor-123',
         totalMessages: 50,

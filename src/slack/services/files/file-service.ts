@@ -513,7 +513,21 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
 
         getItems: (response) => response.files || [],
 
-        formatResponse: (data) => {
+        formatResponse: async (data) => {
+          // Phase 5: Apply Phase 3 success pattern for display name conversion
+          // Get all unique user IDs for efficient bulk display name retrieval
+          const uniqueUserIds = [
+            ...new Set(
+              data.items.map((file) => file.user).filter((user): user is string => Boolean(user))
+            ),
+          ];
+
+          // Use Phase 3 pattern: bulkGetDisplayNames for efficient display name conversion
+          const displayNameMap =
+            uniqueUserIds.length > 0
+              ? await deps.userService.bulkGetDisplayNames(uniqueUserIds)
+              : new Map<string, string>();
+
           // Type-safe file mapping with proper Slack API types
           const files = data.items.map((file) => ({
             id: file.id || '',
@@ -526,6 +540,8 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             user: file.user || '',
             timestamp: file.timestamp || 0,
             channels: file.channels || [],
+            // Phase 5: Add uploader display name with graceful fallback
+            uploaderDisplayName: file.user ? displayNameMap.get(file.user) || file.user : undefined,
           }));
 
           return {
@@ -533,6 +549,11 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             total: files.length,
             pageCount: data.pageCount,
             pagination: data.hasMore ? { hasMore: true } : null,
+            // Phase 5: Add formatted file list for user-friendly display
+            formattedFileList: files
+              .filter((file) => file.name && file.uploaderDisplayName)
+              .map((file) => `${file.name} by ${file.uploaderDisplayName}`)
+              .join('\n'),
           };
         },
       });

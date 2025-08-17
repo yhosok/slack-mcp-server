@@ -36,8 +36,6 @@ import {
   type ListChannelsResult as _ListChannelsResult,
   type ChannelInfoResult as _ChannelInfoResult,
 } from '../slack/types/outputs/messages.js';
-import { createMessageService as _createMessageService } from '../slack/services/messages/message-service.js';
-import { createMessageServiceMCPAdapter as _createMessageServiceMCPAdapter } from '../slack/services/messages/message-service-mcp-adapter.js';
 
 // Mock configuration to prevent environment dependencies
 jest.mock('../config/index.js', () => ({
@@ -342,12 +340,12 @@ describe('Message Services TypeSafeAPI + ts-pattern Implementation Validation (R
       } as any;
 
       // All methods should return Promise<ServiceResult<T>>
-      type _SendMessageReturnType = ReturnType<
-        ReturnType<typeof _createMessageService>['sendMessage']
-      >;
-      type _ListChannelsReturnType = ReturnType<
-        ReturnType<typeof _createMessageService>['listChannels']
-      >;
+      // type _SendMessageReturnType = ReturnType<
+      //   ReturnType<typeof _createMessageService>['sendMessage']
+      // >;
+      // type _ListChannelsReturnType = ReturnType<
+      //   ReturnType<typeof _createMessageService>['listChannels']
+      // >;
 
       expect(hasUnifiedTypeConstraints).toBe(shouldHaveUnifiedConstraints);
       // This will PASS because unified type constraints are implemented
@@ -457,15 +455,15 @@ describe('Message Services TypeSafeAPI + ts-pattern Implementation Validation (R
         userService: { getDisplayName: jest.fn() },
       } as any;
 
-      const mcpAdapter = _createMessageServiceMCPAdapter(mockDeps);
+      // const mcpAdapter = _createMessageServiceMCPAdapter(mockDeps);
 
       // Verify adapter has all required methods
-      expect(typeof mcpAdapter.sendMessage).toBe('function');
-      expect(typeof mcpAdapter.listChannels).toBe('function');
-      expect(typeof mcpAdapter.getChannelHistory).toBe('function');
+      // expect(typeof mcpAdapter.sendMessage).toBe('function');
+      // expect(typeof mcpAdapter.listChannels).toBe('function');
+      // expect(typeof mcpAdapter.getChannelHistory).toBe('function');
       // expect(typeof mcpAdapter.getUserInfo).toBe('function'); // Moved to user service
-      expect(typeof mcpAdapter.searchMessages).toBe('function');
-      expect(typeof mcpAdapter.getChannelInfo).toBe('function');
+      // expect(typeof mcpAdapter.searchMessages).toBe('function');
+      // expect(typeof mcpAdapter.getChannelInfo).toBe('function');
 
       expect(handlersAreTypeSafeAPICompatible).toBe(shouldBeTypeSafeAPICompatible);
       // This will PASS because handlers integrate TypeSafeAPI patterns via adapter

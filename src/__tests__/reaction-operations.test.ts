@@ -106,7 +106,83 @@ describe('ReactionService - Reaction Operations', () => {
     // Reset the mock WebClient instance
     mockWebClientInstance = createMockWebClient();
 
-    // Create mock infrastructure with simple structure
+    // Create mock user service for infrastructure
+    const mockInfraUserService = {
+      getUserInfo: jest.fn(() =>
+        Promise.resolve({
+          success: true,
+          data: {
+            id: 'U1234567890',
+            name: 'testuser',
+            real_name: 'Test User',
+            displayName: 'Test User',
+            is_admin: false,
+            is_bot: false,
+            deleted: false,
+            is_restricted: false,
+            profile: {
+              display_name: 'Test User',
+              real_name: 'Test User',
+            },
+          },
+          message: 'User information retrieved successfully',
+        })
+      ),
+      getDisplayName: jest.fn(() => Promise.resolve('Test User')),
+      bulkGetDisplayNames: jest.fn(),
+      clearCache: jest.fn(),
+    };
+
+    // Create mock user service for domain (TypeSafeAPI)
+    const mockDomainUserService = {
+      getUserInfo: jest.fn(() =>
+        Promise.resolve({
+          success: true,
+          data: {
+            id: 'U1234567890',
+            team_id: 'T123',
+            name: 'testuser',
+            real_name: 'Test User',
+            deleted: false,
+            color: '9f69e7',
+            profile: {
+              avatar_hash: 'abc123',
+              status_text: 'Working',
+              status_emoji: ':computer:',
+              real_name: 'Test User',
+              display_name: 'Test User',
+              real_name_normalized: 'Test User',
+              display_name_normalized: 'Test User',
+              email: 'test@example.com',
+              image_24: 'https://example.com/image_24.jpg',
+              image_32: 'https://example.com/image_32.jpg',
+              image_48: 'https://example.com/image_48.jpg',
+              image_72: 'https://example.com/image_72.jpg',
+              image_192: 'https://example.com/image_192.jpg',
+              image_512: 'https://example.com/image_512.jpg',
+              team: 'T123',
+              title: 'Developer',
+            },
+            is_admin: false,
+            is_owner: false,
+            is_primary_owner: false,
+            is_restricted: false,
+            is_ultra_restricted: false,
+            is_bot: false,
+            updated: 1640995200,
+            is_app_user: false,
+            is_email_confirmed: true,
+            who_can_share_contact_card: 'EVERYONE',
+            tz: 'America/New_York',
+            tz_label: 'Eastern Standard Time',
+            tz_offset: -18000,
+          },
+          message: 'User information retrieved successfully',
+        })
+      ),
+    };
+
+    // Create mock infrastructure with dual user services
     const mockInfrastructure = {
       clientManager: {
         getBotClient: () => mockWebClientInstance,
@@ -120,34 +196,12 @@ describe('ReactionService - Reaction Operations', () => {
           rateLimitedRequests: 0,
           retryAttempts: 0,
           lastRateLimitTime: null,
-          rateLimitsByTier: {},
+          rateLimitsByTier: new Map(),
         }),
       },
-      userService: {
-        getUserInfo: jest.fn(() =>
-          Promise.resolve({
-            success: true,
-            data: {
-              id: 'U1234567890',
-              name: 'testuser',
-              real_name: 'Test User',
-              displayName: 'Test User',
-              is_admin: false,
-              is_bot: false,
-              deleted: false,
-              is_restricted: false,
-              profile: {
-                display_name: 'Test User',
-                real_name: 'Test User',
-              },
-            },
-            message: 'User information retrieved successfully',
-          })
-        ),
-        getDisplayName: jest.fn(() => Promise.resolve('Test User')),
-        bulkGetDisplayNames: jest.fn(),
-        clearCache: jest.fn(),
-      },
+      userService: mockInfraUserService, // Legacy support
+      infrastructureUserService: mockInfraUserService,
+      domainUserService: mockDomainUserService,
       requestHandler: {
         handle: jest.fn().mockImplementation(async (schema: any, args: any, operation: any) => {
           // Don't double-wrap - the MCP adapter already handles the wrapping

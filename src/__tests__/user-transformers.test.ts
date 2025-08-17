@@ -3,7 +3,11 @@
  * Tests SlackUser to UserInfoOutput transformation utilities
  */
 
-import { transformSlackUserToUserInfoOutput, extractUserCapabilities, extractUserProfile } from '../slack/services/users/user-transformers.js';
+import {
+  transformSlackUserToUserInfoOutput,
+  extractUserCapabilities,
+  extractUserProfile,
+} from '../slack/services/users/user-transformers.js';
 import type { SlackUser } from '../slack/types/core/users.js';
 
 describe('User Transformers', () => {

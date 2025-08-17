@@ -7,6 +7,8 @@ import type {
   ReactionStatisticsResult,
   FindMessagesByReactionsResult,
 } from '../../types/outputs/reactions.js';
+import type { UserService as DomainUserService } from '../users/types.js';
+import type { UserService as InfraUserService } from '../../infrastructure/user/types.js';
 
 // Re-export for convenience
 export type {
@@ -19,15 +21,21 @@ export type {
 
 /**
  * Dependencies for reaction service operations
- *
- * Infrastructure services required for TypeSafeAPI reaction operations.
- * Provides access to Slack client management, rate limiting, validation,
- * and user information services.
- *
- * @extends InfrastructureServices - Core infrastructure components
- * @implements TypeSafeAPI dependency injection pattern
+ * Enhanced with both Infrastructure and Domain user services for efficient operations
  */
-export type ReactionServiceDependencies = InfrastructureServices;
+export interface ReactionServiceDependencies extends InfrastructureServices {
+  /**
+   * Infrastructure user service - lightweight display name operations
+   * Use for: Quick display name resolution, bulk operations, caching
+   */
+  infrastructureUserService: InfraUserService;
+
+  /**
+   * Domain user service - complete TypeSafeAPI-compliant user operations
+   * Use for: Full user information when detailed data is required
+   */
+  domainUserService: DomainUserService;
+}
 
 /**
  * Configuration for reaction service operations

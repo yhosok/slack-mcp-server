@@ -3,9 +3,24 @@ import type { UserService, UserServiceDependencies } from './types.js';
 import type { SlackUser, SlackUserProfile } from '../../types/core/users.js';
 
 /**
- * Create a user service instance with caching capabilities
+ * Create an Infrastructure User Service - Pure Utility for User Management
+ *
+ * This service provides shared user utilities that can be used across multiple
+ * infrastructure components like thread-service, reaction-service, etc.
+ *
+ * **Key Features:**
+ * - Display name resolution with caching
+ * - Bulk user operations for efficiency
+ * - Complete user information retrieval
+ * - Immutable cache management
+ *
+ * **Usage Pattern:**
+ * - Shared utility across Infrastructure layer services
+ * - NOT for MCP tool implementation (that's Services layer responsibility)
+ * - Optimized for repeated user lookups with caching
+ *
  * @param dependencies - Required dependencies for the service
- * @returns A new UserService instance
+ * @returns A new UserService instance with pure utility methods
  */
 export const createUserService = (dependencies: UserServiceDependencies): UserService => {
   // Immutable cache state management
@@ -100,11 +115,11 @@ export const createUserService = (dependencies: UserServiceDependencies): UserSe
     try {
       const client = dependencies.getClient();
       const result = await client.users.info({ user: userId });
-      
+
       if (!result.user) {
         throw new Error('User not found');
       }
-      
+
       // Return complete SlackUser object instead of inline type
       return {
         id: result.user.id || '',

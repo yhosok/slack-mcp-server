@@ -1,9 +1,9 @@
 /**
  * User Service Type Integration - TDD Green/Refactor Phase Tests
- * 
+ *
  * These tests validate that the SlackUser type integration is working correctly
  * and that all consumer services can access SlackUser capabilities.
- * 
+ *
  * Following TypeSafeAPI + TDD patterns from Phase 4a message services.
  */
 
@@ -55,7 +55,7 @@ describe('User Service Type Integration - Green Phase Validation', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockSlackUserProfile = {
       avatar_hash: 'abc123',
       status_text: 'Working',
@@ -102,25 +102,25 @@ describe('User Service Type Integration - Green Phase Validation', () => {
   describe('SlackUser Type Implementation Validation', () => {
     it('should have working userService.getUserInfo returning SlackUser type', async () => {
       // SUCCESS TEST: User service now exists as standalone service
-      
+
       try {
         const { createUserService } = await import('../slack/services/users/user-service');
-        
+
         // Should succeed now that implementation exists
         expect(createUserService).toBeDefined();
         expect(typeof createUserService).toBe('function');
-        
+
         // Create a user service instance with mock dependencies
         const mockDeps = {
-          clientManager: { 
+          clientManager: {
             getClient: jest.fn().mockReturnValue(mockWebClient),
-            getClientForOperation: jest.fn().mockReturnValue(mockWebClient)
+            getClientForOperation: jest.fn().mockReturnValue(mockWebClient),
           },
-          requestHandler: { 
-            handleServiceRequest: jest.fn() 
-          }
+          requestHandler: {
+            handleServiceRequest: jest.fn(),
+          },
         };
-        
+
         const userService = createUserService(mockDeps as any);
         expect(userService).toBeDefined();
         expect(typeof userService.getUserInfo).toBe('function');
@@ -131,14 +131,14 @@ describe('User Service Type Integration - Green Phase Validation', () => {
 
     it('should have SlackUser providing admin and bot detection capabilities', async () => {
       // SUCCESS TEST: SlackUser type now provides comprehensive user capabilities
-      
+
       // Test that our SlackUser type has the required capabilities
       expect(mockSlackUser.is_admin).toBeDefined();
       expect(mockSlackUser.is_bot).toBeDefined();
       expect(mockSlackUser.is_owner).toBeDefined();
       expect(mockSlackUser.is_restricted).toBeDefined();
       expect(mockSlackUser.deleted).toBeDefined();
-      
+
       // Verify the types match our expectations
       expect(typeof mockSlackUser.is_admin).toBe('boolean');
       expect(typeof mockSlackUser.is_bot).toBe('boolean');
@@ -149,7 +149,7 @@ describe('User Service Type Integration - Green Phase Validation', () => {
 
     it('should have complete user profile information available', async () => {
       // SUCCESS TEST: SlackUser provides complete profile information
-      
+
       expect(mockSlackUser.profile).toBeDefined();
       expect(mockSlackUser.profile.real_name).toBe('John Doe');
       expect(mockSlackUser.profile.display_name).toBe('johndoe');
@@ -162,16 +162,16 @@ describe('User Service Type Integration - Green Phase Validation', () => {
   describe('Consumer Service Integration Validation', () => {
     it('should allow workspace service to access SlackUser.is_admin', async () => {
       // SUCCESS TEST: Workspace service can now access admin detection
-      
+
       const mockWorkspaceService = {
         async getAdminUsers(): Promise<SlackUser[]> {
           try {
             const { createUserService } = await import('../slack/services/users/user-service');
             const userService = createUserService({
               clientManager: { getClient: jest.fn().mockReturnValue(mockWebClient) },
-              requestHandler: { handleServiceRequest: jest.fn() }
+              requestHandler: { handleServiceRequest: jest.fn() },
             } as any);
-            
+
             // Mock successful user info response
             mockWebClient.users.info.mockResolvedValue({
               ok: true,
@@ -181,10 +181,10 @@ describe('User Service Type Integration - Green Phase Validation', () => {
                 is_admin: true,
                 is_bot: false,
                 deleted: false,
-                profile: { real_name: 'Admin User' }
-              }
+                profile: { real_name: 'Admin User' },
+              },
             });
-            
+
             const result = await userService.getUserInfo({ user: 'U123' });
             if (result.success && result.data.is_admin) {
               return [result.data];
@@ -193,7 +193,7 @@ describe('User Service Type Integration - Green Phase Validation', () => {
           } catch (error) {
             throw new Error(`Admin detection should work: ${error}`);
           }
-        }
+        },
       };
 
       const adminUsers = await mockWorkspaceService.getAdminUsers();
@@ -202,16 +202,16 @@ describe('User Service Type Integration - Green Phase Validation', () => {
 
     it('should allow thread service to access SlackUser.is_bot', async () => {
       // SUCCESS TEST: Thread service can now access bot detection
-      
+
       const mockThreadService = {
         async filterHumanParticipants(userIds: string[]): Promise<SlackUser[]> {
           try {
             const { createUserService } = await import('../slack/services/users/user-service');
             const userService = createUserService({
               clientManager: { getClient: jest.fn().mockReturnValue(mockWebClient) },
-              requestHandler: { handleServiceRequest: jest.fn() }
+              requestHandler: { handleServiceRequest: jest.fn() },
             } as any);
-            
+
             // Mock responses for different user types
             mockWebClient.users.info.mockImplementation(({ user }: any) => {
               const isBot = user === 'UBOT';
@@ -223,23 +223,23 @@ describe('User Service Type Integration - Green Phase Validation', () => {
                   is_bot: isBot,
                   is_admin: false,
                   deleted: false,
-                  profile: { real_name: isBot ? 'Bot User' : 'Human User' }
-                }
+                  profile: { real_name: isBot ? 'Bot User' : 'Human User' },
+                },
               });
             });
-            
+
             const users = await Promise.all(
-              userIds.map(async id => {
+              userIds.map(async (id) => {
                 const result = await userService.getUserInfo({ user: id });
                 return result.success ? result.data : null;
               })
             );
-            
-            return users.filter(user => user && !user.is_bot) as SlackUser[];
+
+            return users.filter((user) => user && !user.is_bot) as SlackUser[];
           } catch (error) {
             throw new Error(`Bot filtering should work: ${error}`);
           }
-        }
+        },
       };
 
       const humanUsers = await mockThreadService.filterHumanParticipants(['U1', 'UBOT']);
@@ -248,16 +248,16 @@ describe('User Service Type Integration - Green Phase Validation', () => {
 
     it('should allow reaction service to access SlackUser.deleted', async () => {
       // SUCCESS TEST: Reaction service can now access deleted user detection
-      
+
       const mockReactionService = {
         async filterActiveUsers(userIds: string[]): Promise<SlackUser[]> {
           try {
             const { createUserService } = await import('../slack/services/users/user-service');
             const userService = createUserService({
               clientManager: { getClient: jest.fn().mockReturnValue(mockWebClient) },
-              requestHandler: { handleServiceRequest: jest.fn() }
+              requestHandler: { handleServiceRequest: jest.fn() },
             } as any);
-            
+
             // Mock responses for different user states
             mockWebClient.users.info.mockImplementation(({ user }: any) => {
               const isDeleted = user === 'UDEL';
@@ -269,23 +269,23 @@ describe('User Service Type Integration - Green Phase Validation', () => {
                   deleted: isDeleted,
                   is_bot: false,
                   is_admin: false,
-                  profile: { real_name: isDeleted ? 'Deleted User' : 'Active User' }
-                }
+                  profile: { real_name: isDeleted ? 'Deleted User' : 'Active User' },
+                },
               });
             });
-            
+
             const users = await Promise.all(
-              userIds.map(async id => {
+              userIds.map(async (id) => {
                 const result = await userService.getUserInfo({ user: id });
                 return result.success ? result.data : null;
               })
             );
-            
-            return users.filter(user => user && !user.deleted) as SlackUser[];
+
+            return users.filter((user) => user && !user.deleted) as SlackUser[];
           } catch (error) {
             throw new Error(`Deleted user filtering should work: ${error}`);
           }
-        }
+        },
       };
 
       const activeUsers = await mockReactionService.filterActiveUsers(['U1', 'UDEL']);
@@ -296,17 +296,20 @@ describe('User Service Type Integration - Green Phase Validation', () => {
   describe('Message Service Transformation Validation', () => {
     it('should successfully transform SlackUser to UserInfoOutput', async () => {
       // SUCCESS TEST: Message service can now transform SlackUser types
-      
+
       try {
-        const { transformSlackUserToUserInfoOutput } = await import('../slack/services/users/user-transformers');
-        
+        const { transformSlackUserToUserInfoOutput } = await import(
+          '../slack/services/users/user-transformers'
+        );
+
         // Should succeed now that transformation utilities exist
         expect(transformSlackUserToUserInfoOutput).toBeDefined();
         expect(typeof transformSlackUserToUserInfoOutput).toBe('function');
-        
-        const displayName = mockSlackUser.profile.display_name || mockSlackUser.real_name || mockSlackUser.name;
+
+        const displayName =
+          mockSlackUser.profile.display_name || mockSlackUser.real_name || mockSlackUser.name;
         const userInfoOutput = transformSlackUserToUserInfoOutput(mockSlackUser, displayName);
-        
+
         // Verify transformation works correctly
         expect(userInfoOutput.id).toBe(mockSlackUser.id);
         expect(userInfoOutput.name).toBe(mockSlackUser.name);
@@ -321,13 +324,16 @@ describe('User Service Type Integration - Green Phase Validation', () => {
 
     it('should validate complete field mapping from SlackUser to UserInfoOutput', async () => {
       // SUCCESS TEST: All SlackUser fields are properly mapped
-      
+
       try {
-        const { transformSlackUserToUserInfoOutput } = await import('../slack/services/users/user-transformers');
-        
-        const displayName = mockSlackUser.profile.display_name || mockSlackUser.real_name || mockSlackUser.name;
+        const { transformSlackUserToUserInfoOutput } = await import(
+          '../slack/services/users/user-transformers'
+        );
+
+        const displayName =
+          mockSlackUser.profile.display_name || mockSlackUser.real_name || mockSlackUser.name;
         const userInfoOutput = transformSlackUserToUserInfoOutput(mockSlackUser, displayName);
-        
+
         // Verify systematic field mapping
         expect(userInfoOutput.id).toBeDefined();
         expect(userInfoOutput.name).toBeDefined();
@@ -338,7 +344,7 @@ describe('User Service Type Integration - Green Phase Validation', () => {
         expect(userInfoOutput.isOwner).toBeDefined();
         expect(userInfoOutput.displayName).toBeDefined();
         expect(userInfoOutput.realName).toBeDefined();
-        
+
         // Success: systematic validation exists and passes
         expect(true).toBe(true);
       } catch (error) {
@@ -350,21 +356,21 @@ describe('User Service Type Integration - Green Phase Validation', () => {
   describe('Architecture Consistency Validation', () => {
     it('should validate user service follows TypeSafeAPI domain type pattern', async () => {
       // SUCCESS TEST: User service follows TypeSafeAPI patterns
-      
+
       try {
         const { createUserService } = await import('../slack/services/users/user-service');
         const userServiceTypes = await import('../slack/services/users/types');
-        
+
         // Should succeed now that user service types exist
         expect(userServiceTypes).toBeDefined();
         expect(createUserService).toBeDefined();
-        
+
         // Verify TypeSafeAPI pattern compliance
         const mockDeps = {
           clientManager: { getClient: jest.fn() },
-          requestHandler: { handleServiceRequest: jest.fn() }
+          requestHandler: { handleServiceRequest: jest.fn() },
         };
-        
+
         const userService = createUserService(mockDeps as any);
         expect(userService.getUserInfo).toBeDefined();
         expect(userService.getDisplayName).toBeDefined();
@@ -375,13 +381,13 @@ describe('User Service Type Integration - Green Phase Validation', () => {
 
     it('should provide TypeSafeAPI service result pattern', async () => {
       // SUCCESS TEST: User service provides ServiceResult pattern
-      
+
       try {
         const userServiceTypes = await import('../slack/services/users/types');
-        
+
         // Should succeed now that user service types exist
         expect(userServiceTypes).toBeDefined(); // UserInfoResult is a type, not a runtime value
-        
+
         // Success: user service types exist and follow TypeSafeAPI patterns
         expect(true).toBe(true);
       } catch (error) {
@@ -393,22 +399,16 @@ describe('User Service Type Integration - Green Phase Validation', () => {
   describe('Mock Slack API Integration Validation', () => {
     it('should handle complete Slack API user response correctly', async () => {
       // SUCCESS TEST: User service properly maps Slack API response to SlackUser
-      
+
       try {
         const { createUserService } = await import('../slack/services/users/user-service');
-        
+
         const mockDeps = {
-          clientManager: { 
-            getClient: jest.fn().mockReturnValue(mockWebClient),
-            getClientForOperation: jest.fn().mockReturnValue(mockWebClient)
-          },
-          requestHandler: { 
-            handleServiceRequest: jest.fn() 
-          }
+          client: mockWebClient,
         };
-        
+
         const userService = createUserService(mockDeps as any);
-        
+
         // Mock complete Slack API response
         mockWebClient.users.info.mockResolvedValue({
           ok: true,
@@ -433,11 +433,11 @@ describe('User Service Type Integration - Green Phase Validation', () => {
             updated: 1641234567,
             is_email_confirmed: true,
             who_can_share_contact_card: 'EVERYONE',
-          }
+          },
         });
-        
+
         const result = await userService.getUserInfo({ user: 'U1234567890' });
-        
+
         // SUCCESS: Service correctly maps full response to SlackUser
         expect(result.success).toBe(true);
         if (result.success) {

@@ -33,7 +33,6 @@ import type {
   ServerHealthResult,
 } from '../slack/types/outputs/workspace.js';
 import type { WorkspaceService } from '../slack/services/workspace/types.js';
-import { createWorkspaceService as _createWorkspaceService } from '../slack/services/workspace/workspace-service.js';
 import {
   createServiceSuccess,
   createServiceError,
@@ -153,7 +152,10 @@ describe('Workspace Services TypeSafeAPI + ts-pattern Implementation (Green Phas
             rateLimitedRequests: 5,
             retryAttempts: 2,
             lastRateLimitTime: new Date(),
-            rateLimitsByTier: new Map([['Tier1', 2], ['Tier2', 3]]),
+            rateLimitsByTier: new Map([
+              ['Tier1', 2],
+              ['Tier2', 3],
+            ]),
           },
         },
         memory: {
