@@ -44,8 +44,12 @@ export interface FileService {
 }
 
 /**
- * Legacy interface for backward compatibility with MCP routing
- * Used by SlackService facade for MCP protocol compatibility
+ * MCP protocol interface for tool result compatibility with files
+ * Used by SlackService facade for MCP protocol compliance
+ * 
+ * This interface returns MCPToolResult as required by the Model Context Protocol.
+ * The internal TypeSafeAPI services provide enhanced type safety, while this
+ * interface ensures MCP protocol compatibility through adapter pattern.
  */
 export interface FileServiceMCPCompat {
   uploadFile(args: unknown): Promise<MCPToolResult>;

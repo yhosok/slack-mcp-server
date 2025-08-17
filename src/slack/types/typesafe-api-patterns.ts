@@ -4,6 +4,20 @@
  * Production-ready discriminated unions and response structures following
  * TypeSafeAPI TypeScript best practices for Node.js backend applications.
  *
+ * ## Three-Layer Architecture
+ * 
+ * This codebase implements a three-layer architecture that balances type safety with MCP protocol compliance:
+ * 
+ * 1. **TypeSafeAPI Services** (internal) - Use ServiceResult<T> discriminated unions for enhanced type safety
+ * 2. **MCP Adapters** (bridge) - Convert ServiceResult<T> to MCPToolResult for protocol compliance  
+ * 3. **MCP Protocol** (external) - MCPToolResult format as required by the Model Context Protocol specification
+ * 
+ * This separation allows for:
+ * - Enhanced type safety with discriminated unions internally
+ * - Full MCP protocol compliance externally
+ * - Clean abstraction between internal architecture and protocol requirements
+ * - Exhaustive pattern matching with ts-pattern for robust error handling
+ *
  * This module provides:
  * - Type-safe discriminated unions with exhaustive pattern matching
  * - Consistent API response structures for production backends

@@ -2,7 +2,7 @@
  * TypeSafeAPI-compatible Request Handler
  *
  * Extends the existing request handler to support TypeSafeAPI + ts-pattern patterns
- * while maintaining backward compatibility with MCPToolResult.
+ * while maintaining MCP protocol compliance with MCPToolResult format.
  */
 
 import type { ZodSchema } from 'zod';
@@ -47,7 +47,7 @@ export interface TypeSafeAPIRequestHandler {
   ): Promise<MCPToolResult>;
 
   /**
-   * Legacy compatibility - standard request handler
+   * MCP protocol compatibility - standard request handler
    */
   handle<TInput, TOutput extends ServiceOutput>(
     schema: ZodSchema<TInput>,
@@ -56,7 +56,7 @@ export interface TypeSafeAPIRequestHandler {
   ): Promise<MCPToolResult>;
 
   /**
-   * Legacy compatibility - custom format handler
+   * MCP protocol compatibility - custom format handler
    */
   handleWithCustomFormat<TInput>(
     schema: ZodSchema<TInput>,
@@ -206,7 +206,7 @@ export const createTypeSafeAPIRequestHandler = (
   };
 
   /**
-   * Legacy compatibility - standard request handler
+   * MCP protocol compatibility - standard request handler
    */
   const handle = async <TInput, TOutput extends ServiceOutput>(
     schema: ZodSchema<TInput>,
@@ -231,7 +231,7 @@ export const createTypeSafeAPIRequestHandler = (
       };
     } catch (error) {
       const normalizedError = error instanceof Error ? error : new Error(String(error));
-      logger.error('Legacy request handler operation failed', {
+      logger.error('MCP protocol request handler operation failed', {
         error: normalizedError.message,
         args,
         stack: normalizedError.stack,
@@ -242,7 +242,7 @@ export const createTypeSafeAPIRequestHandler = (
   };
 
   /**
-   * Legacy compatibility - custom format handler
+   * MCP protocol compatibility - custom format handler
    */
   const handleWithCustomFormat = async <TInput>(
     schema: ZodSchema<TInput>,
@@ -257,7 +257,7 @@ export const createTypeSafeAPIRequestHandler = (
       return await operation(input);
     } catch (error) {
       const normalizedError = error instanceof Error ? error : new Error(String(error));
-      logger.error('Legacy custom format handler operation failed', {
+      logger.error('MCP protocol custom format handler operation failed', {
         error: normalizedError.message,
         args,
         stack: normalizedError.stack,

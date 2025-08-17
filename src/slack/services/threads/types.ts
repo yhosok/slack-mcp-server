@@ -74,8 +74,12 @@ export interface ThreadService {
 }
 
 /**
- * MCP-compatible thread service interface for backward compatibility
- * Maintains existing MCPToolResult return types for SlackService facade
+ * MCP protocol interface for tool result compatibility with threads
+ * Maintains MCPToolResult return types as required by the Model Context Protocol
+ * 
+ * This interface returns MCPToolResult as required by the Model Context Protocol.
+ * The internal TypeSafeAPI services provide enhanced type safety, while this
+ * interface ensures MCP protocol compatibility through adapter pattern.
  */
 export interface ThreadServiceMCPCompat {
   findThreadsInChannel(args: unknown): Promise<MCPToolResult>;

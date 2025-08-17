@@ -1,26 +1,26 @@
 /**
- * MCP Compatibility Adapter for Reaction Services
+ * MCP Protocol Adapter for Reaction Services
  *
  * Advanced adapter pattern that bridges TypeSafeAPI + ts-pattern ServiceResult types
- * with legacy MCPToolResult format, enabling seamless backward compatibility while
- * preserving type safety benefits and facilitating gradual migration strategies.
+ * with MCPToolResult format as required by the Model Context Protocol specification,
+ * preserving type safety benefits while ensuring MCP protocol compliance.
  *
  * Architecture Features:
  * - Maintains TypeSafeAPI type safety internally
- * - Converts discriminated union results to MCP format
+ * - Converts discriminated union results to MCP protocol format
  * - Preserves comprehensive error handling patterns
- * - Enables zero-breaking-change migration path
- * - Supports both legacy and modern client usage
+ * - Enables clean separation between internal and protocol types
+ * - Supports both internal TypeSafeAPI and external MCP protocol usage
  *
- * This adapter serves as a compatibility bridge that:
+ * This adapter serves as a protocol bridge that:
  * 1. Uses TypeSafeAPI service internally for type safety
- * 2. Converts ServiceResult discriminated unions to MCPToolResult
- * 3. Maintains API contract compatibility with existing MCP clients
- * 4. Provides structured migration path to TypeSafeAPI patterns
+ * 2. Converts ServiceResult discriminated unions to required MCPToolResult
+ * 3. Maintains API contract compatibility with MCP protocol specification
+ * 4. Provides clean abstraction between internal architecture and protocol requirements
  *
  * @implements MCP protocol compatibility
  * @implements TypeSafeAPI-to-MCP adapter pattern
- * @implements Production-ready backward compatibility
+ * @implements Production-ready MCP protocol compliance
  */
 
 import type { MCPToolResult } from '../../../mcp/types.js';
@@ -67,13 +67,13 @@ import { convertToMCPResult } from '../../infrastructure/mcp-adapter-utils.js';
  * console.log(result.content); // Formatted MCP response
  * ```
  *
- * @example Migration Strategy
+ * @example Usage Strategy
  * ```typescript
- * // Legacy MCP usage (maintains compatibility)
+ * // MCP Protocol usage (required for MCP servers)
  * const mcpService = createReactionServiceMCPAdapter(deps);
  * const mcpResult = await mcpService.addReaction(args);
  *
- * // Modern TypeSafeAPI usage (for new code)
+ * // Internal TypeSafeAPI usage (for enhanced type safety)
  * const typeSafeService = createReactionServiceTypeSafeAPI(deps);
  * const typeSafeResult = await typeSafeService.addReaction(args);
  *

@@ -147,33 +147,33 @@ export interface ReactionService {
 }
 
 /**
- * Legacy interface for backward compatibility with MCP routing
+ * MCP protocol interface for tool result compatibility with reactions
  *
- * MCP-compatible interface that wraps TypeSafeAPI service results in
- * legacy MCPToolResult format. Used by SlackService facade to maintain
- * backward compatibility with existing MCP protocol routing while
+ * MCP-compatible interface that wraps TypeSafeAPI service results in the
+ * MCPToolResult format required by the Model Context Protocol. Used by 
+ * SlackService facade to maintain MCP protocol compliance while
  * leveraging TypeSafeAPI type safety internally.
  *
  * This interface serves as an adapter layer that:
- * - Converts ServiceResult types to MCPToolResult format
- * - Maintains API compatibility with existing MCP clients
+ * - Converts ServiceResult types to MCP protocol-required MCPToolResult format
+ * - Maintains API compatibility with MCP clients
  * - Preserves type safety through internal TypeSafeAPI usage
- * - Enables gradual migration to TypeSafeAPI patterns
+ * - Bridges internal architecture with MCP protocol requirements
  *
  * @example MCP Adapter Usage
  * ```typescript
  * const mcpService: ReactionServiceMCPCompat = createReactionServiceMCPAdapter(deps);
  *
- * // Returns MCPToolResult for MCP protocol compatibility
+ * // Returns MCPToolResult as required by MCP protocol
  * const mcpResult: MCPToolResult = await mcpService.addReaction(args);
  *
- * // Internal conversion from TypeSafeAPI ServiceResult to MCPToolResult
+ * // Internal conversion from TypeSafeAPI ServiceResult to MCP protocol format
  * console.log(mcpResult.content); // Contains formatted response
  * ```
  *
  * @implements MCP protocol compatibility
  * @implements TypeSafeAPI-to-MCP adapter pattern
- * @deprecated Use ReactionService interface for new implementations
+ * @note Required for MCP protocol compliance - not deprecated
  */
 export interface ReactionServiceMCPCompat {
   /**

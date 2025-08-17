@@ -1,11 +1,11 @@
 /**
- * MCP Compatibility Adapter for Message Services
+ * MCP Protocol Adapter for Message Services
  *
- * Converts TypeSafeAPI + ts-pattern ServiceResult types back to MCPToolResult
- * for backward compatibility with existing MCP protocol routing.
+ * Converts TypeSafeAPI + ts-pattern ServiceResult types to MCPToolResult
+ * format as required by the Model Context Protocol specification.
  *
  * This adapter maintains the TypeSafeAPI type safety benefits while ensuring
- * seamless integration with the existing SlackService facade.
+ * MCP protocol compliance for the SlackService facade.
  */
 
 import type { MCPToolResult } from '../../../mcp/types.js';
