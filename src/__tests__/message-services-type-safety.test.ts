@@ -447,7 +447,7 @@ describe('Message Services TypeSafeAPI + ts-pattern Implementation Validation (R
       const shouldBeTypeSafeAPICompatible = true; // Target integration achieved
 
       // Verify MCP adapter exists and properly converts ServiceResult to MCPToolResult
-      const mockDeps = {
+      const _mockDeps = {
         clientManager: { getClientForOperation: jest.fn(), checkSearchApiAvailability: jest.fn() },
         rateLimitTracker: { trackRateLimit: jest.fn() },
         rateLimitService: { isRateLimited: jest.fn(), getRateLimitInfo: jest.fn() },
@@ -455,7 +455,7 @@ describe('Message Services TypeSafeAPI + ts-pattern Implementation Validation (R
         userService: { getDisplayName: jest.fn() },
       } as any;
 
-      // const mcpAdapter = _createMessageServiceMCPAdapter(mockDeps);
+      // const mcpAdapter = _createMessageServiceMCPAdapter(_mockDeps);
 
       // Verify adapter has all required methods
       // expect(typeof mcpAdapter.sendMessage).toBe('function');

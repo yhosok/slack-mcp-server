@@ -20,21 +20,21 @@ import type { WebClient } from '@slack/web-api';
 import type {
   // ServiceResult,
   ServiceOutput,
-} from '../../types/typesafe-api-patterns.js';
-// import type { SlackUser } from '../../types/core/users.js';
+} from '../slack/types/typesafe-api-patterns.js';
+// import type { SlackUser } from '../slack/types/core/users.js';
 import type {
   UserService,
   // UserInfoResult,
-} from './types.js';
-import { createUserService } from './user-service.js';
+} from '../slack/services/users/types.js';
+import { createUserService } from '../slack/services/users/user-service.js';
 import {
   // createServiceSuccess,
   // createServiceError,
   enforceServiceOutput,
-} from '../../types/typesafe-api-patterns.js';
+} from '../slack/types/typesafe-api-patterns.js';
 
 // Mock configuration to prevent environment dependencies
-jest.mock('../../../config/index.js', () => ({
+jest.mock('../config/index.js', () => ({
   CONFIG: {
     SLACK_BOT_TOKEN: 'xoxb-test-token',
     SLACK_USER_TOKEN: 'xoxp-test-token',
@@ -44,7 +44,7 @@ jest.mock('../../../config/index.js', () => ({
 }));
 
 // Mock logger
-jest.mock('../../../utils/logger.js', () => ({
+jest.mock('../utils/logger.js', () => ({
   logger: {
     warn: jest.fn(),
     debug: jest.fn(),
