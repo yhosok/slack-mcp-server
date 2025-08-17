@@ -128,8 +128,13 @@ describe('SlackService Functionality Tests', () => {
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
       expect(result.content?.[0]?.type).toBe('text');
-      // Health check returns JSON object with health metrics
-      const healthData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      // Health check returns TypeSafeAPI response with health metrics
+      const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      expect(apiResponse).toHaveProperty('statusCode');
+      expect(apiResponse).toHaveProperty('data');
+      expect(apiResponse.statusCode).toBe('10000');
+      
+      const healthData = apiResponse.data;
       expect(healthData).toHaveProperty('status');
       expect(healthData).toHaveProperty('timestamp');
       expect(healthData).toHaveProperty('connectivity');

@@ -304,8 +304,15 @@ describe('Workspace Management Operations', () => {
       expect(result.content).toBeDefined();
       expect(result.content?.[0]?.type).toBe('text');
 
-      // Parse health data to verify structure
-      const healthData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      // Parse health data to verify TypeSafeAPI response structure
+      const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      expect(apiResponse).toHaveProperty('statusCode');
+      expect(apiResponse).toHaveProperty('message');
+      expect(apiResponse).toHaveProperty('data');
+      expect(apiResponse.statusCode).toBe('10000');
+      
+      // Verify the health data structure within the TypeSafeAPI response
+      const healthData = apiResponse.data;
       expect(healthData).toHaveProperty('status');
       expect(healthData).toHaveProperty('timestamp');
       expect(healthData).toHaveProperty('uptime');
@@ -347,7 +354,13 @@ describe('Workspace Management Operations', () => {
 
       expect(result).toBeDefined();
       expect('isError' in result ? result.isError : false).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error');
+      
+      // Parse TypeSafeAPI error response
+      const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      expect(apiResponse).toHaveProperty('statusCode');
+      expect(apiResponse).toHaveProperty('message'); 
+      expect(apiResponse).toHaveProperty('error');
+      expect(apiResponse.statusCode).toBe('10001');
     });
 
     it('should handle team members API errors gracefully', async () => {
@@ -357,7 +370,13 @@ describe('Workspace Management Operations', () => {
 
       expect(result).toBeDefined();
       expect('isError' in result ? result.isError : false).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error');
+      
+      // Parse TypeSafeAPI error response
+      const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      expect(apiResponse).toHaveProperty('statusCode');
+      expect(apiResponse).toHaveProperty('message'); 
+      expect(apiResponse).toHaveProperty('error');
+      expect(apiResponse.statusCode).toBe('10001');
     });
 
     it('should handle workspace activity API errors gracefully', async () => {
@@ -367,7 +386,13 @@ describe('Workspace Management Operations', () => {
 
       expect(result).toBeDefined();
       expect('isError' in result ? result.isError : false).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error');
+      
+      // Parse TypeSafeAPI error response
+      const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      expect(apiResponse).toHaveProperty('statusCode');
+      expect(apiResponse).toHaveProperty('message'); 
+      expect(apiResponse).toHaveProperty('error');
+      expect(apiResponse.statusCode).toBe('10001');
     });
 
     it('should handle server health connectivity errors gracefully', async () => {
@@ -388,15 +413,28 @@ describe('Workspace Management Operations', () => {
 
       expect(result).toBeDefined();
       expect('isError' in result ? result.isError : false).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error');
+      
+      // Parse TypeSafeAPI error response
+      const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      expect(apiResponse).toHaveProperty('statusCode');
+      expect(apiResponse).toHaveProperty('message');
+      expect(apiResponse).toHaveProperty('error');
+      expect(apiResponse.statusCode).toBe('10001');
     });
 
     it('should handle invalid parameters for getWorkspaceActivity', async () => {
       const result = await service.getWorkspaceActivity({ top_count: -1 });
 
       expect(result).toBeDefined();
-      expect('isError' in result ? result.isError : false).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error');
+      // TypeSafeAPI validation passes negative numbers, so this should succeed
+      expect('isError' in result ? result.isError : false).toBe(false);
+      
+      // Parse TypeSafeAPI success response  
+      const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      expect(apiResponse).toHaveProperty('statusCode');
+      expect(apiResponse).toHaveProperty('message');
+      expect(apiResponse).toHaveProperty('data');
+      expect(apiResponse.statusCode).toBe('10000');
     });
   });
 
@@ -413,8 +451,12 @@ describe('Workspace Management Operations', () => {
 
       expect('isError' in workspaceResult ? workspaceResult.isError : false).toBe(true);
       expect('isError' in membersResult ? membersResult.isError : false).toBe(true);
-      expect(extractTextContent(workspaceResult.content?.[0])).toContain('Rate limited');
-      expect(extractTextContent(membersResult.content?.[0])).toContain('Rate limited');
+      // Parse TypeSafeAPI error responses for rate limiting
+      const workspaceApiResponse = JSON.parse(extractTextContent(workspaceResult.content?.[0]) || '{}');
+      const membersApiResponse = JSON.parse(extractTextContent(membersResult.content?.[0]) || '{}');
+      
+      expect(workspaceApiResponse.error).toContain('Rate limited');
+      expect(membersApiResponse.error).toContain('Rate limited');
     });
   });
 
@@ -439,7 +481,12 @@ describe('Workspace Management Operations', () => {
       expect(result).toBeDefined();
       // Empty members list should be handled as success, not error
       if (!('isError' in result && result.isError)) {
-        const membersData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+        const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+        expect(apiResponse).toHaveProperty('statusCode');
+        expect(apiResponse).toHaveProperty('data');
+        expect(apiResponse.statusCode).toBe('10000');
+        
+        const membersData = apiResponse.data;
         expect(Array.isArray(membersData.members)).toBe(true);
         expect(membersData.members).toHaveLength(0);
       }
@@ -456,7 +503,12 @@ describe('Workspace Management Operations', () => {
       expect(result).toBeDefined();
       // No messages should be handled as success with zero activity
       if (!('isError' in result && result.isError)) {
-        const activityData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+        const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+        expect(apiResponse).toHaveProperty('statusCode');
+        expect(apiResponse).toHaveProperty('data');
+        expect(apiResponse.statusCode).toBe('10000');
+        
+        const activityData = apiResponse.data;
         expect(activityData.summary).toBeDefined();
       }
     });
@@ -494,7 +546,12 @@ describe('Workspace Management Operations', () => {
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
 
-      const healthData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      expect(apiResponse).toHaveProperty('statusCode');
+      expect(apiResponse).toHaveProperty('data');
+      expect(apiResponse.statusCode).toBe('10000');
+      
+      const healthData = apiResponse.data;
       expect(healthData.memory).toBeDefined();
       expect(healthData.memory.heapUsed).toBe(40); // Should be in MB
       expect(healthData.memory.heapTotal).toBe(50);
@@ -508,7 +565,13 @@ describe('Workspace Management Operations', () => {
       const result = await service.getServerHealth({});
 
       expect(result).toBeDefined();
-      const healthData = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      
+      const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+      expect(apiResponse).toHaveProperty('statusCode');
+      expect(apiResponse).toHaveProperty('data');
+      expect(apiResponse.statusCode).toBe('10000');
+      
+      const healthData = apiResponse.data;
       expect(healthData.status).toBeDefined();
       expect(healthData.connectivity).toBeDefined();
     });

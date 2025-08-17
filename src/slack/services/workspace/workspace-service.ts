@@ -4,36 +4,125 @@ import {
   ListTeamMembersSchema,
   GetWorkspaceActivitySchema,
   GetServerHealthSchema,
+  validateInput,
 } from '../../../utils/validation.js';
-import type { MCPToolResult } from '../../../mcp/types.js';
 import type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
 import { executePagination } from '../../infrastructure/generic-pagination.js';
+import {
+  createServiceSuccess,
+  createServiceError,
+  enforceServiceOutput,
+} from '../../types/typesafe-api-patterns.js';
+import type {
+  WorkspaceInfoResult,
+  TeamMembersResult,
+  WorkspaceActivityResult,
+  ServerHealthResult,
+  WorkspaceInfoOutput,
+  TeamMembersOutput,
+  WorkspaceActivityOutput,
+  ServerHealthOutput,
+} from '../../types/outputs/workspace.js';
 
 // Export types for external use
 export type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
 import { SlackAPIError } from '../../../utils/errors.js';
-// Using basic formatting - formatters will be enhanced later
-
 /**
  * Create workspace service with infrastructure dependencies
- * @param deps - Infrastructure dependencies
- * @returns Workspace service instance
+ * 
+ * Factory function that creates a TypeSafeAPI-compliant workspace service with
+ * full type safety, error handling, and integration with existing infrastructure.
+ * 
+ * Features:
+ * - Type-safe operations with discriminated union results
+ * - Automatic input validation using Zod schemas
+ * - Consistent error handling with ServiceResult patterns
+ * - Integration with Slack Web API client management
+ * - Comprehensive workspace analytics and reporting
+ * - Real-time health monitoring and metrics collection
+ * 
+ * @param deps - Infrastructure dependencies (client manager, rate limiter, user service, etc.)
+ * @returns Workspace service instance with TypeSafeAPI + ts-pattern type safety
+ * 
+ * @example Service Creation
+ * ```typescript
+ * const workspaceService = createWorkspaceService({
+ *   clientManager,
+ *   rateLimitService,
+ *   userService
+ * });
+ * 
+ * const result = await workspaceService.getWorkspaceInfo({});
+ * 
+ * match(result)
+ *   .with({ success: true }, (success) => console.log('Workspace:', success.data))
+ *   .with({ success: false }, (error) => console.error('Failed:', error.error))
+ *   .exhaustive();
+ * ```
  */
 export const createWorkspaceService = (deps: WorkspaceServiceDependencies): WorkspaceService => {
   /**
-   * Get workspace/team information and settings
+   * Get workspace/team information and settings with TypeSafeAPI + ts-pattern type safety
+   * 
+   * Retrieves comprehensive workspace information including team details, configuration,
+   * and enterprise settings. Uses read-operation client for optimal token usage.
+   * 
+   * @param args - Unknown input (validated at runtime using GetWorkspaceInfoSchema)
+   * @returns ServiceResult with workspace information or error details
+   * 
+   * @example Basic Usage
+   * ```typescript
+   * const result = await getWorkspaceInfo({});
+   * 
+   * match(result)
+   *   .with({ success: true }, (r) => {
+   *     console.log('Workspace:', r.data.name);
+   *     console.log('Domain:', r.data.domain);
+   *   })
+   *   .with({ success: false }, (r) => {
+   *     console.error('Error:', r.error);
+   *   })
+   *   .exhaustive();
+   * ```
+   * 
+   * @example With Pattern Matching
+   * ```typescript
+   * const result = await getWorkspaceInfo({});
+   * 
+   * if (result.success) {
+   *   // TypeScript knows result.data is WorkspaceInfoOutput
+   *   const workspace = result.data;
+   *   console.log(`${workspace.name} (${workspace.domain})`);
+   * } else {
+   *   // TypeScript knows result.error is string
+   *   console.error('Failed to get workspace info:', result.error);
+   * }
+   * ```
    */
-  const getWorkspaceInfo = (args: unknown): Promise<MCPToolResult> =>
-    deps.requestHandler.handle(GetWorkspaceInfoSchema, args, async () => {
+  const getWorkspaceInfo = async (args: unknown): Promise<WorkspaceInfoResult> => {
+    try {
+      // Validate input using TypeSafeAPI validation pattern
+      const _input = validateInput(GetWorkspaceInfoSchema, args);
+      
       const client = deps.clientManager.getClientForOperation('read');
 
       const result = await client.team.info();
 
       if (!result.team) {
-        throw new SlackAPIError('Failed to retrieve workspace information');
+        return createServiceError(
+          'No team information available',
+          'Failed to retrieve workspace information'
+        );
       }
 
-      return {
+      if (!result.team.id || !result.team.name || !result.team.domain) {
+        return createServiceError(
+          'Incomplete team information received',
+          'Failed to retrieve workspace information'
+        );
+      }
+
+      const outputData: WorkspaceInfoOutput = enforceServiceOutput({
         id: result.team.id,
         name: result.team.name,
         domain: result.team.domain,
@@ -49,18 +138,72 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         },
         enterpriseId: result.team.enterprise_id,
         enterpriseName: result.team.enterprise_name,
-      };
-    });
+      });
+
+      return createServiceSuccess(outputData, 'Workspace information retrieved successfully');
+    } catch (error) {
+      return createServiceError(
+        error instanceof Error ? error.message : 'Unknown error',
+        'Failed to retrieve workspace information'
+      );
+    }
+  };
 
   /**
-   * List all team members with their roles and status
+   * List all team members with their roles and status with TypeSafeAPI + ts-pattern type safety
+   * 
+   * Retrieves comprehensive team member information with support for pagination,
+   * filtering, and detailed profile data. Supports both bot and deleted user filtering.
+   * 
+   * @param args - Unknown input (validated at runtime using ListTeamMembersSchema)
+   * @returns ServiceResult with team members list or error details
+   * 
+   * @example Basic Team Members List
+   * ```typescript
+   * const result = await listTeamMembers({
+   *   limit: 50,
+   *   include_bots: false,
+   *   include_deleted: false
+   * });
+   * 
+   * match(result)
+   *   .with({ success: true }, (r) => {
+   *     console.log(`Found ${r.data.total} members`);
+   *     r.data.members.forEach(member => {
+   *       console.log(`${member.displayName} (${member.email})`);
+   *     });
+   *   })
+   *   .with({ success: false }, (r) => {
+   *     console.error('Failed to get members:', r.error);
+   *   })
+   *   .exhaustive();
+   * ```
+   * 
+   * @example With Pagination
+   * ```typescript
+   * const result = await listTeamMembers({
+   *   fetch_all_pages: true,
+   *   max_pages: 10,
+   *   max_items: 1000,
+   *   include_bots: true
+   * });
+   * 
+   * if (result.success) {
+   *   // TypeScript knows result.data is TeamMembersOutput
+   *   const { members, total, hasMore } = result.data;
+   *   console.log(`Retrieved ${members.length} of ${total} members`);
+   * }
+   * ```
    */
-  const listTeamMembers = (args: unknown): Promise<MCPToolResult> =>
-    deps.requestHandler.handle(ListTeamMembersSchema, args, async (input) => {
+  const listTeamMembers = async (args: unknown): Promise<TeamMembersResult> => {
+    try {
+      // Validate input using TypeSafeAPI validation pattern
+      const input = validateInput(ListTeamMembersSchema, args);
+      
       const client = deps.clientManager.getClientForOperation('read');
 
       // Use unified pagination implementation
-      return await executePagination(input, {
+      const paginationResult = await executePagination(input, {
         fetchPage: async (cursor?: string) => {
           const listArgs: UsersListArguments = {
             limit: input.limit || 100,
@@ -127,23 +270,82 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
             updated: member.updated,
           }));
 
-          return {
+          // Create TypeSafeAPI-compliant output
+          const output: TeamMembersOutput = enforceServiceOutput({
             members: processedMembers,
             total: processedMembers.length,
             pageCount: data.pageCount,
             hasMore: data.hasMore,
             cursor: data.cursor,
             responseMetadata: data.hasMore ? { next_cursor: data.cursor } : undefined,
-          };
+          });
+
+          return output;
         },
       });
-    });
+
+      return createServiceSuccess(paginationResult as TeamMembersOutput, 'Team members retrieved successfully');
+    } catch (error) {
+      return createServiceError(
+        error instanceof Error ? error.message : 'Unknown error',
+        'Failed to retrieve team members'
+      );
+    }
+  };
 
   /**
-   * Generate comprehensive workspace activity report
+   * Generate comprehensive workspace activity report with TypeSafeAPI + ts-pattern type safety
+   * 
+   * Analyzes workspace activity across channels, users, and time periods with detailed
+   * metrics, trends, and insights. Supports customizable date ranges and analytics depth.
+   * 
+   * @param args - Unknown input (validated at runtime using GetWorkspaceActivitySchema)
+   * @returns ServiceResult with activity report or error details
+   * 
+   * @example Basic Activity Report
+   * ```typescript
+   * const result = await getWorkspaceActivity({
+   *   start_date: '2024-01-01',
+   *   end_date: '2024-01-31',
+   *   include_user_details: true,
+   *   include_channel_details: true
+   * });
+   * 
+   * match(result)
+   *   .with({ success: true }, (r) => {
+   *     const { summary, channelActivity, userActivity } = r.data;
+   *     console.log(`Total messages: ${summary.totalMessages}`);
+   *     console.log(`Active channels: ${summary.activeChannels}`);
+   *     console.log(`Top channel: ${channelActivity[0]?.name}`);
+   *   })
+   *   .with({ success: false }, (r) => {
+   *     console.error('Failed to generate report:', r.error);
+   *   })
+   *   .exhaustive();
+   * ```
+   * 
+   * @example With Trend Analysis
+   * ```typescript
+   * const result = await getWorkspaceActivity({
+   *   top_count: 15,
+   *   include_user_details: true
+   * });
+   * 
+   * if (result.success) {
+   *   // TypeScript knows result.data is WorkspaceActivityOutput
+   *   const { trends, period } = result.data;
+   *   console.log(`Report for ${period.days} days`);
+   *   
+   *   trends.daily.forEach(day => {
+   *     console.log(`${day.date}: ${day.messages} messages`);
+   *   });
+   * }
+   * ```
    */
-  const getWorkspaceActivity = (args: unknown): Promise<MCPToolResult> =>
-    deps.requestHandler.handle(GetWorkspaceActivitySchema, args, async (input) => {
+  const getWorkspaceActivity = async (args: unknown): Promise<WorkspaceActivityResult> => {
+    try {
+      // Validate input using TypeSafeAPI validation pattern
+      const input = validateInput(GetWorkspaceActivitySchema, args);
       const client = deps.clientManager.getClientForOperation('read');
 
       // Calculate time range
@@ -307,7 +509,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         messages: count,
       }));
 
-      return {
+      const outputData: WorkspaceActivityOutput = enforceServiceOutput({
         period: activity.period,
         summary: {
           totalMessages: activity.totalMessages,
@@ -332,14 +534,70 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
           daily: dailyActivity.sort((a, b) => a.date.localeCompare(b.date)),
           hourly: hourlyActivity.sort((a, b) => a.hour - b.hour),
         },
-      };
-    });
+      });
+
+      return createServiceSuccess(outputData, 'Workspace activity report generated successfully');
+    } catch (error) {
+      return createServiceError(
+        error instanceof Error ? error.message : 'Unknown error',
+        'Failed to generate workspace activity report'
+      );
+    }
+  };
 
   /**
-   * Get MCP server health status and performance metrics
+   * Get MCP server health status and performance metrics with TypeSafeAPI + ts-pattern type safety
+   * 
+   * Performs comprehensive health check including connectivity tests, memory usage,
+   * rate limiting metrics, and infrastructure status. Essential for monitoring and diagnostics.
+   * 
+   * @param args - Unknown input (validated at runtime using GetServerHealthSchema)
+   * @returns ServiceResult with health status and metrics or error details
+   * 
+   * @example Basic Health Check
+   * ```typescript
+   * const result = await getServerHealth({
+   *   include_rate_limits: true,
+   *   include_response_times: true
+   * });
+   * 
+   * match(result)
+   *   .with({ success: true }, (r) => {
+   *     const { status, connectivity, memory, rateLimiting } = r.data;
+   *     console.log(`Server status: ${status}`);
+   *     console.log(`Connectivity: ${connectivity.status}`);
+   *     console.log(`Memory usage: ${memory.heapUsed}MB`);
+   *     console.log(`Rate limits: ${rateLimiting.metrics.rateLimitedRequests}`);
+   *   })
+   *   .with({ success: false }, (r) => {
+   *     console.error('Health check failed:', r.error);
+   *   })
+   *   .exhaustive();
+   * ```
+   * 
+   * @example Conditional Health Monitoring
+   * ```typescript
+   * const result = await getServerHealth({});
+   * 
+   * if (result.success) {
+   *   // TypeScript knows result.data is ServerHealthOutput
+   *   const health = result.data;
+   *   
+   *   if (health.status === 'unhealthy') {
+   *     console.warn('Server health issues detected');
+   *     health.recommendations.forEach(rec => console.log(`- ${rec}`));
+   *   }
+   *   
+   *   if (health.memory.heapUsed > health.memory.heapTotal * 0.8) {
+   *     console.warn('High memory usage detected');
+   *   }
+   * }
+   * ```
    */
-  const getServerHealth = (args: unknown): Promise<MCPToolResult> =>
-    deps.requestHandler.handle(GetServerHealthSchema, args, async () => {
+  const getServerHealth = async (args: unknown): Promise<ServerHealthResult> => {
+    try {
+      // Validate input using TypeSafeAPI validation pattern
+      const _input = validateInput(GetServerHealthSchema, args);
       // Get rate limiting metrics from the infrastructure
       const rateLimitMetrics = deps.rateLimitService.getMetrics();
 
@@ -374,7 +632,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
 
       const health = {
         status:
-          connectivityStatus === 'good' || connectivityStatus === 'fair' ? 'healthy' : 'unhealthy',
+          (connectivityStatus === 'good' || connectivityStatus === 'fair' ? 'healthy' : 'unhealthy') as 'healthy' | 'unhealthy',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         connectivity: {
@@ -413,7 +671,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         },
       };
 
-      return {
+      const outputData: ServerHealthOutput = enforceServiceOutput({
         ...health,
         formattedUptime: {
           days: Math.floor(health.uptime / (24 * 60 * 60)),
@@ -429,8 +687,16 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
             ? ['Review rate limiting configuration']
             : []),
         ],
-      };
-    });
+      });
+
+      return createServiceSuccess(outputData, 'Server health status retrieved successfully');
+    } catch (error) {
+      return createServiceError(
+        error instanceof Error ? error.message : 'Unknown error',
+        'Failed to retrieve server health status'
+      );
+    }
+  };
 
   return {
     getWorkspaceInfo,
