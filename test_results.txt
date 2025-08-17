@@ -1,0 +1,36 @@
+
+> slack-mcp-server@1.0.0 test
+> jest
+
+PASS src/__tests__/pagination-safety.test.ts
+PASS src/__tests__/request-handler-type-safety.test.ts
+PASS src/__tests__/reaction-operations.test.ts
+PASS src/__tests__/schema-conversion.test.ts
+PASS src/__tests__/reaction-services-type-safety-final.test.ts
+PASS src/__tests__/analysis-layer.test.ts
+PASS src/__tests__/infrastructure.test.ts
+PASS src/__tests__/message-services-type-safety.test.ts
+PASS src/__tests__/workspace-services-typesafe-api-green.test.ts
+PASS src/__tests__/thread-advanced.test.ts
+PASS src/__tests__/generic-pagination.test.ts
+PASS src/__tests__/workspace-services-type-safety-simple.test.ts
+PASS src/__tests__/workspace-services-type-safety-final.test.ts
+PASS src/__tests__/message-services-type-safety-final.test.ts
+PASS src/__tests__/reaction-services-typesafe-api-green.test.ts
+PASS src/__tests__/message-services-typesafe-api-green.test.ts
+PASS src/__tests__/pagination.test.ts
+PASS src/__tests__/slack-service.test.ts
+PASS src/__tests__/file-services-type-safety.test.ts
+PASS src/__tests__/file-operations.test.ts
+PASS src/__tests__/modular-routing.test.ts
+PASS src/__tests__/search-messages.test.ts
+PASS src/__tests__/get-channel-info.test.ts
+PASS src/__tests__/workspace-operations.test.ts
+PASS src/__tests__/modular-architecture.test.ts
+PASS src/__tests__/integration.test.ts
+
+Test Suites: 26 passed, 26 total
+Tests:       432 passed, 432 total
+Snapshots:   0 total
+Time:        3.724 s, estimated 4 s
+Ran all test suites.

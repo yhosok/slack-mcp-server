@@ -152,8 +152,8 @@ describe('Workspace Services TypeSafeAPI + ts-pattern Implementation (Green Phas
             totalRequests: 100,
             rateLimitedRequests: 5,
             retryAttempts: 2,
-            lastRateLimitTime: new Date().toISOString(),
-            rateLimitsByTier: { Tier1: 2, Tier2: 3 },
+            lastRateLimitTime: new Date(),
+            rateLimitsByTier: new Map([['Tier1', 2], ['Tier2', 3]]),
           },
         },
         memory: {

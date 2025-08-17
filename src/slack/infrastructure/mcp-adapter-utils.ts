@@ -63,12 +63,12 @@ export const convertToMCPResult = <T extends ServiceOutput>(
  */
 export const createMCPAdapter = <T>(
   service: T
-): T extends Record<string, (...args: any[]) => Promise<ServiceResult<any>>>
+): T extends Record<string, (...args: unknown[]) => Promise<ServiceResult<ServiceOutput>>>
   ? { [K in keyof T]: (args: unknown) => Promise<MCPToolResult> }
   : never => {
-  const adapter = {} as any;
+  const adapter = {} as Record<string, (args: unknown) => Promise<MCPToolResult>>;
 
-  for (const [methodName, method] of Object.entries(service as any)) {
+  for (const [methodName, method] of Object.entries(service as Record<string, unknown>)) {
     if (typeof method === 'function') {
       adapter[methodName] = async (args: unknown): Promise<MCPToolResult> => {
         const result = await method(args);
@@ -77,7 +77,9 @@ export const createMCPAdapter = <T>(
     }
   }
 
-  return adapter as any;
+  return adapter as T extends Record<string, (...args: unknown[]) => Promise<ServiceResult<ServiceOutput>>>
+    ? { [K in keyof T]: (args: unknown) => Promise<MCPToolResult> }
+    : never;
 };
 
 /**
@@ -85,7 +87,7 @@ export const createMCPAdapter = <T>(
  * Converts a TypeSafeAPI service interface to MCP-compatible interface
  */
 export type MCPCompatService<T> = {
-  [K in keyof T]: T[K] extends (...args: any[]) => Promise<ServiceResult<any>>
+  [K in keyof T]: T[K] extends (...args: unknown[]) => Promise<ServiceResult<ServiceOutput>>
     ? (args: unknown) => Promise<MCPToolResult>
     : never;
 };

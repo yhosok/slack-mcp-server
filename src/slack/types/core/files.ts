@@ -83,7 +83,27 @@ export interface FileAnalysis {
   by_type: { [filetype: string]: { count: number; size_bytes: number } };
   by_user: { [user: string]: { count: number; size_bytes: number } };
   by_channel: { [channel: string]: { count: number; size_bytes: number } };
-  large_files: SlackFile[];
-  old_files: SlackFile[];
+  large_files: Array<{
+    id: string;
+    name: string;
+    title: string;
+    filetype: string;
+    size: number;
+    url: string;
+    user: string;
+    timestamp: number;
+    channels: string[];
+  }>;
+  old_files: Array<{
+    id: string;
+    name: string;
+    title: string;
+    filetype: string;
+    size: number;
+    url: string;
+    user: string;
+    timestamp: number;
+    channels: string[];
+  }>;
   recent_activity: { date: string; uploads: number; size_bytes: number }[];
 }

@@ -909,8 +909,28 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         by_type: {} as { [filetype: string]: { count: number; size_bytes: number } },
         by_user: {} as { [user: string]: { count: number; size_bytes: number } },
         by_channel: {} as { [channel: string]: { count: number; size_bytes: number } },
-        large_files: [] as any[],
-        old_files: [] as any[],
+        large_files: [] as Array<{
+          id: string;
+          name: string;
+          title: string;
+          filetype: string;
+          size: number;
+          url: string;
+          user: string;
+          timestamp: number;
+          channels: string[];
+        }>,
+        old_files: [] as Array<{
+          id: string;
+          name: string;
+          title: string;
+          filetype: string;
+          size: number;
+          url: string;
+          user: string;
+          timestamp: number;
+          channels: string[];
+        }>,
         recent_activity: [] as { date: string; uploads: number; size_bytes: number }[],
       };
 
@@ -945,7 +965,6 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             filetype: type,
             size: size,
             url: file.url_private || '',
-            downloadUrl: file.url_private_download || '',
             user: file.user || '',
             timestamp: file.timestamp || 0,
             channels: file.channels || [],

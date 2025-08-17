@@ -4,6 +4,7 @@
  */
 
 import type { ServiceOutput, ServiceResult } from '../typesafe-api-patterns';
+import type { RateLimitMetrics } from '../../infrastructure/client/rate-limit-service';
 
 export interface WorkspaceInfoOutput extends ServiceOutput {
   id: string;
@@ -121,10 +122,10 @@ export interface ServerHealthOutput extends ServiceOutput {
   };
   rateLimiting: {
     enabled: boolean;
-    metrics: any;
+    metrics: RateLimitMetrics;
   };
   memory: {
-    usage: any;
+    usage: NodeJS.MemoryUsage;
     heapUsed: number;
     heapTotal: number;
   };

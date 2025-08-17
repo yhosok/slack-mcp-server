@@ -27,6 +27,43 @@ import type {
 // Export types for external use
 export type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
 import { SlackAPIError } from '../../../utils/errors.js';
+
+/**
+ * Slack API Member interface for users.list response
+ * Based on @slack/web-api UsersListResponse.Member
+ */
+interface SlackMember {
+  id?: string;
+  name?: string;
+  real_name?: string;
+  deleted?: boolean;
+  is_admin?: boolean;
+  is_owner?: boolean;
+  is_primary_owner?: boolean;
+  is_restricted?: boolean;
+  is_ultra_restricted?: boolean;
+  is_bot?: boolean;
+  tz?: string;
+  tz_label?: string;
+  tz_offset?: number;
+  updated?: number;
+  profile?: {
+    display_name?: string;
+    email?: string;
+    title?: string;
+    image_24?: string;
+    image_32?: string;
+    image_48?: string;
+    image_72?: string;
+    image_192?: string;
+    image_512?: string;
+    status_text?: string;
+    status_emoji?: string;
+    status_expiration?: number;
+    phone?: string;
+    skype?: string;
+  };
+}
 /**
  * Create workspace service with infrastructure dependencies
  *
@@ -231,27 +268,30 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
           let filteredMembers = data.items;
 
           if (!input.include_deleted) {
-            filteredMembers = filteredMembers.filter((member: any) => !member.deleted);
+            filteredMembers = filteredMembers.filter((member: SlackMember) => !member.deleted);
           }
 
           if (!input.include_bots) {
-            filteredMembers = filteredMembers.filter((member: any) => !member.is_bot);
+            filteredMembers = filteredMembers.filter((member: SlackMember) => !member.is_bot);
           }
 
-          const processedMembers = filteredMembers.map((member: any) => ({
-            id: member.id,
-            name: member.name,
+          // Filter out members without required fields
+          filteredMembers = filteredMembers.filter((member: SlackMember) => member.id && member.name);
+
+          const processedMembers = filteredMembers.map((member: SlackMember) => ({
+            id: member.id!,
+            name: member.name!,
             realName: member.real_name,
-            displayName: member.profile?.display_name || member.real_name || member.name,
+            displayName: member.profile?.display_name || member.real_name || member.name!,
             email: member.profile?.email,
             title: member.profile?.title,
-            isAdmin: member.is_admin,
-            isOwner: member.is_owner,
-            isPrimaryOwner: member.is_primary_owner,
-            isRestricted: member.is_restricted,
-            isUltraRestricted: member.is_ultra_restricted,
-            isBot: member.is_bot,
-            deleted: member.deleted,
+            isAdmin: member.is_admin || false,
+            isOwner: member.is_owner || false,
+            isPrimaryOwner: member.is_primary_owner || false,
+            isRestricted: member.is_restricted || false,
+            isUltraRestricted: member.is_ultra_restricted || false,
+            isBot: member.is_bot || false,
+            deleted: member.deleted || false,
             hasFiles: false, // Property not available in API
             timezone: member.tz,
             timezoneLabel: member.tz_label,

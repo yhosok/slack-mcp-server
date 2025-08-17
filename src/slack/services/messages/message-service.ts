@@ -1,4 +1,10 @@
 import type { SearchAllArguments } from '@slack/web-api';
+import type { 
+  MessageElement
+} from '@slack/web-api/dist/types/response/ConversationsHistoryResponse.js';
+import type { 
+  Match as SearchMessageElement 
+} from '@slack/web-api/dist/types/response/SearchMessagesResponse.js';
 import {
   SendMessageSchema,
   ListChannelsSchema,
@@ -246,11 +252,11 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         getItems: (response) => response.messages || [],
 
         formatResponse: async (data) => {
-          const messages = data.items.map((message: any) => ({
-            type: message.type,
-            user: message.user,
-            text: message.text,
-            ts: message.ts,
+          const messages = data.items.map((message: MessageElement) => ({
+            type: message.type || '',
+            user: message.user || '',
+            text: message.text || '',
+            ts: message.ts || '',
             thread_ts: message.thread_ts,
             reply_count: message.reply_count,
             reactions: message.reactions,
@@ -386,7 +392,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
 
       // Process search results and create TypeSafeAPI-compliant output
       const searchResults = result.messages.matches || [];
-      const messages = searchResults.map((match: any) => ({
+      const messages = searchResults.map((match: SearchMessageElement) => ({
         text: match.text || '',
         user: match.user || '',
         ts: match.ts || '',
