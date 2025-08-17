@@ -1,6 +1,6 @@
 /**
  * TypeSafeAPI-compatible Request Handler
- * 
+ *
  * Extends the existing request handler to support TypeSafeAPI + ts-pattern patterns
  * while maintaining backward compatibility with MCPToolResult.
  */
@@ -10,8 +10,8 @@ import type { MCPToolResult } from '../../../mcp/types.js';
 import type { RequestHandlerDependencies } from './types.js';
 import { logger } from '../../../utils/logger.js';
 import { SlackAPIError as _SlackAPIError } from '../../../utils/errors.js';
-import { 
-  type ServiceResult, 
+import {
+  type ServiceResult,
   type ServiceOutput,
   handleServiceResult,
   validateServiceResult,
@@ -70,11 +70,11 @@ export interface TypeSafeAPIRequestHandler {
  * Enhanced error handling for TypeSafeAPI patterns
  */
 const handleTypeSafeAPIError = (
-  error: unknown, 
+  error: unknown,
   context: { args?: unknown; operation?: string }
 ): ServiceResult<never> => {
   const normalizedError = error instanceof Error ? error : new Error(String(error));
-  
+
   // Enhanced logging with operation context
   logger.error('TypeSafeAPI request handler operation failed', {
     error: normalizedError.message,
@@ -94,18 +94,24 @@ const handleTypeSafeAPIError = (
 /**
  * Convert ServiceResult to MCPToolResult with production-ready response structure
  */
-const convertServiceResultToMCP = <T extends ServiceOutput>(result: ServiceResult<T>): MCPToolResult => {
+const convertServiceResultToMCP = <T extends ServiceOutput>(
+  result: ServiceResult<T>
+): MCPToolResult => {
   if (!validateServiceResult(result)) {
     logger.error('Invalid ServiceResult format detected', { result });
     return {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify({
-            statusCode: '10001',
-            message: 'Invalid service result format',
-            error: 'Service returned malformed result',
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              statusCode: '10001',
+              message: 'Invalid service result format',
+              error: 'Service returned malformed result',
+            },
+            null,
+            2
+          ),
         },
       ],
       isError: true,
@@ -113,17 +119,21 @@ const convertServiceResultToMCP = <T extends ServiceOutput>(result: ServiceResul
   }
 
   const apiResponse = handleServiceResult(result);
-  
+
   if (result.success) {
     return {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify({
-            statusCode: apiResponse.statusCode,
-            message: apiResponse.message,
-            data: apiResponse.data,
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              statusCode: apiResponse.statusCode,
+              message: apiResponse.message,
+              data: apiResponse.data,
+            },
+            null,
+            2
+          ),
         },
       ],
     };
@@ -132,11 +142,15 @@ const convertServiceResultToMCP = <T extends ServiceOutput>(result: ServiceResul
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify({
-            statusCode: apiResponse.statusCode,
-            message: apiResponse.message,
-            error: apiResponse.error,
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              statusCode: apiResponse.statusCode,
+              message: apiResponse.message,
+              error: apiResponse.error,
+            },
+            null,
+            2
+          ),
         },
       ],
       isError: true,
@@ -147,7 +161,9 @@ const convertServiceResultToMCP = <T extends ServiceOutput>(result: ServiceResul
 /**
  * Create a TypeSafeAPI-compatible request handler
  */
-export const createTypeSafeAPIRequestHandler = (dependencies: TypeSafeAPIRequestHandlerDependencies): TypeSafeAPIRequestHandler => {
+export const createTypeSafeAPIRequestHandler = (
+  dependencies: TypeSafeAPIRequestHandlerDependencies
+): TypeSafeAPIRequestHandler => {
   /**
    * Handle request with TypeSafeAPI ServiceResult pattern
    */

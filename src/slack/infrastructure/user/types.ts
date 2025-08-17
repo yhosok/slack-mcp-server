@@ -21,7 +21,14 @@ export interface UserService {
    * @param userId - The Slack user ID
    * @returns Promise resolving to the user information
    */
-  getUserInfo(userId: string): Promise<{ id: string; name?: string; real_name?: string; profile?: { display_name?: string; email?: string } }>;
+  getUserInfo(
+    userId: string
+  ): Promise<{
+    id: string;
+    name?: string;
+    real_name?: string;
+    profile?: { display_name?: string; email?: string };
+  }>;
 
   /**
    * Clear the user cache (useful for testing or when needed)

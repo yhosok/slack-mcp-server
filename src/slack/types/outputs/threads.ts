@@ -23,7 +23,6 @@ export interface ThreadDiscoveryOutput extends ServiceOutput {
   hasMore: boolean;
   cursor: string | undefined;
   [key: string]: unknown;
-
 }
 
 export interface ThreadRepliesOutput extends ServiceOutput {
@@ -48,7 +47,6 @@ export interface ThreadRepliesOutput extends ServiceOutput {
     threadTs: string;
   };
   [key: string]: unknown;
-
 }
 
 export interface ThreadSearchOutput extends ServiceOutput {
@@ -68,7 +66,6 @@ export interface ThreadSearchOutput extends ServiceOutput {
   query: string;
   hasMore?: boolean;
   [key: string]: unknown;
-
 }
 
 export interface ThreadAnalysisOutput extends ServiceOutput {
@@ -99,7 +96,6 @@ export interface ThreadAnalysisOutput extends ServiceOutput {
     includeTopics: boolean;
   };
   [key: string]: unknown;
-
 }
 
 export interface ThreadSummaryOutput extends ServiceOutput {
@@ -127,7 +123,6 @@ export interface ThreadSummaryOutput extends ServiceOutput {
   language: string;
   summaryLength: 'brief' | 'detailed' | 'comprehensive';
   [key: string]: unknown;
-
 }
 
 export interface ActionItemsOutput extends ServiceOutput {
@@ -150,7 +145,6 @@ export interface ActionItemsOutput extends ServiceOutput {
     completed: number;
   };
   [key: string]: unknown;
-
 }
 
 export interface ThreadReplyOutput extends ServiceOutput {
@@ -158,13 +152,12 @@ export interface ThreadReplyOutput extends ServiceOutput {
   timestamp?: string;
   channel?: string;
   threadTs: string;
-  message?: { text?: string; user?: string; timestamp?: string; };
+  message?: { text?: string; user?: string; timestamp?: string };
   replyInfo: {
     posted: boolean;
     broadcast?: boolean;
   };
   [key: string]: unknown;
-
 }
 
 export interface CreateThreadOutput extends ServiceOutput {
@@ -173,18 +166,17 @@ export interface CreateThreadOutput extends ServiceOutput {
   parentMessage: {
     timestamp?: string;
     channel?: string;
-    message?: { text?: string; user?: string; timestamp?: string; };
+    message?: { text?: string; user?: string; timestamp?: string };
   };
   reply?: {
     timestamp?: string;
-    message?: { text?: string; user?: string; timestamp?: string; };
+    message?: { text?: string; user?: string; timestamp?: string };
   } | null;
   threadInfo: {
     created: boolean;
     hasReply: boolean;
   };
   [key: string]: unknown;
-
 }
 
 export interface MarkImportantOutput extends ServiceOutput {
@@ -196,7 +188,6 @@ export interface MarkImportantOutput extends ServiceOutput {
   commentPosted: boolean;
   reason?: string;
   [key: string]: unknown;
-
 }
 
 export interface ImportantThreadsOutput extends ServiceOutput {
@@ -226,7 +217,6 @@ export interface ImportantThreadsOutput extends ServiceOutput {
     to: string;
   };
   [key: string]: unknown;
-
 }
 
 export interface ThreadExportOutput extends ServiceOutput {
@@ -250,7 +240,6 @@ export interface ThreadExportOutput extends ServiceOutput {
     includeMetadata: boolean;
   };
   [key: string]: unknown;
-
 }
 
 export interface RelatedThreadsOutput extends ServiceOutput {
@@ -275,7 +264,6 @@ export interface RelatedThreadsOutput extends ServiceOutput {
   similarityThreshold: number;
   relationshipCriteria: string[];
   [key: string]: unknown;
-
 }
 
 export interface ThreadMetricsOutput extends ServiceOutput {
@@ -305,7 +293,6 @@ export interface ThreadMetricsOutput extends ServiceOutput {
     daily?: Record<string, number>;
   };
   [key: string]: unknown;
-
 }
 
 export interface ThreadsByParticipantsOutput extends ServiceOutput {
@@ -332,7 +319,6 @@ export interface ThreadsByParticipantsOutput extends ServiceOutput {
     };
   };
   [key: string]: unknown;
-
 }
 
 /**

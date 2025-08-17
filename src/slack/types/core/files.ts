@@ -1,6 +1,6 @@
 /**
  * File-related type definitions for Slack API
- * 
+ *
  * This module contains types for files, file sharing, and file analysis.
  * Part of the modular type system following TypeScript official best practices.
  */

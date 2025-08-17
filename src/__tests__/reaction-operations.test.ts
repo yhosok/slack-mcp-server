@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { jest } from '@jest/globals';
 import { createReactionServiceMCPAdapter } from '../slack/services/reactions/reaction-service-mcp-adapter.js';
-import { SlackAPIError } from '../utils/errors.js';
+// Remove unused import
 
 // Create a shared mock WebClient instance with all reaction operations
 const createMockWebClient = (): any => ({

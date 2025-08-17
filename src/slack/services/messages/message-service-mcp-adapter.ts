@@ -1,15 +1,19 @@
 /**
  * MCP Compatibility Adapter for Message Services
- * 
+ *
  * Converts TypeSafeAPI + ts-pattern ServiceResult types back to MCPToolResult
  * for backward compatibility with existing MCP protocol routing.
- * 
+ *
  * This adapter maintains the TypeSafeAPI type safety benefits while ensuring
  * seamless integration with the existing SlackService facade.
  */
 
 import type { MCPToolResult } from '../../../mcp/types.js';
-import type { MessageService, MessageServiceMCPCompat, MessageServiceDependencies } from './types.js';
+import type {
+  MessageService,
+  MessageServiceMCPCompat,
+  MessageServiceDependencies,
+} from './types.js';
 import { createMessageService } from './message-service.js';
 import { convertToMCPResult } from '../../infrastructure/mcp-adapter-utils.js';
 
@@ -17,7 +21,9 @@ import { convertToMCPResult } from '../../infrastructure/mcp-adapter-utils.js';
  * Create MCP-compatible message service adapter
  * Uses the shared conversion utilities to wrap the TypeSafeAPI message service
  */
-export const createMessageServiceMCPAdapter = (deps: MessageServiceDependencies): MessageServiceMCPCompat => {
+export const createMessageServiceMCPAdapter = (
+  deps: MessageServiceDependencies
+): MessageServiceMCPCompat => {
   // Get the TypeSafeAPI type-safe message service
   const typeSafeApiService: MessageService = createMessageService(deps);
 

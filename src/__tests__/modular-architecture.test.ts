@@ -133,7 +133,7 @@ describe('SlackService Functionality Tests', () => {
       expect(apiResponse).toHaveProperty('statusCode');
       expect(apiResponse).toHaveProperty('data');
       expect(apiResponse.statusCode).toBe('10000');
-      
+
       const healthData = apiResponse.data;
       expect(healthData).toHaveProperty('status');
       expect(healthData).toHaveProperty('timestamp');

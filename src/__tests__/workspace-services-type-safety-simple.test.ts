@@ -1,9 +1,9 @@
 /**
  * Workspace Services Type Safety Implementation Validation
- * 
+ *
  * This test file validates that TypeSafeAPI patterns have been successfully
  * implemented in Workspace Services and are working correctly.
- * 
+ *
  * Expected Result: All tests should PASS, proving implementation is complete.
  */
 
@@ -228,7 +228,7 @@ describe('Workspace Services Type Safety Implementation Validation', () => {
       // This should compile without errors
       const result = createServiceSuccess(mockData, 'Success');
       expect(result.success).toBe(true);
-      
+
       if (result.success) {
         expect(result.data.id).toBe('T123456');
         expect(result.data.name).toBe('Test Workspace');
@@ -245,10 +245,8 @@ describe('Workspace Services Type Safety Implementation Validation', () => {
 
       const result = createServiceSuccess(mockData, 'Success');
 
-      // These type assertions should compile correctly
-      type SuccessType = typeof result extends { success: true } ? true : false;
-      type HasDataType = typeof result extends { success: true; data: WorkspaceInfoOutput } ? true : false;
-      
+      // These type assertions should compile correctly (unused types for compilation testing)
+
       // Runtime validation that types are correct
       expect(result.success).toBe(true);
       if (result.success) {
@@ -271,7 +269,7 @@ describe('Workspace Services Type Safety Implementation Validation', () => {
 
       // Test complex pattern matching with multiple conditions
       const analysis = match(result)
-        .with({ success: true }, (success) => 
+        .with({ success: true }, (success) =>
           match(success.data)
             .with({ enterpriseId: 'E123456' }, (data) => ({
               type: 'enterprise-workspace' as const,
@@ -304,11 +302,14 @@ describe('Workspace Services Type Safety Implementation Validation', () => {
     });
 
     it('should validate: error handling patterns work correctly', () => {
-      const errorResult = createServiceError('Slack API Error', 'Failed to retrieve workspace info');
+      const errorResult = createServiceError(
+        'Slack API Error',
+        'Failed to retrieve workspace info'
+      );
 
       // Test error-specific pattern matching
       const errorHandling = match(errorResult)
-        .with({ success: false, error: 'Slack API Error' }, (error) => ({
+        .with({ success: false, error: 'Slack API Error' }, (_error) => ({
           type: 'api-error' as const,
           retryable: true,
           userMessage: 'Slack service is temporarily unavailable',

@@ -166,7 +166,7 @@ export function parseJsonResponse(content: MCPContent | undefined): {
   try {
     const parsed = JSON.parse(textContent);
     return {
-      success: parsed.statusCode === "10000",
+      success: parsed.statusCode === '10000',
       statusCode: parsed.statusCode,
       message: parsed.message,
       data: parsed.data,

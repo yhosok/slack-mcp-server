@@ -1,4 +1,8 @@
-import type { FilesListArguments, FilesUploadV2Arguments, FilesCompleteUploadExternalResponse } from '@slack/web-api';
+import type {
+  FilesListArguments,
+  FilesUploadV2Arguments,
+  FilesCompleteUploadExternalResponse,
+} from '@slack/web-api';
 import { promises as fs } from 'fs';
 import {
   UploadFileSchema,
@@ -14,7 +18,7 @@ import type { FileService, FileServiceDependencies } from './types.js';
 import {
   createServiceSuccess,
   createTypedServiceError,
-  enforceServiceOutput
+  enforceServiceOutput,
 } from '../../types/typesafe-api-patterns.js';
 import type {
   UploadFileResult,
@@ -57,14 +61,49 @@ const API_CONTEXT = {
 const FILE_SECURITY = {
   MAX_FILE_SIZE_MB: 50,
   ALLOWED_EXTENSIONS: new Set([
-    '.txt', '.md', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-    '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp',
-    '.mp3', '.mp4', '.avi', '.mov', '.wav',
-    '.zip', '.tar', '.gz', '.json', '.xml', '.csv'
+    '.txt',
+    '.md',
+    '.pdf',
+    '.doc',
+    '.docx',
+    '.xls',
+    '.xlsx',
+    '.ppt',
+    '.pptx',
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.gif',
+    '.svg',
+    '.webp',
+    '.mp3',
+    '.mp4',
+    '.avi',
+    '.mov',
+    '.wav',
+    '.zip',
+    '.tar',
+    '.gz',
+    '.json',
+    '.xml',
+    '.csv',
   ]),
   BLOCKED_EXTENSIONS: new Set([
-    '.exe', '.bat', '.cmd', '.scr', '.com', '.pif', '.vbs', '.js', '.jar',
-    '.app', '.deb', '.rpm', '.dmg', '.pkg', '.msi'
+    '.exe',
+    '.bat',
+    '.cmd',
+    '.scr',
+    '.com',
+    '.pif',
+    '.vbs',
+    '.js',
+    '.jar',
+    '.app',
+    '.deb',
+    '.rpm',
+    '.dmg',
+    '.pkg',
+    '.msi',
   ]),
 } as const;
 
@@ -87,13 +126,13 @@ interface FileValidationResult {
 
 /**
  * Comprehensive file security validation before upload operations
- * 
+ *
  * Implements multiple security layers:
  * - File size limits to prevent memory exhaustion
  * - File type validation using extension whitelist/blacklist
  * - Path traversal attack protection
  * - File existence and accessibility verification
- * 
+ *
  * @param filePath - Absolute path to file for validation
  * @returns Promise resolving to validation result with security context
  */
@@ -104,7 +143,7 @@ const validateFileUpload = async (filePath: string): Promise<FileValidationResul
       return {
         valid: false,
         error: 'Path traversal detected in file path',
-        securityRisk: 'PATH_TRAVERSAL'
+        securityRisk: 'PATH_TRAVERSAL',
       };
     }
 
@@ -119,19 +158,19 @@ const validateFileUpload = async (filePath: string): Promise<FileValidationResul
         valid: false,
         error: `File size (${sizeMB.toFixed(1)}MB) exceeds maximum limit of ${FILE_SECURITY.MAX_FILE_SIZE_MB}MB`,
         size: sizeBytes,
-        securityRisk: 'SIZE_EXCEEDED'
+        securityRisk: 'SIZE_EXCEEDED',
       };
     }
 
     // File extension validation
     const extension = filePath.toLowerCase().substring(filePath.lastIndexOf('.'));
-    
+
     if (FILE_SECURITY.BLOCKED_EXTENSIONS.has(extension)) {
       return {
         valid: false,
         error: `File type '${extension}' is blocked for security reasons`,
         extension,
-        securityRisk: 'BLOCKED_EXTENSION'
+        securityRisk: 'BLOCKED_EXTENSION',
       };
     }
 
@@ -140,57 +179,57 @@ const validateFileUpload = async (filePath: string): Promise<FileValidationResul
         valid: false,
         error: `File type '${extension}' is not in the allowed types list`,
         extension,
-        securityRisk: 'INVALID_TYPE'
+        securityRisk: 'INVALID_TYPE',
       };
     }
 
     return {
       valid: true,
       size: sizeBytes,
-      extension
+      extension,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorCode = (error as NodeJS.ErrnoException)?.code;
-    
+
     return {
       valid: false,
-      error: `File access error: ${errorMessage}${errorCode ? ` (${errorCode})` : ''}`
+      error: `File access error: ${errorMessage}${errorCode ? ` (${errorCode})` : ''}`,
     };
   }
 };
 
 /**
  * Create file service with infrastructure dependencies
- * 
+ *
  * Factory function that creates a TypeSafeAPI-compliant file service with
  * full type safety, error handling, and integration with existing infrastructure.
- * 
+ *
  * Features:
  * - Type-safe operations with discriminated union results
  * - Automatic input validation using Zod schemas
  * - Consistent error handling with ServiceResult patterns
  * - Integration with Slack Web API client management
  * - Support for both bot and user token operations
- * 
+ *
  * @param deps - Infrastructure dependencies (client manager, rate limiter, etc.)
  * @returns File service instance with TypeSafeAPI + ts-pattern type safety
  */
 export const createFileService = (deps: FileServiceDependencies): FileService => {
   /**
    * Upload a file to Slack channels or threads using files.uploadV2 API with TypeSafeAPI + ts-pattern type safety
-   * 
+   *
    * Uploads a file from the local filesystem to Slack channels or threads.
    * Uses files.uploadV2 API with comprehensive error handling and validation.
-   * 
+   *
    * Note: The V2 API has limitations compared to the legacy files.upload API:
    * - Only supports a single channel per upload (use channel_id)
    * - Multiple channels require separate upload calls
    * - Response structure uses files array instead of single file object
-   * 
+   *
    * @param args - Unknown input (validated at runtime using UploadFileSchema)
    * @returns ServiceResult with upload confirmation or error details
-   * 
+   *
    * @example Basic Upload
    * ```typescript
    * const result = await uploadFile({
@@ -198,7 +237,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
    *   channels: ['C1234567890']
    * });
    * ```
-   * 
+   *
    * @example Thread Upload
    * ```typescript
    * const result = await uploadFile({
@@ -234,7 +273,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             filePath: input.file_path,
             securityRisk: validation.securityRisk,
             fileSize: validation.size,
-            fileExtension: validation.extension
+            fileExtension: validation.extension,
           }
         );
       }
@@ -247,7 +286,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         // Enhanced error context for better debugging
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         const errorCode = (error as NodeJS.ErrnoException)?.code;
-        
+
         logger.error('Failed to read file for upload', {
           file_path: input.file_path,
           error_message: errorMessage,
@@ -255,7 +294,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           api_context: API_CONTEXT.FILE_READ_ERROR,
           operation: 'uploadFile',
         });
-        
+
         return createTypedServiceError(
           'API_ERROR',
           `Failed to read file from path '${input.file_path}': ${errorMessage}${errorCode ? ` (${errorCode})` : ''}`,
@@ -263,7 +302,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           {
             filePath: input.file_path,
             errorCode,
-            validatedSize: validation.size
+            validatedSize: validation.size,
           }
         );
       }
@@ -298,7 +337,9 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       }
 
       // Call Slack files.uploadV2 API with type-safe arguments
-      const result = await client.filesUploadV2(uploadOptions as FilesUploadV2Arguments) as FilesUploadV2Response;
+      const result = (await client.filesUploadV2(
+        uploadOptions as FilesUploadV2Arguments
+      )) as FilesUploadV2Response;
 
       // Validate V2 API response structure
       if (!result.ok) {
@@ -310,7 +351,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           api_context: API_CONTEXT.API_ERROR,
           operation: 'uploadFile',
         });
-        
+
         return createTypedServiceError(
           'API_ERROR',
           `File upload failed: ${result.error || 'Unknown error'}`,
@@ -319,7 +360,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             slackError: result.error,
             filename,
             fileSize: fileContent.length,
-            uploadChannel: uploadOptions.channel_id
+            uploadChannel: uploadOptions.channel_id,
           }
         );
       }
@@ -336,7 +377,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             files_array_length: result.files?.length || 0,
           },
         });
-        
+
         return createTypedServiceError(
           'API_ERROR',
           'File upload failed: API succeeded but returned no file information',
@@ -346,8 +387,8 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             fileSize: fileContent.length,
             responseStructure: {
               hasFilesArray: !!result.files,
-              filesArrayLength: result.files?.length || 0
-            }
+              filesArrayLength: result.files?.length || 0,
+            },
           }
         );
       }
@@ -355,7 +396,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       // Extract uploaded file information from V2 response (uses files array)
       // The files array is guaranteed to have at least one element due to the check above
       const uploadedFile = result.files[0]!;
-      
+
       // Create TypeSafeAPI-compliant output
       const output: UploadFileOutput = enforceServiceOutput({
         file: {
@@ -365,7 +406,9 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           size: uploadedFile.size || fileContent.length,
           url: uploadedFile.url_private || '',
           downloadUrl: uploadedFile.url_private_download || '',
-          channels: uploadedFile.channels || (uploadOptions.channel_id ? [uploadOptions.channel_id as string] : []),
+          channels:
+            uploadedFile.channels ||
+            (uploadOptions.channel_id ? [uploadOptions.channel_id as string] : []),
           timestamp: uploadedFile.timestamp || Math.floor(Date.now() / 1000),
         },
         uploadedAt: new Date().toISOString(),
@@ -380,7 +423,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           'Slack API error during upload',
           {
             slackErrorCode: error.code,
-            statusCode: error.statusCode
+            statusCode: error.statusCode,
           }
         );
       }
@@ -390,7 +433,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         `Failed to upload file: ${error}`,
         'Unexpected error during file upload',
         {
-          errorType: error?.constructor?.name || 'Unknown'
+          errorType: error?.constructor?.name || 'Unknown',
         }
       );
     }
@@ -398,18 +441,18 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
 
   /**
    * List files in workspace with filtering options using TypeSafeAPI + ts-pattern type safety
-   * 
+   *
    * Retrieves files from the workspace with comprehensive filtering and pagination support.
    * Uses the unified pagination implementation for consistent behavior.
-   * 
+   *
    * @param args - Unknown input (validated at runtime using ListFilesSchema)
    * @returns ServiceResult with file list and pagination metadata
-   * 
+   *
    * @example Basic Listing
    * ```typescript
    * const result = await listFiles({});
    * ```
-   * 
+   *
    * @example Filtered Listing
    * ```typescript
    * const result = await listFiles({
@@ -428,7 +471,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
 
       // Use unified pagination implementation for Slack files API (page-based)
       let currentPage = input.page || 1;
-      
+
       const paginationResult = await executePagination(input, {
         fetchPage: async () => {
           const listArgs: FilesListArguments = {
@@ -444,7 +487,9 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           const result = await client.files.list(listArgs);
 
           if (!result.files) {
-            throw new SlackAPIError(`Failed to retrieve files${currentPage > 1 ? ` (page ${currentPage})` : ''}`);
+            throw new SlackAPIError(
+              `Failed to retrieve files${currentPage > 1 ? ` (page ${currentPage})` : ''}`
+            );
           }
 
           currentPage++;
@@ -455,14 +500,19 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           // Slack files.list uses page-based pagination, not cursor-based
           // Continue if we have more pages based on the paging info
           const paging = response.paging;
-          if (paging && paging.page !== undefined && paging.pages !== undefined && paging.page < paging.pages) {
+          if (
+            paging &&
+            paging.page !== undefined &&
+            paging.pages !== undefined &&
+            paging.page < paging.pages
+          ) {
             return `page-${paging.page + 1}`;
           }
           return undefined;
         },
-        
+
         getItems: (response) => response.files || [],
-        
+
         formatResponse: (data) => {
           // Type-safe file mapping with proper Slack API types
           const files = data.items.map((file) => ({
@@ -493,15 +543,10 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       return createServiceSuccess(output, 'Files retrieved successfully');
     } catch (error) {
       if (error instanceof SlackAPIError) {
-        return createTypedServiceError(
-          'API_ERROR',
-          error.message,
-          'Failed to retrieve files',
-          {
-            slackErrorCode: error.code,
-            statusCode: error.statusCode
-          }
-        );
+        return createTypedServiceError('API_ERROR', error.message, 'Failed to retrieve files', {
+          slackErrorCode: error.code,
+          statusCode: error.statusCode,
+        });
       }
 
       return createTypedServiceError(
@@ -509,7 +554,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         `Failed to list files: ${error}`,
         'Unexpected error during file listing',
         {
-          errorType: error?.constructor?.name || 'Unknown'
+          errorType: error?.constructor?.name || 'Unknown',
         }
       );
     }
@@ -517,20 +562,20 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
 
   /**
    * Get detailed information about a specific file using TypeSafeAPI + ts-pattern type safety
-   * 
+   *
    * Retrieves comprehensive metadata about a specific file including
    * optional comments if requested.
-   * 
+   *
    * @param args - Unknown input (validated at runtime using GetFileInfoSchema)
    * @returns ServiceResult with detailed file information
-   * 
+   *
    * @example Basic File Info
    * ```typescript
    * const result = await getFileInfo({
    *   file_id: 'F1234567890'
    * });
    * ```
-   * 
+   *
    * @example File Info with Comments
    * ```typescript
    * const result = await getFileInfo({
@@ -556,7 +601,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           'File not found',
           'The requested file does not exist or is not accessible',
           {
-            fileId: input.file_id
+            fileId: input.file_id,
           }
         );
       }
@@ -612,7 +657,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           'Failed to retrieve file information',
           {
             slackErrorCode: error.code,
-            statusCode: error.statusCode
+            statusCode: error.statusCode,
           }
         );
       }
@@ -622,7 +667,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         `Failed to get file info: ${error}`,
         'Unexpected error during file information retrieval',
         {
-          errorType: error?.constructor?.name || 'Unknown'
+          errorType: error?.constructor?.name || 'Unknown',
         }
       );
     }
@@ -630,13 +675,13 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
 
   /**
    * Delete a file (where permitted) using TypeSafeAPI + ts-pattern type safety
-   * 
+   *
    * Removes a file from the workspace if the user has appropriate permissions.
    * This is a simple success/failure operation with context preservation.
-   * 
+   *
    * @param args - Unknown input (validated at runtime using DeleteFileSchema)
    * @returns ServiceResult with deletion confirmation
-   * 
+   *
    * @example File Deletion
    * ```typescript
    * const result = await deleteFile({
@@ -662,7 +707,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           'File deletion failed',
           {
             slackError: result.error,
-            fileId: input.file_id
+            fileId: input.file_id,
           }
         );
       }
@@ -678,15 +723,10 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       return createServiceSuccess(output, 'File deleted successfully');
     } catch (error) {
       if (error instanceof SlackAPIError) {
-        return createTypedServiceError(
-          'API_ERROR',
-          error.message,
-          'Failed to delete file',
-          {
-            slackErrorCode: error.code,
-            statusCode: error.statusCode
-          }
-        );
+        return createTypedServiceError('API_ERROR', error.message, 'Failed to delete file', {
+          slackErrorCode: error.code,
+          statusCode: error.statusCode,
+        });
       }
 
       return createTypedServiceError(
@@ -694,7 +734,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         `Failed to delete file: ${error}`,
         'Unexpected error during file deletion',
         {
-          errorType: error?.constructor?.name || 'Unknown'
+          errorType: error?.constructor?.name || 'Unknown',
         }
       );
     }
@@ -702,13 +742,13 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
 
   /**
    * Share an existing file to additional channels using TypeSafeAPI + ts-pattern type safety
-   * 
+   *
    * Shares a file to additional channels by posting its permalink via chat.postMessage.
    * This is a complex operation involving file info retrieval and message posting.
-   * 
+   *
    * @param args - Unknown input (validated at runtime using ShareFileSchema)
    * @returns ServiceResult with sharing confirmation and permalink
-   * 
+   *
    * @example File Sharing
    * ```typescript
    * const result = await shareFile({
@@ -736,7 +776,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           'File information retrieval failed',
           {
             slackError: fileInfo.error,
-            fileId: input.file_id
+            fileId: input.file_id,
           }
         );
       }
@@ -748,7 +788,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           'File cannot be shared due to missing permalink',
           {
             fileId: input.file_id,
-            hasFile: !!fileInfo.file
+            hasFile: !!fileInfo.file,
           }
         );
       }
@@ -768,7 +808,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           {
             slackError: result.error,
             fileId: input.file_id,
-            channel: input.channel
+            channel: input.channel,
           }
         );
       }
@@ -786,15 +826,10 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       return createServiceSuccess(output, 'File shared successfully');
     } catch (error) {
       if (error instanceof SlackAPIError) {
-        return createTypedServiceError(
-          'API_ERROR',
-          error.message,
-          'Failed to share file',
-          {
-            slackErrorCode: error.code,
-            statusCode: error.statusCode
-          }
-        );
+        return createTypedServiceError('API_ERROR', error.message, 'Failed to share file', {
+          slackErrorCode: error.code,
+          statusCode: error.statusCode,
+        });
       }
 
       return createTypedServiceError(
@@ -802,7 +837,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         `Failed to share file: ${error}`,
         'Unexpected error during file sharing',
         {
-          errorType: error?.constructor?.name || 'Unknown'
+          errorType: error?.constructor?.name || 'Unknown',
         }
       );
     }
@@ -810,20 +845,20 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
 
   /**
    * Analyze file types, sizes, and usage patterns in workspace using TypeSafeAPI + ts-pattern type safety
-   * 
+   *
    * Performs comprehensive file analysis including type breakdown, user statistics,
    * and large file identification. Integrates with formatFileAnalysis for consistent reporting.
-   * 
+   *
    * @param args - Unknown input (validated at runtime using AnalyzeFilesSchema)
    * @returns ServiceResult with comprehensive file analysis
-   * 
+   *
    * @example Basic Analysis
    * ```typescript
    * const result = await analyzeFiles({
    *   days_back: 30
    * });
    * ```
-   * 
+   *
    * @example Filtered Analysis
    * ```typescript
    * const result = await analyzeFiles({
@@ -862,7 +897,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           {
             daysBack: input.days_back || 30,
             channel: input.channel,
-            user: input.user
+            user: input.user,
           }
         );
       }
@@ -933,7 +968,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       };
 
       const _analysisResult = formatFileAnalysis(analysis, formatOptions);
-      
+
       // Create TypeSafeAPI-compliant output
       const output: FileAnalysisOutput = enforceServiceOutput({
         analysis: {
@@ -942,13 +977,13 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           byType: Object.fromEntries(
             Object.entries(analysis.by_type).map(([key, value]) => [
               key,
-              { count: value.count, sizeBytes: value.size_bytes }
+              { count: value.count, sizeBytes: value.size_bytes },
             ])
           ),
           byUser: Object.fromEntries(
             Object.entries(analysis.by_user).map(([key, value]) => [
               key,
-              { count: value.count, sizeBytes: value.size_bytes }
+              { count: value.count, sizeBytes: value.size_bytes },
             ])
           ),
           largeFiles: analysis.large_files,
@@ -964,15 +999,10 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       return createServiceSuccess(output, 'File analysis completed successfully');
     } catch (error) {
       if (error instanceof SlackAPIError) {
-        return createTypedServiceError(
-          'API_ERROR',
-          error.message,
-          'Failed to analyze files',
-          {
-            slackErrorCode: error.code,
-            statusCode: error.statusCode
-          }
-        );
+        return createTypedServiceError('API_ERROR', error.message, 'Failed to analyze files', {
+          slackErrorCode: error.code,
+          statusCode: error.statusCode,
+        });
       }
 
       return createTypedServiceError(
@@ -980,7 +1010,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         `Failed to analyze files: ${error}`,
         'Unexpected error during file analysis',
         {
-          errorType: error?.constructor?.name || 'Unknown'
+          errorType: error?.constructor?.name || 'Unknown',
         }
       );
     }
@@ -988,20 +1018,20 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
 
   /**
    * Search for files by name, type, or content using TypeSafeAPI + ts-pattern type safety
-   * 
+   *
    * Searches for files using the Slack search API with advanced query building.
    * Requires user token validation and supports complex filtering options.
-   * 
+   *
    * @param args - Unknown input (validated at runtime using SearchFilesSchema)
    * @returns ServiceResult with search results and query context
-   * 
+   *
    * @example Basic Search
    * ```typescript
    * const result = await searchFiles({
    *   query: 'document'
    * });
    * ```
-   * 
+   *
    * @example Advanced Search
    * ```typescript
    * const result = await searchFiles({
@@ -1030,7 +1060,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           'File search requires user token',
           {
             searchQuery: input.query,
-            requiresUserToken: true
+            requiresUserToken: true,
           }
         );
       }
@@ -1101,25 +1131,23 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         })),
         total: searchResult.files.total || 0,
         query: searchQuery,
-        pagination: searchResult.files.paging ? {
-          hasMore: (searchResult.files.paging.total || 0) > (searchResult.files.paging.count || 0),
-          cursor: searchResult.files.paging.page?.toString(),
-          total: searchResult.files.paging.total,
-        } : undefined,
+        pagination: searchResult.files.paging
+          ? {
+              hasMore:
+                (searchResult.files.paging.total || 0) > (searchResult.files.paging.count || 0),
+              cursor: searchResult.files.paging.page?.toString(),
+              total: searchResult.files.paging.total,
+            }
+          : undefined,
       });
 
       return createServiceSuccess(output, 'File search completed successfully');
     } catch (error) {
       if (error instanceof SlackAPIError) {
-        return createTypedServiceError(
-          'API_ERROR',
-          error.message,
-          'Failed to search files',
-          {
-            slackErrorCode: error.code,
-            statusCode: error.statusCode
-          }
-        );
+        return createTypedServiceError('API_ERROR', error.message, 'Failed to search files', {
+          slackErrorCode: error.code,
+          statusCode: error.statusCode,
+        });
       }
 
       return createTypedServiceError(
@@ -1127,7 +1155,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         `Failed to search files: ${error}`,
         'Unexpected error during file search',
         {
-          errorType: error?.constructor?.name || 'Unknown'
+          errorType: error?.constructor?.name || 'Unknown',
         }
       );
     }

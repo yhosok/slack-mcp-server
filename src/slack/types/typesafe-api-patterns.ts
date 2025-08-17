@@ -1,26 +1,26 @@
 /**
  * TypeSafeAPI + ts-pattern Type Safety Patterns
- * 
+ *
  * Production-ready discriminated unions and response structures following
  * TypeSafeAPI TypeScript best practices for Node.js backend applications.
- * 
+ *
  * This module provides:
  * - Type-safe discriminated unions with exhaustive pattern matching
  * - Consistent API response structures for production backends
  * - Runtime type validation with compile-time safety
  * - Integration patterns between TypeSafeAPI services and MCP protocol
- * 
+ *
  * @example Basic Usage
  * ```typescript
  * const result = await someService.operation(args);
  * const apiResponse = handleServiceResult(result);
- * 
+ *
  * match(result)
  *   .with({ success: true }, (success) => console.log(success.data))
  *   .with({ success: false }, (error) => console.error(error.error))
  *   .exhaustive();
  * ```
- * 
+ *
  * @example Creating Service Results
  * ```typescript
  * // Success case
@@ -28,7 +28,7 @@
  *   { users: [...], total: 5 },
  *   'Users retrieved successfully'
  * );
- * 
+ *
  * // Error case
  * const error = createServiceError(
  *   'User not found',
@@ -48,22 +48,22 @@ const ERROR_PATTERN = { success: false } as const;
  * Reduces object allocation in high-frequency scenarios
  */
 const SUCCESS_RESPONSE_TEMPLATE = {
-  statusCode: "10000",
+  statusCode: '10000',
 } as const;
 
 const ERROR_RESPONSE_TEMPLATE = {
-  statusCode: "10001",
+  statusCode: '10001',
 } as const;
 
 /**
  * ServiceOutput constraint - all service outputs must extend Record<string, any>
- * 
+ *
  * This ensures:
  * - JSON serialization safety for API responses
  * - Type-safe property access without runtime errors
  * - Compatibility with TypeSafeAPI service architecture
  * - Prevention of primitive values as service outputs
- * 
+ *
  * @example Valid ServiceOutput
  * ```typescript
  * const validOutput: ServiceOutput = {
@@ -72,7 +72,7 @@ const ERROR_RESPONSE_TEMPLATE = {
  *   hasMore: false
  * };
  * ```
- * 
+ *
  * @example Invalid ServiceOutput (compilation error)
  * ```typescript
  * const invalidOutput: ServiceOutput = 'string'; // Error!
@@ -83,21 +83,21 @@ export type ServiceOutput = Record<string, unknown>;
 
 /**
  * Production-ready API response structure for Node.js backends
- * 
+ *
  * Standardized response format following TypeSafeAPI architecture patterns:
  * - statusCode: String-based status ("10000" = success, "10001" = error)
  * - message: Human-readable description of the operation result
  * - data: Typed payload for successful operations (optional)
  * - error: Error details for failed operations (optional)
- * 
+ *
  * This structure ensures:
  * - Consistent client-side response handling
  * - Type-safe access to response data
  * - Clear separation between success and error states
  * - Integration compatibility with frontend frameworks
- * 
+ *
  * @template T - The type of data payload, must extend ServiceOutput
- * 
+ *
  * @example Success Response
  * ```typescript
  * const successResponse: ApiResponse<UserListOutput> = {
@@ -106,7 +106,7 @@ export type ServiceOutput = Record<string, unknown>;
  *   data: { users: [...], total: 5 }
  * };
  * ```
- * 
+ *
  * @example Error Response
  * ```typescript
  * const errorResponse: ApiResponse<never> = {
@@ -117,7 +117,7 @@ export type ServiceOutput = Record<string, unknown>;
  * ```
  */
 export type ApiResponse<T extends ServiceOutput> = {
-  statusCode: string;  // "10000" for success, "10001" for error
+  statusCode: string; // "10000" for success, "10001" for error
   message: string;
   data?: T;
   error?: string;
@@ -125,19 +125,19 @@ export type ApiResponse<T extends ServiceOutput> = {
 
 /**
  * Discriminated union for service results using ts-pattern
- * 
+ *
  * Core type for all service operations, enabling:
  * - Exhaustive pattern matching with compile-time guarantees
  * - Type-safe error handling without try-catch complexity
  * - Functional programming patterns for result processing
  * - Zero-cost abstractions with TypeScript inference
- * 
+ *
  * The discriminated union uses 'success' as the discriminator:
  * - success: true → Contains typed data and success message
  * - success: false → Contains error string and failure message
- * 
+ *
  * @template T - The type of success data payload, must extend ServiceOutput
- * 
+ *
  * @example Pattern Matching
  * ```typescript
  * const processResult = <T extends ServiceOutput>(result: ServiceResult<T>) =>
@@ -152,7 +152,7 @@ export type ApiResponse<T extends ServiceOutput> = {
  *     })
  *     .exhaustive(); // Compiler ensures all cases handled
  * ```
- * 
+ *
  * @example Type Guards
  * ```typescript
  * if (result.success) {
@@ -168,35 +168,35 @@ export type ApiResponse<T extends ServiceOutput> = {
  * }
  * ```
  */
-export type ServiceResult<T extends ServiceOutput> = 
+export type ServiceResult<T extends ServiceOutput> =
   | { success: true; data: T; message: string }
   | { success: false; error: string; message: string };
 
 /**
  * TypeSafeAPI type-safe result handler using ts-pattern exhaustive matching
- * 
+ *
  * Converts ServiceResult discriminated unions to standardized ApiResponse format
  * for consistent API responses across all service endpoints.
- * 
+ *
  * Features:
  * - Exhaustive pattern matching ensures all cases are handled
  * - Type-safe transformation with zero runtime overhead
  * - Automatic status code assignment based on success state
  * - Preserves all original data and message information
- * 
+ *
  * Status Code Mapping:
  * - Success: "10000" (industry standard for successful operations)
  * - Error: "10001" (consistent error identifier)
- * 
+ *
  * @template T - The type of success data, must extend ServiceOutput
  * @param result - ServiceResult to transform
  * @returns ApiResponse with appropriate structure
- * 
+ *
  * @example Basic Usage
  * ```typescript
  * const serviceResult = await userService.getUsers(args);
  * const apiResponse = handleServiceResult(serviceResult);
- * 
+ *
  * // apiResponse is now ready for HTTP response or MCP protocol
  * return {
  *   content: [{
@@ -205,7 +205,7 @@ export type ServiceResult<T extends ServiceOutput> =
  *   }]
  * };
  * ```
- * 
+ *
  * @example Pattern Matching Alternative
  * ```typescript
  * // Instead of manual pattern matching:
@@ -213,7 +213,7 @@ export type ServiceResult<T extends ServiceOutput> =
  *   .with({ success: true }, (s) => ({ statusCode: "10000", ... }))
  *   .with({ success: false }, (e) => ({ statusCode: "10001", ... }))
  *   .exhaustive();
- * 
+ *
  * // Use the helper:
  * const autoResponse = handleServiceResult(result);
  * ```
@@ -236,14 +236,14 @@ export const handleServiceResult = <T extends ServiceOutput>(
 
 /**
  * Type-safe error creation utility with TypeSafeAPI patterns
- * 
+ *
  * Creates a standardized error result for service operations.
  * All error results follow the same structure for consistent handling.
- * 
+ *
  * @param error - Technical error description (for logging/debugging)
  * @param message - User-friendly error message (default: 'Operation failed')
  * @returns ServiceResult in error state
- * 
+ *
  * @example API Error
  * ```typescript
  * if (!apiResponse.ok) {
@@ -253,7 +253,7 @@ export const handleServiceResult = <T extends ServiceOutput>(
  *   );
  * }
  * ```
- * 
+ *
  * @example Validation Error
  * ```typescript
  * if (!input.channel) {
@@ -264,7 +264,10 @@ export const handleServiceResult = <T extends ServiceOutput>(
  * }
  * ```
  */
-export const createServiceError = (error: string, message: string = 'Operation failed'): ServiceResult<never> => ({
+export const createServiceError = (
+  error: string,
+  message: string = 'Operation failed'
+): ServiceResult<never> => ({
   success: false,
   error,
   message,
@@ -272,15 +275,15 @@ export const createServiceError = (error: string, message: string = 'Operation f
 
 /**
  * Type-safe success creation utility with TypeSafeAPI patterns
- * 
+ *
  * Creates a standardized success result for service operations.
  * Ensures data conforms to ServiceOutput constraint at compile-time.
- * 
+ *
  * @template T - The type of success data, must extend ServiceOutput
  * @param data - Success payload, must be an object (Record<string, any>)
  * @param message - Success message (default: 'Operation completed successfully')
  * @returns ServiceResult in success state
- * 
+ *
  * @example Channel List Success
  * ```typescript
  * const channels = apiResponse.channels.map(transformChannel);
@@ -289,7 +292,7 @@ export const createServiceError = (error: string, message: string = 'Operation f
  *   'Channels retrieved successfully'
  * );
  * ```
- * 
+ *
  * @example User Info Success
  * ```typescript
  * const userInfo = transformUserData(apiResponse.user);
@@ -300,7 +303,7 @@ export const createServiceError = (error: string, message: string = 'Operation f
  * ```
  */
 export const createServiceSuccess = <T extends ServiceOutput>(
-  data: T, 
+  data: T,
   message: string = 'Operation completed successfully'
 ): ServiceResult<T> => ({
   success: true,
@@ -310,26 +313,26 @@ export const createServiceSuccess = <T extends ServiceOutput>(
 
 /**
  * P.infer utility for type inference from ts-pattern patterns
- * 
+ *
  * Advanced type utility that extracts the inferred type from ts-pattern patterns.
  * This enables sophisticated compile-time type safety when working with
  * complex pattern matching scenarios.
- * 
+ *
  * @template T - A ts-pattern Pattern type
  * @returns The type that would be inferred from the pattern
- * 
+ *
  * @example String Pattern Inference
  * ```typescript
  * const stringPattern = P.string;
  * type StringType = InferPatternType<typeof stringPattern>; // string
  * ```
- * 
+ *
  * @example Object Pattern Inference
  * ```typescript
  * const userPattern = P.when((obj): obj is User => isValidUser(obj));
  * type UserType = InferPatternType<typeof userPattern>; // User
  * ```
- * 
+ *
  * @example Advanced Pattern Matching
  * ```typescript
  * const processData = <T>(pattern: P.Pattern<T>, data: unknown) => {
@@ -345,10 +348,10 @@ export type InferPatternType<T> = T extends P.Pattern<infer U> ? U : never;
 /**
  * High-performance type predicate for ServiceResult validation
  * Uses minimal checks for maximum throughput in production scenarios
- * 
+ *
  * @param value - Value to check
  * @returns Type predicate indicating if value is ServiceResult
- * 
+ *
  * @example Fast Validation
  * ```typescript
  * if (isServiceResult(unknownValue)) {
@@ -359,7 +362,7 @@ export type InferPatternType<T> = T extends P.Pattern<infer U> ? U : never;
  */
 export const isServiceResult = (value: unknown): value is ServiceResult<ServiceOutput> => {
   if (typeof value !== 'object' || value === null) return false;
-  
+
   const obj = value as Record<string, unknown>;
   return (
     typeof obj.success === 'boolean' &&
@@ -370,21 +373,21 @@ export const isServiceResult = (value: unknown): value is ServiceResult<ServiceO
 
 /**
  * Exhaustive pattern matching utility for ServiceResult validation
- * 
+ *
  * Runtime validation function that checks if an unknown value conforms
  * to the ServiceResult discriminated union structure. Uses ts-pattern
  * for both validation logic and type narrowing.
- * 
+ *
  * Features:
  * - Runtime type checking with compile-time type narrowing
  * - Exhaustive validation ensures no edge cases are missed
  * - Integration with TypeScript's type system for safety
  * - Zero false positives through pattern-based validation
- * 
+ *
  * @template T - The expected success data type, must extend ServiceOutput
  * @param result - Unknown value to validate
  * @returns Type predicate indicating if value is valid ServiceResult
- * 
+ *
  * @example Input Validation
  * ```typescript
  * const validateApiInput = (input: unknown) => {
@@ -396,7 +399,7 @@ export const isServiceResult = (value: unknown): value is ServiceResult<ServiceO
  *   }
  * };
  * ```
- * 
+ *
  * @example Runtime Safety
  * ```typescript
  * const processUntrustedData = (data: unknown) => {
@@ -422,21 +425,21 @@ export const validateServiceResult = <T extends ServiceOutput>(
 
 /**
  * TypeSafeAPI type constraints validator
- * 
+ *
  * Runtime enforcement of ServiceOutput constraints with compile-time type safety.
  * Ensures that all service outputs are proper objects that can be safely
  * serialized and accessed without runtime errors.
- * 
+ *
  * Validation Rules:
  * - Must be a non-null object (not primitive, null, or array)
  * - Must be compatible with Record<string, any> structure
  * - Must be JSON-serializable for API responses
- * 
+ *
  * @template T - Input type to validate and constrain
  * @param data - Data to validate and enforce as ServiceOutput
  * @returns Input data cast as ServiceOutput-compliant type
  * @throws Error if data doesn't meet ServiceOutput requirements
- * 
+ *
  * @example Valid Output Enforcement
  * ```typescript
  * const userOutput = enforceServiceOutput({
@@ -445,14 +448,14 @@ export const validateServiceResult = <T extends ServiceOutput>(
  *   settings: { theme: 'dark' }
  * }); // ✓ Valid object
  * ```
- * 
+ *
  * @example Invalid Input Detection
  * ```typescript
  * enforceServiceOutput(null); // ✗ Throws: non-null object required
  * enforceServiceOutput('string'); // ✗ Throws: object required
  * enforceServiceOutput([1, 2, 3]); // ✗ Throws: not an array
  * ```
- * 
+ *
  * @example Integration with Service Methods
  * ```typescript
  * const output = enforceServiceOutput({
@@ -472,7 +475,7 @@ export const enforceServiceOutput = <T>(data: T): T & ServiceOutput => {
   if (process.env.NODE_ENV === 'production' && typeof data === 'object' && data !== null) {
     return data as T & ServiceOutput;
   }
-  
+
   // Development/test path: full validation
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
     throw new Error('ServiceOutput must be a non-null object (Record<string, any>)');
@@ -482,11 +485,11 @@ export const enforceServiceOutput = <T>(data: T): T & ServiceOutput => {
 
 /**
  * Production-ready error types following TypeSafeAPI patterns
- * 
+ *
  * Standardized error classification system for consistent error handling
  * across all service operations. Each error type represents a specific
  * category of failure with appropriate handling strategies.
- * 
+ *
  * Error Categories:
  * - VALIDATION_ERROR: Input validation failures, client-side issues
  * - API_ERROR: External API failures, network issues
@@ -494,7 +497,7 @@ export const enforceServiceOutput = <T>(data: T): T & ServiceOutput => {
  * - NOT_FOUND_ERROR: Resource not found, missing data
  * - RATE_LIMIT_ERROR: API rate limiting, throttling
  * - UNKNOWN_ERROR: Unexpected errors, system failures
- * 
+ *
  * @example Error Type Usage
  * ```typescript
  * const handleSlackApiError = (error: SlackAPIError) => {
@@ -515,9 +518,9 @@ export const enforceServiceOutput = <T>(data: T): T & ServiceOutput => {
  * };
  * ```
  */
-export type ServiceErrorType = 
+export type ServiceErrorType =
   | 'VALIDATION_ERROR'
-  | 'API_ERROR' 
+  | 'API_ERROR'
   | 'AUTHORIZATION_ERROR'
   | 'NOT_FOUND_ERROR'
   | 'RATE_LIMIT_ERROR'
@@ -525,21 +528,21 @@ export type ServiceErrorType =
 
 /**
  * Enhanced error result with typed error categories
- * 
+ *
  * Extended ServiceResult that includes error classification for
  * sophisticated error handling and monitoring. Adds errorType
  * and optional details for comprehensive error reporting.
- * 
+ *
  * Additional Fields:
  * - errorType: Categorizes the error for appropriate handling
  * - details: Optional object with additional error context
- * 
+ *
  * Benefits:
  * - Enables error-specific handling logic
  * - Facilitates error monitoring and alerting
  * - Provides rich context for debugging
  * - Supports error analytics and reporting
- * 
+ *
  * @example Error Classification
  * ```typescript
  * const handleTypedError = (error: TypedServiceError) => {
@@ -562,17 +565,17 @@ export type TypedServiceError = {
 
 /**
  * Create typed service error with TypeSafeAPI patterns
- * 
+ *
  * Advanced error creation utility that includes error classification
  * and optional context details. Enables sophisticated error handling
  * and monitoring in production systems.
- * 
+ *
  * @param errorType - Category of error for handling classification
  * @param error - Technical error description for logging
  * @param message - User-friendly error message (default: 'Operation failed')
  * @param details - Optional additional context for debugging
  * @returns TypedServiceError with classification and context
- * 
+ *
  * @example Validation Error with Details
  * ```typescript
  * return createTypedServiceError(
@@ -582,14 +585,14 @@ export type TypedServiceError = {
  *   { field: 'channel', received: undefined, expected: 'string' }
  * );
  * ```
- * 
+ *
  * @example API Error with Context
  * ```typescript
  * return createTypedServiceError(
  *   'API_ERROR',
  *   `Slack API error: ${response.error}`,
  *   'Failed to retrieve channel information',
- *   { 
+ *   {
  *     slackError: response.error,
  *     channelId: input.channel,
  *     statusCode: response.status
@@ -612,7 +615,7 @@ export const createTypedServiceError = (
 
 /**
  * Performance Utilities for TypeSafeAPI + ts-pattern Operations
- * 
+ *
  * These utilities provide optimized paths for common operations
  * to reduce runtime overhead in high-throughput scenarios.
  */
@@ -620,12 +623,12 @@ export const createTypedServiceError = (
 /**
  * Fast path for success result creation when type is known at compile time
  * Bypasses runtime validation for better performance in hot paths
- * 
+ *
  * @template T - Success data type (must extend ServiceOutput)
  * @param data - Pre-validated success data
  * @param message - Success message
  * @returns ServiceResult in success state
- * 
+ *
  * @example High-Performance Usage
  * ```typescript
  * // Use when you know data is already valid
@@ -647,29 +650,35 @@ export const createServiceSuccessFast = <T extends ServiceOutput>(
 /**
  * Batch result processor for handling multiple ServiceResults efficiently
  * Processes an array of results and aggregates success/error counts
- * 
+ *
  * @template T - Success data type
  * @param results - Array of ServiceResult to process
  * @returns Aggregated processing statistics
- * 
+ *
  * @example Batch Processing
  * ```typescript
  * const userResults = await Promise.all(
  *   userIds.map(id => userService.getUser({ userId: id }))
  * );
- * 
+ *
  * const stats = processBatchResults(userResults);
  * console.log(`Processed ${stats.total}, ${stats.successes} succeeded, ${stats.errors} failed`);
  * ```
  */
 export const processBatchResults = <T extends ServiceOutput>(
   results: ServiceResult<T>[]
-): { successes: number; errors: number; successData: T[]; errorMessages: string[]; total: number } => {
+): {
+  successes: number;
+  errors: number;
+  successData: T[];
+  errorMessages: string[];
+  total: number;
+} => {
   let successes = 0;
   let errors = 0;
   const successData: T[] = [];
   const errorMessages: string[] = [];
-  
+
   for (const result of results) {
     if (result.success) {
       successes++;
@@ -679,7 +688,7 @@ export const processBatchResults = <T extends ServiceOutput>(
       errorMessages.push(result.error);
     }
   }
-  
+
   return {
     total: results.length,
     successes,
@@ -692,13 +701,13 @@ export const processBatchResults = <T extends ServiceOutput>(
 /**
  * Memory-efficient result transformer that applies a function to success data
  * without creating intermediate objects
- * 
+ *
  * @template T - Input success data type
  * @template U - Output success data type
  * @param result - ServiceResult to transform
  * @param transformer - Function to transform success data
  * @returns Transformed ServiceResult
- * 
+ *
  * @example Data Transformation
  * ```typescript
  * const userResult = await userService.getUser(args);

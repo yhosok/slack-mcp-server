@@ -1,13 +1,13 @@
 /**
  * Common type definitions used across multiple Slack API domains
- * 
+ *
  * This module contains shared types that are used by multiple other type modules.
  * Part of the modular type system following TypeScript official best practices.
  */
 
 /**
  * Represents an emoji reaction on a message
- * 
+ *
  * Note: This type is imported and re-exported by messages.ts for backward compatibility
  */
 export interface SlackReaction {

@@ -1,10 +1,10 @@
 /**
  * Centralized type exports for Slack MCP Server
- * 
+ *
  * This module implements the TypeSafeAPI re-export pattern, providing a single
  * source of truth for all Slack-related type definitions. The modular structure
  * enables better maintainability while preserving backward compatibility.
- * 
+ *
  * Architecture:
  * - All types are organized by functional domain in core/ directory
  * - This index.ts serves as the re-export hub following TypeScript official patterns
@@ -34,12 +34,7 @@ export type {
 export type { SlackChannel } from './core/channels.js';
 
 // File types
-export type {
-  SlackFile,
-  SlackFileShare,
-  SlackFileComment,
-  FileAnalysis,
-} from './core/files.js';
+export type { SlackFile, SlackFileShare, SlackFileComment, FileAnalysis } from './core/files.js';
 
 // Thread types (depends on SlackMessage)
 export type {

@@ -26,7 +26,7 @@ export interface FileServiceConfig {
 
 /**
  * File service interface with TypeSafeAPI + ts-pattern type safety
- * 
+ *
  * All methods return ServiceResult discriminated unions enabling:
  * - Exhaustive pattern matching with compile-time guarantees
  * - Type-safe error handling without try-catch complexity

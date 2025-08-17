@@ -15,19 +15,25 @@ import {
  * Convert ServiceResult to MCPToolResult with production-ready response structure
  * This function is shared across all MCP adapters to ensure consistent response format
  */
-export const convertToMCPResult = <T extends ServiceOutput>(result: ServiceResult<T>): MCPToolResult => {
+export const convertToMCPResult = <T extends ServiceOutput>(
+  result: ServiceResult<T>
+): MCPToolResult => {
   const apiResponse = handleServiceResult(result);
-  
+
   return match(result)
     .with({ success: true }, (_successResult) => ({
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify({
-            statusCode: apiResponse.statusCode,
-            message: apiResponse.message,
-            data: apiResponse.data,
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              statusCode: apiResponse.statusCode,
+              message: apiResponse.message,
+              data: apiResponse.data,
+            },
+            null,
+            2
+          ),
         },
       ],
     }))
@@ -35,11 +41,15 @@ export const convertToMCPResult = <T extends ServiceOutput>(result: ServiceResul
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify({
-            statusCode: apiResponse.statusCode,
-            message: apiResponse.message,
-            error: apiResponse.error,
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              statusCode: apiResponse.statusCode,
+              message: apiResponse.message,
+              error: apiResponse.error,
+            },
+            null,
+            2
+          ),
         },
       ],
       isError: true,
@@ -57,7 +67,7 @@ export const createMCPAdapter = <T>(
   ? { [K in keyof T]: (args: unknown) => Promise<MCPToolResult> }
   : never => {
   const adapter = {} as any;
-  
+
   for (const [methodName, method] of Object.entries(service as any)) {
     if (typeof method === 'function') {
       adapter[methodName] = async (args: unknown): Promise<MCPToolResult> => {
@@ -66,7 +76,7 @@ export const createMCPAdapter = <T>(
       };
     }
   }
-  
+
   return adapter as any;
 };
 

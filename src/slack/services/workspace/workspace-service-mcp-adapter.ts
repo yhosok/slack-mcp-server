@@ -1,15 +1,19 @@
 /**
  * MCP Compatibility Adapter for Workspace Services
- * 
+ *
  * Converts TypeSafeAPI + ts-pattern ServiceResult types back to MCPToolResult
  * for backward compatibility with existing MCP protocol routing.
- * 
+ *
  * This adapter maintains the TypeSafeAPI type safety benefits while ensuring
  * seamless integration with the existing SlackService facade.
  */
 
 import type { MCPToolResult } from '../../../mcp/types.js';
-import type { WorkspaceService, WorkspaceServiceMCPCompat, WorkspaceServiceDependencies } from './types.js';
+import type {
+  WorkspaceService,
+  WorkspaceServiceMCPCompat,
+  WorkspaceServiceDependencies,
+} from './types.js';
 import { createWorkspaceService } from './workspace-service.js';
 import { convertToMCPResult } from '../../infrastructure/mcp-adapter-utils.js';
 
@@ -17,7 +21,9 @@ import { convertToMCPResult } from '../../infrastructure/mcp-adapter-utils.js';
  * Create MCP-compatible workspace service adapter
  * Uses the shared conversion utilities to wrap the TypeSafeAPI workspace service
  */
-export const createWorkspaceServiceMCPAdapter = (deps: WorkspaceServiceDependencies): WorkspaceServiceMCPCompat => {
+export const createWorkspaceServiceMCPAdapter = (
+  deps: WorkspaceServiceDependencies
+): WorkspaceServiceMCPCompat => {
   // Get the TypeSafeAPI type-safe workspace service
   const typeSafeApiService: WorkspaceService = createWorkspaceService(deps);
 

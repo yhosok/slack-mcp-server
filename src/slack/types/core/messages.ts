@@ -1,6 +1,6 @@
 /**
  * Message-related type definitions for Slack API
- * 
+ *
  * This module contains types for messages, blocks, attachments, and related structures.
  * Part of the modular type system following TypeScript official best practices.
  */
@@ -75,4 +75,3 @@ export interface SlackAttachmentField {
   value: string;
   short: boolean;
 }
-

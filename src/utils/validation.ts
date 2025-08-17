@@ -210,7 +210,9 @@ export const GetThreadRepliesSchema = z
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
-  .describe('Get complete thread content including parent message and all replies with optional pagination support');
+  .describe(
+    'Get complete thread content including parent message and all replies with optional pagination support'
+  );
 
 export const SearchThreadsSchema = z
   .object({
@@ -936,22 +938,24 @@ export function validateInput<T>(schema: z.ZodSchema<T>, input: unknown): T {
  * Applies implicit safety defaults for pagination parameters when fetch_all_pages is true
  * This prevents memory and performance issues by applying reasonable limits
  */
-export function applyPaginationSafetyDefaults<T extends Record<string, unknown>>(input: T): T & { max_pages?: number; max_items?: number } {
+export function applyPaginationSafetyDefaults<T extends Record<string, unknown>>(
+  input: T
+): T & { max_pages?: number; max_items?: number } {
   if (!input.fetch_all_pages) {
     return input;
   }
 
   const result = { ...input } as T & { max_pages?: number; max_items?: number };
-  
+
   // Apply implicit defaults only if not explicitly specified
   if (result.max_pages === undefined || result.max_pages === null) {
     result.max_pages = PAGINATION_DEFAULTS.MAX_PAGES;
   }
-  
+
   if (result.max_items === undefined || result.max_items === null) {
     result.max_items = PAGINATION_DEFAULTS.MAX_ITEMS;
   }
-  
+
   return result;
 }
 

@@ -1,9 +1,9 @@
 /**
  * MCP Compatibility Adapter for Thread Services
- * 
+ *
  * Converts TypeSafeAPI + ts-pattern ServiceResult types back to MCPToolResult
  * for backward compatibility with existing MCP protocol routing.
- * 
+ *
  * This adapter maintains the TypeSafeAPI type safety benefits while ensuring
  * seamless integration with the existing SlackService facade.
  */
@@ -17,7 +17,9 @@ import { convertToMCPResult } from '../../infrastructure/mcp-adapter-utils.js';
  * Create MCP-compatible thread service adapter
  * Uses the shared conversion utilities to wrap the TypeSafeAPI thread service
  */
-export const createThreadServiceMCPAdapter = (deps: ThreadServiceDependencies): ThreadServiceMCPCompat => {
+export const createThreadServiceMCPAdapter = (
+  deps: ThreadServiceDependencies
+): ThreadServiceMCPCompat => {
   // Get the TypeSafeAPI type-safe thread service
   const typeSafeApiService: ThreadService = createThreadService(deps);
 

@@ -26,7 +26,7 @@ type ThreadResult = {
   participants?: string[];
 };
 
-// Type for search match results  
+// Type for search match results
 type SearchMatch = {
   type?: string;
   user?: string;
@@ -78,11 +78,12 @@ export const formatChannelHistoryResponse = async (
     })
   );
 
-  const paginationInfo = result.pageCount !== undefined 
-    ? `\n\nPagination: Fetched ${result.pageCount} pages, total ${result.totalMessages || result.messages.length} messages`
-    : result.hasMore 
-      ? `\n\nMore messages available. Next cursor: ${result.cursor || 'N/A'}`
-      : '';
+  const paginationInfo =
+    result.pageCount !== undefined
+      ? `\n\nPagination: Fetched ${result.pageCount} pages, total ${result.totalMessages || result.messages.length} messages`
+      : result.hasMore
+        ? `\n\nMore messages available. Next cursor: ${result.cursor || 'N/A'}`
+        : '';
 
   return {
     content: [
@@ -262,11 +263,12 @@ export const formatThreadRepliesResponse = async (
     })
   );
 
-  const paginationInfo = result.pageCount !== undefined 
-    ? `\n\nPagination: Fetched ${result.pageCount} pages, total ${result.totalMessages || result.messages.length} messages`
-    : result.hasMore 
-      ? `\n\nMore messages available. Next cursor: ${result.cursor || 'N/A'}`
-      : '';
+  const paginationInfo =
+    result.pageCount !== undefined
+      ? `\n\nPagination: Fetched ${result.pageCount} pages, total ${result.totalMessages || result.messages.length} messages`
+      : result.hasMore
+        ? `\n\nMore messages available. Next cursor: ${result.cursor || 'N/A'}`
+        : '';
 
   return {
     content: [

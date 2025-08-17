@@ -1,6 +1,6 @@
 /**
  * Channel-related type definitions for Slack API
- * 
+ *
  * This module contains types for channels and channel-related structures.
  * Part of the modular type system following TypeScript official best practices.
  */

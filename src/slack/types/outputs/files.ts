@@ -1,6 +1,6 @@
 /**
  * File service output types following TypeSafeAPI TypeScript best practices
- * 
+ *
  * Design Principles:
  * - All interfaces extend ServiceOutput for JSON serialization safety
  * - Consistent error/success patterns across all operations
@@ -20,7 +20,6 @@ export interface DeleteFileOutput extends ServiceOutput {
   message: string;
   timestamp?: string;
   [key: string]: unknown;
-
 }
 
 /**
@@ -71,7 +70,6 @@ export interface FileAnalysisOutput extends ServiceOutput {
     thresholdMB: number;
   };
   [key: string]: unknown;
-
 }
 
 /**
@@ -86,7 +84,6 @@ export interface ShareFileOutput extends ServiceOutput {
   message: string;
   timestamp?: string;
   [key: string]: unknown;
-
 }
 
 /**
@@ -121,7 +118,6 @@ export interface FileInfoOutput extends ServiceOutput {
     timestamp: number;
   }>;
   [key: string]: unknown;
-
 }
 
 /**
@@ -148,7 +144,6 @@ export interface ListFilesOutput extends ServiceOutput {
     cursor?: string;
   } | null;
   [key: string]: unknown;
-
 }
 
 /**
@@ -156,17 +151,26 @@ export interface ListFilesOutput extends ServiceOutput {
  * TypeSafeAPI pattern: Search results with query context
  */
 export interface SearchFilesOutput extends ServiceOutput {
-  results: Array<{ id: string; name: string; title?: string; filetype?: string; size?: number; url?: string; user?: string; timestamp?: string; channel?: string }>; // Slack API search result structure
+  results: Array<{
+    id: string;
+    name: string;
+    title?: string;
+    filetype?: string;
+    size?: number;
+    url?: string;
+    user?: string;
+    timestamp?: string;
+    channel?: string;
+  }>; // Slack API search result structure
   total: number;
   query: string;
   pagination?: { hasMore?: boolean; cursor?: string; total?: number }; // Slack API pagination structure
   [key: string]: unknown;
-
 }
 
 /**
  * TypeSafeAPI ServiceResult discriminated union types for File Services
- * 
+ *
  * These types enable:
  * - Exhaustive pattern matching with ts-pattern
  * - Type-safe error handling without try-catch complexity
@@ -181,7 +185,7 @@ export interface SearchFilesOutput extends ServiceOutput {
 export type UploadFileResult = ServiceResult<UploadFileOutput>;
 
 /**
- * List files operation result  
+ * List files operation result
  * Supports pagination and filtering with comprehensive metadata
  */
 export type ListFilesResult = ServiceResult<ListFilesOutput>;

@@ -1,6 +1,6 @@
 /**
  * Thread-related type definitions for Slack API
- * 
+ *
  * This module contains types for threads, thread analysis, and thread metrics.
  * Part of the modular type system following TypeScript official best practices.
  */
@@ -64,7 +64,6 @@ export interface ThreadTimelineEvent {
   content?: string;
   reaction_name?: string;
 }
-
 
 /**
  * Represents a high-level summary of a thread

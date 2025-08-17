@@ -147,7 +147,7 @@ describe('Infrastructure Services', () => {
         ...mockConfig,
         botToken: 'xoxb-test-fresh-bot-token', // Use different token to ensure fresh instance
       });
-      
+
       // Get initial metrics to verify starting state
       const initialMetrics = freshServices.rateLimitService.getMetrics();
       expect(initialMetrics.retryAttempts).toBe(0);
@@ -160,7 +160,7 @@ describe('Infrastructure Services', () => {
       // This should increment both rateLimitedRequests AND retryAttempts
       trackedClient.emit(WebClientEvent.RATE_LIMITED, 30, {
         team_id: 'T12345',
-        api_url: 'https://slack.com/api/chat.postMessage'
+        api_url: 'https://slack.com/api/chat.postMessage',
       });
 
       // Verify that retry attempts are incremented
@@ -172,7 +172,7 @@ describe('Infrastructure Services', () => {
       // Test multiple rate limit events to verify cumulative retry tracking
       trackedClient.emit(WebClientEvent.RATE_LIMITED, 60, {
         team_id: 'T12345',
-        api_url: 'https://slack.com/api/conversations.history'
+        api_url: 'https://slack.com/api/conversations.history',
       });
 
       const finalMetrics = freshServices.rateLimitService.getMetrics();
@@ -186,7 +186,7 @@ describe('Infrastructure Services', () => {
         ...mockConfig,
         botToken: 'xoxb-test-fresh-bot-token-2', // Use different token to ensure fresh instance
       });
-      
+
       // Get the bot client (already has rate limit tracking enabled)
       const trackedClient = freshServices.clientManager.getBotClient();
 
@@ -194,7 +194,7 @@ describe('Infrastructure Services', () => {
       // First rate limit event
       trackedClient.emit(WebClientEvent.RATE_LIMITED, 30, {
         team_id: 'T12345',
-        api_url: 'https://slack.com/api/chat.postMessage'
+        api_url: 'https://slack.com/api/chat.postMessage',
       });
 
       let metrics = freshServices.rateLimitService.getMetrics();
@@ -205,7 +205,7 @@ describe('Infrastructure Services', () => {
       // (This would happen when SDK retries internally)
       trackedClient.emit(WebClientEvent.RATE_LIMITED, 60, {
         team_id: 'T12345',
-        api_url: 'https://slack.com/api/chat.postMessage'
+        api_url: 'https://slack.com/api/chat.postMessage',
       });
 
       metrics = freshServices.rateLimitService.getMetrics();
@@ -222,14 +222,14 @@ describe('Infrastructure Services', () => {
       };
 
       const services = createInfrastructureServices(configWithReject);
-      
+
       // Get the bot client (already has rate limit tracking enabled)
       const trackedClient = services.clientManager.getBotClient();
 
       // With rejectRateLimitedCalls: true, rate limits should be tracked but retries should not increment
       trackedClient.emit(WebClientEvent.RATE_LIMITED, 30, {
         team_id: 'T12345',
-        api_url: 'https://slack.com/api/chat.postMessage'
+        api_url: 'https://slack.com/api/chat.postMessage',
       });
 
       const metrics = services.rateLimitService.getMetrics();

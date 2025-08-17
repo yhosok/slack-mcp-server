@@ -84,10 +84,12 @@ const createMockWebClient = (mockData?: any): any => ({
         response_metadata: mockData?.response_metadata || {},
       })
     ),
-    info: jest.fn(() => Promise.resolve({
-      ok: true,
-      user: { id: 'U123', name: 'testuser', real_name: 'Test User' },
-    })),
+    info: jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        user: { id: 'U123', name: 'testuser', real_name: 'Test User' },
+      })
+    ),
   },
   auth: {
     test: jest.fn(() => Promise.resolve({ ok: true, user: 'test_user' })),
@@ -116,27 +118,27 @@ describe('Pagination Enhancement Tests', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockWebClient = createMockWebClient();
-    
+
     // Update the mock implementation
     const webApiModule = await import('@slack/web-api');
     const { WebClient } = webApiModule as any;
     (WebClient as jest.Mock).mockImplementation(() => mockWebClient);
-    
+
     slackService = new SlackService();
   });
 
   describe('GetChannelHistory with Pagination', () => {
     it('should support fetch_all_pages parameter', async () => {
-      const result = await slackService.getChannelHistory({
+      const result = (await slackService.getChannelHistory({
         channel: 'C123456789',
         fetch_all_pages: true,
         max_pages: 2,
         max_items: 100,
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      
+
       // Verify that pagination helper would have been called
       // In actual implementation, this would use the pagination helper
       const textContent = extractTextContent(result.content[0]);
@@ -144,10 +146,10 @@ describe('Pagination Enhancement Tests', () => {
     });
 
     it('should maintain backward compatibility for single page', async () => {
-      const result = await slackService.getChannelHistory({
+      const result = (await slackService.getChannelHistory({
         channel: 'C123456789',
         limit: 50,
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
@@ -162,17 +164,17 @@ describe('Pagination Enhancement Tests', () => {
 
   describe('GetThreadReplies with Pagination', () => {
     it('should support fetch_all_pages parameter', async () => {
-      const result = await slackService.getThreadReplies({
+      const result = (await slackService.getThreadReplies({
         channel: 'C123456789',
         thread_ts: '1234567890.123456',
         fetch_all_pages: true,
         max_pages: 3,
         max_items: 200,
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      
+
       const textContent = extractTextContent(result.content[0]);
       // With unified pagination, empty results may trigger error handling
       if (result.isError) {
@@ -183,11 +185,11 @@ describe('Pagination Enhancement Tests', () => {
     });
 
     it('should maintain backward compatibility for single page', async () => {
-      const result = await slackService.getThreadReplies({
+      const result = (await slackService.getThreadReplies({
         channel: 'C123456789',
         thread_ts: '1234567890.123456',
         limit: 100,
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result).toBeDefined();
       expect(mockWebClient.conversations.replies).toHaveBeenCalledWith(
@@ -202,21 +204,21 @@ describe('Pagination Enhancement Tests', () => {
 
   describe('ListFiles with Pagination', () => {
     it('should support fetch_all_pages parameter', async () => {
-      const result = await slackService.listFiles({
+      const result = (await slackService.listFiles({
         fetch_all_pages: true,
         max_pages: 2,
         max_items: 50,
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
     });
 
     it('should maintain backward compatibility for single page', async () => {
-      const result = await slackService.listFiles({
+      const result = (await slackService.listFiles({
         count: 20,
         page: 1,
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result).toBeDefined();
       expect(mockWebClient.files.list).toHaveBeenCalledWith(
@@ -230,21 +232,21 @@ describe('Pagination Enhancement Tests', () => {
 
   describe('ListTeamMembers with Pagination', () => {
     it('should support fetch_all_pages parameter', async () => {
-      const result = await slackService.listTeamMembers({
+      const result = (await slackService.listTeamMembers({
         fetch_all_pages: true,
         max_pages: 5,
         max_items: 500,
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
     });
 
     it('should maintain backward compatibility for single page', async () => {
-      const result = await slackService.listTeamMembers({
+      const result = (await slackService.listTeamMembers({
         limit: 100,
         include_deleted: false,
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result).toBeDefined();
       expect(mockWebClient.users.list).toHaveBeenCalledWith(
@@ -271,72 +273,76 @@ describe('Pagination Enhancement Tests', () => {
 
     it('should validate pagination limits', async () => {
       // Test that extreme values are handled appropriately
-      const result = await slackService.getChannelHistory({
+      const result = (await slackService.getChannelHistory({
         channel: 'C123456789',
         fetch_all_pages: true,
         max_pages: 150, // Over limit
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result.isError).toBe(true);
       expect(result.content).toBeDefined();
-      expect(extractTextContent(result.content[0])).toContain('max_pages: Number must be less than or equal to 100');
+      expect(extractTextContent(result.content[0])).toContain(
+        'max_pages: Number must be less than or equal to 100'
+      );
     });
 
     it('should validate max_items limits', async () => {
-      const result = await slackService.getChannelHistory({
+      const result = (await slackService.getChannelHistory({
         channel: 'C123456789',
         fetch_all_pages: true,
         max_items: 15000, // Over limit
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result.isError).toBe(true);
       expect(result.content).toBeDefined();
-      expect(extractTextContent(result.content[0])).toContain('max_items: Number must be less than or equal to 10000');
+      expect(extractTextContent(result.content[0])).toContain(
+        'max_items: Number must be less than or equal to 10000'
+      );
     });
   });
 
   describe('Pagination Safety Defaults', () => {
     it('should apply implicit defaults when fetch_all_pages is true and limits not specified', async () => {
-      const result = await slackService.getChannelHistory({
+      const result = (await slackService.getChannelHistory({
         channel: 'C123456789',
         fetch_all_pages: true,
         // No max_pages or max_items specified
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      
+
       // The service should have applied defaults without error
       const textContent = extractTextContent(result.content[0]);
       expect(textContent).toContain('Channel history');
     });
 
     it('should use explicit values when provided, overriding defaults', async () => {
-      const result = await slackService.getChannelHistory({
+      const result = (await slackService.getChannelHistory({
         channel: 'C123456789',
         fetch_all_pages: true,
         max_pages: 5, // Explicit value
         max_items: 500, // Explicit value
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      
+
       // Should succeed with explicit values
       const textContent = extractTextContent(result.content[0]);
       expect(textContent).toContain('Channel history');
     });
 
     it('should not apply defaults when fetch_all_pages is false', async () => {
-      const result = await slackService.getChannelHistory({
+      const result = (await slackService.getChannelHistory({
         channel: 'C123456789',
         fetch_all_pages: false,
         // No max_pages or max_items - should not apply defaults
-      }) as MCPToolResult;
+      })) as MCPToolResult;
 
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      
+
       // Single page behavior should work fine
       const textContent = extractTextContent(result.content[0]);
       expect(textContent).toContain('Channel history');
@@ -344,26 +350,30 @@ describe('Pagination Enhancement Tests', () => {
 
     it('should apply safety defaults to all paginated services', async () => {
       const services = [
-        () => slackService.getChannelHistory({
-          channel: 'C123456789',
-          fetch_all_pages: true,
-        }),
-        () => slackService.getThreadReplies({
-          channel: 'C123456789',
-          thread_ts: '1234567890.123456',
-          fetch_all_pages: true,
-        }),
-        () => slackService.listFiles({
-          fetch_all_pages: true,
-        }),
-        () => slackService.listTeamMembers({
-          fetch_all_pages: true,
-        }),
+        () =>
+          slackService.getChannelHistory({
+            channel: 'C123456789',
+            fetch_all_pages: true,
+          }),
+        () =>
+          slackService.getThreadReplies({
+            channel: 'C123456789',
+            thread_ts: '1234567890.123456',
+            fetch_all_pages: true,
+          }),
+        () =>
+          slackService.listFiles({
+            fetch_all_pages: true,
+          }),
+        () =>
+          slackService.listTeamMembers({
+            fetch_all_pages: true,
+          }),
       ];
 
       // All should complete with implicit defaults (may have errors due to mock data)
       for (const serviceCall of services) {
-        const result = await serviceCall() as MCPToolResult;
+        const result = (await serviceCall()) as MCPToolResult;
         expect(result).toBeDefined();
         expect(result.content).toBeDefined();
         // Should return a result (error or success) - safety defaults prevent unlimited fetching

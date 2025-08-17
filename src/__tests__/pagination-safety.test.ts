@@ -9,9 +9,9 @@ describe('Pagination Safety Defaults', () => {
         channel: 'C123456789',
         fetch_all_pages: false,
       };
-      
+
       const result = applyPaginationSafetyDefaults(input);
-      
+
       expect(result).toEqual(input);
       expect(result.max_pages).toBeUndefined();
       expect(result.max_items).toBeUndefined();
@@ -21,9 +21,9 @@ describe('Pagination Safety Defaults', () => {
       const input = {
         channel: 'C123456789',
       };
-      
+
       const result = applyPaginationSafetyDefaults(input);
-      
+
       expect(result).toEqual(input);
       expect(result.max_pages).toBeUndefined();
       expect(result.max_items).toBeUndefined();
@@ -34,9 +34,9 @@ describe('Pagination Safety Defaults', () => {
         channel: 'C123456789',
         fetch_all_pages: true,
       };
-      
+
       const result = applyPaginationSafetyDefaults(input);
-      
+
       expect(result.fetch_all_pages).toBe(true);
       expect(result.max_pages).toBe(10);
       expect(result.max_items).toBe(1000);
@@ -48,9 +48,9 @@ describe('Pagination Safety Defaults', () => {
         fetch_all_pages: true,
         max_pages: 5,
       };
-      
+
       const result = applyPaginationSafetyDefaults(input);
-      
+
       expect(result.fetch_all_pages).toBe(true);
       expect(result.max_pages).toBe(5); // Preserved
       expect(result.max_items).toBe(1000); // Applied default
@@ -62,9 +62,9 @@ describe('Pagination Safety Defaults', () => {
         fetch_all_pages: true,
         max_items: 500,
       };
-      
+
       const result = applyPaginationSafetyDefaults(input);
-      
+
       expect(result.fetch_all_pages).toBe(true);
       expect(result.max_pages).toBe(10); // Applied default
       expect(result.max_items).toBe(500); // Preserved
@@ -77,9 +77,9 @@ describe('Pagination Safety Defaults', () => {
         max_pages: 7,
         max_items: 750,
       };
-      
+
       const result = applyPaginationSafetyDefaults(input);
-      
+
       expect(result.fetch_all_pages).toBe(true);
       expect(result.max_pages).toBe(7); // Preserved
       expect(result.max_items).toBe(750); // Preserved
@@ -95,13 +95,13 @@ describe('Pagination Safety Defaults', () => {
         latest: '1234567999',
         include_metadata: true,
       };
-      
+
       const result = applyPaginationSafetyDefaults(input);
-      
+
       // Safety defaults applied
       expect(result.max_pages).toBe(10);
       expect(result.max_items).toBe(1000);
-      
+
       // Other properties preserved
       expect(result.channel).toBe('C123456789');
       expect(result.limit).toBe(50);
@@ -116,13 +116,13 @@ describe('Pagination Safety Defaults', () => {
         channel: 'C123456789',
         fetch_all_pages: true,
       };
-      
+
       const originalInput = { ...input };
       const result = applyPaginationSafetyDefaults(input);
-      
+
       // Original input should be unchanged
       expect(input).toEqual(originalInput);
-      
+
       // Result should be different
       expect(result).not.toBe(input);
       expect(result.max_pages).toBe(10);
@@ -136,9 +136,9 @@ describe('Pagination Safety Defaults', () => {
         max_pages: 0, // Explicit 0 should be preserved
         max_items: null as any, // null should trigger default
       };
-      
+
       const result = applyPaginationSafetyDefaults(input);
-      
+
       expect(result.max_pages).toBe(0); // Preserved (even though it's 0)
       expect(result.max_items).toBe(1000); // Applied default (null treated as undefined)
     });
@@ -150,8 +150,8 @@ describe('Pagination Safety Defaults', () => {
         { fetch_all_pages: true }, // Files
         { include_deleted: false, fetch_all_pages: true }, // Team members
       ];
-      
-      testInputs.forEach(input => {
+
+      testInputs.forEach((input) => {
         const result = applyPaginationSafetyDefaults(input);
         expect(result.max_pages).toBe(10);
         expect(result.max_items).toBe(1000);
@@ -166,14 +166,14 @@ describe('Pagination Safety Defaults', () => {
         fetch_all_pages: true,
         // No limits - could fetch unlimited data
       };
-      
+
       const safeResult = applyPaginationSafetyDefaults(dangerousInput);
-      
+
       // With defaults: max 10 pages * max 1000 items per page = max 10,000 items
       // This is a reasonable upper bound for most use cases
       expect(safeResult.max_pages).toBe(10);
       expect(safeResult.max_items).toBe(1000);
-      
+
       // Calculate theoretical maximum items
       const theoreticalMax = (safeResult.max_pages || 0) * (safeResult.max_items || 0);
       expect(theoreticalMax).toBeLessThanOrEqual(10000);
@@ -186,9 +186,9 @@ describe('Pagination Safety Defaults', () => {
         max_pages: 50, // Higher than default
         max_items: 5000, // Higher than default
       };
-      
+
       const result = applyPaginationSafetyDefaults(powerUserInput);
-      
+
       // Should respect user's explicit choices
       expect(result.max_pages).toBe(50);
       expect(result.max_items).toBe(5000);

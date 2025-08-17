@@ -1,17 +1,17 @@
 /**
  * File Services TypeSafeAPI Implementation - TDD Green Phase Tests
- * 
+ *
  * This test suite verifies the successful implementation of TypeSafeAPI patterns
  * in File Services. All tests in this suite should PASS, proving the successful
  * transformation to TypeSafeAPI discriminated unions and type safety.
- * 
+ *
  * Testing Strategy:
  * 1. ServiceOutput constraint compliance verification
  * 2. ServiceResult discriminated union implementation success
  * 3. TypeSafeAPI response structure compliance
  * 4. ts-pattern integration support verification
  * 5. Exhaustive pattern matching implementation success
- * 
+ *
  * Context: Follows successful Phase 4a Message Services transformation pattern
  * Achievement: File Services successfully implement TypeSafeAPI discriminated unions
  */
@@ -120,46 +120,48 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       const { promises: fs } = await import('fs');
       const mockReadFile = fs.readFile as jest.MockedFunction<typeof fs.readFile>;
       mockReadFile.mockResolvedValue(Buffer.from('test content'));
-      
+
       mockWebClientInstance.filesUploadV2.mockResolvedValue({
         ok: true,
-        files: [{
-          id: 'F123',
-          name: 'test.txt',
-          size: 100,
-          url_private: 'https://test.com',
-          url_private_download: 'https://test.com/download',
-          channels: ['C123'],
-          timestamp: 123456789,
-        }],
+        files: [
+          {
+            id: 'F123',
+            name: 'test.txt',
+            size: 100,
+            url_private: 'https://test.com',
+            url_private_download: 'https://test.com/download',
+            channels: ['C123'],
+            timestamp: 123456789,
+          },
+        ],
       });
 
       const result = await slackService.uploadFile({
-        file_path: '/test/file.txt'
+        file_path: '/test/file.txt',
       });
 
       // Implementation success: properly enforces ServiceOutput constraints
       const hasServiceOutputConstraint = true; // Implementation achieved
       const shouldHaveServiceOutputConstraint = true; // Target achieved
-      
+
       expect(hasServiceOutputConstraint).toBe(shouldHaveServiceOutputConstraint);
-      
+
       // Verify response has TypeSafeAPI structure with ServiceOutput compliance
       const content = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(content);
-      
+
       // Implementation returns TypeSafeAPI-compliant structure
-      const hasTypeSeafeApiStructure = parsedResult && 
+      const hasTypeSeafeApiStructure =
+        parsedResult &&
         typeof parsedResult === 'object' &&
         ('statusCode' in parsedResult || 'message' in parsedResult);
-      
+
       expect(hasTypeSeafeApiStructure).toBe(true);
-      
+
       // Verify ServiceOutput constraint enforcement
-      const extendsServiceOutput = parsedResult && 
-        typeof parsedResult === 'object' && 
-        parsedResult.constructor === Object;
-      
+      const extendsServiceOutput =
+        parsedResult && typeof parsedResult === 'object' && parsedResult.constructor === Object;
+
       expect(extendsServiceOutput).toBe(true);
     });
 
@@ -176,7 +178,7 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       const hasServiceOutputConstraint = true;
       const shouldHaveServiceOutputConstraint = true;
       expect(hasServiceOutputConstraint).toBe(shouldHaveServiceOutputConstraint);
-      
+
       // Verify TypeSafeAPI response structure
       const content = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(content);
@@ -195,7 +197,7 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       const hasServiceOutputConstraint = true;
       const shouldHaveServiceOutputConstraint = true;
       expect(hasServiceOutputConstraint).toBe(shouldHaveServiceOutputConstraint);
-      
+
       // Verify response structure
       const content = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(content);
@@ -210,7 +212,7 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       const hasServiceOutputConstraint = true;
       const shouldHaveServiceOutputConstraint = true;
       expect(hasServiceOutputConstraint).toBe(shouldHaveServiceOutputConstraint);
-      
+
       // Verify response structure
       const content = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(content);
@@ -229,7 +231,7 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       const hasServiceOutputConstraint = true;
       const shouldHaveServiceOutputConstraint = true;
       expect(hasServiceOutputConstraint).toBe(shouldHaveServiceOutputConstraint);
-      
+
       // Verify response structure
       const content = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(content);
@@ -247,7 +249,7 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       const hasServiceOutputConstraint = true;
       const shouldHaveServiceOutputConstraint = true;
       expect(hasServiceOutputConstraint).toBe(shouldHaveServiceOutputConstraint);
-      
+
       // Verify response structure
       const content = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(content);
@@ -265,7 +267,7 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       const hasServiceOutputConstraint = true;
       const shouldHaveServiceOutputConstraint = true;
       expect(hasServiceOutputConstraint).toBe(shouldHaveServiceOutputConstraint);
-      
+
       // Verify response structure
       const content = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(content);
@@ -282,23 +284,23 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       const { promises: fs } = await import('fs');
       const mockReadFile = fs.readFile as jest.MockedFunction<typeof fs.readFile>;
       mockReadFile.mockResolvedValue(Buffer.from('test'));
-      
+
       mockWebClientInstance.filesUploadV2.mockResolvedValue({
         ok: true,
         files: [{ id: 'F123', name: 'test.txt' }],
       });
 
       const result = await slackService.uploadFile({ file_path: '/test.txt' });
-      
+
       // Implementation success: returns ServiceResult structure
       const returnsServiceResult = true; // Implementation achieved
       const shouldReturnServiceResult = true; // Target achieved
-      
+
       expect(returnsServiceResult).toBe(shouldReturnServiceResult);
-      
+
       // Verify TypeSafeAPI response structure
       const content = extractTextContent(result.content?.[0]);
-      
+
       // Handle both object and string responses (error messages)
       let parsedResult: any;
       try {
@@ -306,12 +308,13 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       } catch {
         parsedResult = content; // String response for error messages
       }
-      
+
       // Implementation provides ServiceResult-like structure
-      const hasTypeSeafeApiStructure = parsedResult && (typeof parsedResult === 'object' || typeof parsedResult === 'string');
+      const hasTypeSeafeApiStructure =
+        parsedResult && (typeof parsedResult === 'object' || typeof parsedResult === 'string');
       const hasResultData = Boolean(parsedResult);
       const hasProperStructure = Boolean(parsedResult);
-      
+
       expect(hasTypeSeafeApiStructure).toBe(true);
       expect(hasResultData).toBe(true);
       expect(hasProperStructure).toBe(true);
@@ -363,7 +366,7 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       const { promises: fs } = await import('fs');
       const mockReadFile = fs.readFile as jest.MockedFunction<typeof fs.readFile>;
       mockReadFile.mockResolvedValue(Buffer.from('test'));
-      
+
       mockWebClientInstance.filesUploadV2.mockResolvedValue({
         ok: true,
         files: [{ id: 'F123', name: 'test.txt' }],
@@ -371,14 +374,14 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
 
       const result = await slackService.uploadFile({ file_path: '/test.txt' });
       const content = extractTextContent(result.content?.[0]);
-      
+
       // Implementation follows TypeSafeAPI structure
       const hasTypeSeafeApiStructure = content && typeof content === 'string';
       const hasStandardStructure = hasTypeSeafeApiStructure && content.length > 0;
-      
+
       expect(hasTypeSeafeApiStructure).toBe(true);
       expect(hasStandardStructure).toBe(true);
-      
+
       // Verify parseable response
       const parsedResult = JSON.parse(content);
       expect(parsedResult).toBeInstanceOf(Object);
@@ -390,11 +393,11 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
 
       const result = await slackService.getFileInfo({ file_id: 'F123' });
       const content = extractTextContent(result.content?.[0]);
-      
+
       // Implementation provides error handling and classification
       const hasErrorHandling = content && typeof content === 'string' && content.length > 0;
       expect(hasErrorHandling).toBe(true);
-      
+
       // Verify error response is properly structured
       const parsedResult = JSON.parse(content);
       expect(parsedResult).toBeInstanceOf(Object);
@@ -408,11 +411,11 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
 
       const result = await slackService.listFiles({});
       const content = extractTextContent(result.content?.[0]);
-      
+
       // Implementation provides consistent structure
       const hasConsistentStructure = content && typeof content === 'string';
       expect(hasConsistentStructure).toBe(true);
-      
+
       // Verify response is properly structured
       const parsedResult = JSON.parse(content);
       expect(parsedResult).toBeInstanceOf(Object);
@@ -428,26 +431,26 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       const { promises: fs } = await import('fs');
       const mockReadFile = fs.readFile as jest.MockedFunction<typeof fs.readFile>;
       mockReadFile.mockResolvedValue(Buffer.from('test'));
-      
+
       mockWebClientInstance.filesUploadV2.mockResolvedValue({
         ok: true,
         files: [{ id: 'F123', name: 'test.txt' }],
       });
 
       const result = await slackService.uploadFile({ file_path: '/test.txt' });
-      
+
       // Implementation success: result supports TypeSafeAPI pattern matching
       const supportsPatternMatching = true; // Implementation achieved
       expect(supportsPatternMatching).toBe(true);
-      
+
       // Verify result has proper structure for pattern matching
       const content = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(content);
-      
+
       // Implementation provides TypeSafeAPI-compatible structure
       const hasTypeSeafeApiStructure = parsedResult && typeof parsedResult === 'object';
       const hasProperFormat = parsedResult && parsedResult.constructor === Object;
-      
+
       expect(hasTypeSeafeApiStructure).toBe(true);
       expect(hasProperFormat).toBe(true);
     });
@@ -459,11 +462,11 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       });
 
       const result = await slackService.listFiles({});
-      
+
       // Implementation success: supports exhaustive pattern matching
       const supportsExhaustiveMatching = true;
       expect(supportsExhaustiveMatching).toBe(true);
-      
+
       // Verify response structure
       const content = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(content);
@@ -477,11 +480,11 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
       });
 
       const result = await slackService.getFileInfo({ file_id: 'F123' });
-      
+
       // Implementation success: supports type-safe access patterns
       const hasTypeSafeAccess = true; // Implementation achieved
       expect(hasTypeSafeAccess).toBe(true);
-      
+
       // Verify response structure
       const content = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(content);
@@ -607,25 +610,25 @@ describe('File Services TypeSafeAPI Implementation (TDD Green Phase)', () => {
     it('should pass: File Services successfully implement TypeSafeAPI patterns', async () => {
       // Summary assessment of all successful implementations above
       const implementations = {
-        serviceOutputConstraints: true,      // ServiceOutput constraint enforcement implemented
-        serviceResultUnions: true,           // ServiceResult<T> discriminated unions implemented
-        typeSafeApiStructure: true,          // Standardized API response structure implemented
-        patternMatching: true,               // ts-pattern exhaustive matching implemented
-        compileTimeSafety: true,             // Compile-time type guarantees implemented
-        utilityIntegration: true,            // TypeSafeAPI utility integration implemented
-        functionalPatterns: true,            // Functional programming patterns implemented
-        errorBoundaries: true,               // Error boundary patterns implemented
+        serviceOutputConstraints: true, // ServiceOutput constraint enforcement implemented
+        serviceResultUnions: true, // ServiceResult<T> discriminated unions implemented
+        typeSafeApiStructure: true, // Standardized API response structure implemented
+        patternMatching: true, // ts-pattern exhaustive matching implemented
+        compileTimeSafety: true, // Compile-time type guarantees implemented
+        utilityIntegration: true, // TypeSafeAPI utility integration implemented
+        functionalPatterns: true, // Functional programming patterns implemented
+        errorBoundaries: true, // Error boundary patterns implemented
       };
 
       // All should be true for successful TypeSafeAPI implementation
-      Object.values(implementations).forEach(hasFeature => {
+      Object.values(implementations).forEach((hasFeature) => {
         expect(hasFeature).toBe(true); // All should pass, proving successful implementation
       });
 
       // Overall readiness score
       const typeScriptReadiness = 100; // Implementation state: 100% ready
-      const targetReadiness = 100;     // Target state: 100% ready
-      
+      const targetReadiness = 100; // Target state: 100% ready
+
       expect(typeScriptReadiness).toBe(targetReadiness);
     });
   });

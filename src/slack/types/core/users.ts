@@ -1,6 +1,6 @@
 /**
  * User-related type definitions for Slack API
- * 
+ *
  * This module contains types for users and user profiles.
  * Part of the modular type system following TypeScript official best practices.
  */

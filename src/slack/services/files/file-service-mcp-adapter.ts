@@ -1,9 +1,9 @@
 /**
  * MCP Compatibility Adapter for File Services
- * 
+ *
  * Converts TypeSafeAPI + ts-pattern ServiceResult types back to MCPToolResult
  * for backward compatibility with existing MCP protocol routing.
- * 
+ *
  * This adapter maintains the TypeSafeAPI type safety benefits while ensuring
  * seamless integration with the existing SlackService facade.
  */
@@ -17,7 +17,9 @@ import { convertToMCPResult } from '../../infrastructure/mcp-adapter-utils.js';
  * Create MCP-compatible file service adapter
  * Uses the shared conversion utilities to wrap the TypeSafeAPI file service
  */
-export const createFileServiceMCPAdapter = (deps: FileServiceDependencies): FileServiceMCPCompat => {
+export const createFileServiceMCPAdapter = (
+  deps: FileServiceDependencies
+): FileServiceMCPCompat => {
   // Get the TypeSafeAPI type-safe file service
   const typeSafeApiService: FileService = createFileService(deps);
 

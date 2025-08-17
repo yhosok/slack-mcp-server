@@ -43,20 +43,20 @@ import { SlackAPIError } from '../../../utils/errors.js';
 
 /**
  * Create message service with infrastructure dependencies
- * 
+ *
  * Factory function that creates a TypeSafeAPI-compliant message service with
  * full type safety, error handling, and integration with existing infrastructure.
- * 
+ *
  * Features:
  * - Type-safe operations with discriminated union results
  * - Automatic input validation using Zod schemas
  * - Consistent error handling with ServiceResult patterns
  * - Integration with Slack Web API client management
  * - Support for both bot and user token operations
- * 
+ *
  * @param deps - Infrastructure dependencies (client manager, rate limiter, etc.)
  * @returns Message service instance with TypeSafeAPI + ts-pattern type safety
- * 
+ *
  * @example Service Creation
  * ```typescript
  * const messageService = createMessageService({
@@ -65,12 +65,12 @@ import { SlackAPIError } from '../../../utils/errors.js';
  *   requestHandler,
  *   userService
  * });
- * 
+ *
  * const result = await messageService.sendMessage({
  *   channel: 'C1234567890',
  *   text: 'Hello, world!'
  * });
- * 
+ *
  * match(result)
  *   .with({ success: true }, (success) => console.log('Sent:', success.data))
  *   .with({ success: false }, (error) => console.error('Failed:', error.error))
@@ -80,13 +80,13 @@ import { SlackAPIError } from '../../../utils/errors.js';
 export const createMessageService = (deps: MessageServiceDependencies): MessageService => {
   /**
    * Send a message to a channel or user with TypeSafeAPI + ts-pattern type safety
-   * 
+   *
    * Sends a text message to a Slack channel, direct message, or thread.
    * Uses bot token for write operations and includes comprehensive error handling.
-   * 
+   *
    * @param args - Unknown input (validated at runtime using SendMessageSchema)
    * @returns ServiceResult with send confirmation or error details
-   * 
+   *
    * @example Basic Message
    * ```typescript
    * const result = await sendMessage({
@@ -94,7 +94,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
    *   text: 'Hello, team!'
    * });
    * ```
-   * 
+   *
    * @example Thread Reply
    * ```typescript
    * const result = await sendMessage({
@@ -103,7 +103,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
    *   thread_ts: '1234567890.123456'
    * });
    * ```
-   * 
+   *
    * @example Error Handling
    * ```typescript
    * const result = await sendMessage(args);
@@ -180,10 +180,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       });
 
       if (!result.channels) {
-        return createServiceError(
-          'Failed to retrieve channels',
-          'Channel list is unavailable'
-        );
+        return createServiceError('Failed to retrieve channels', 'Channel list is unavailable');
       }
 
       // Create TypeSafeAPI-compliant output
@@ -236,16 +233,18 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
           });
 
           if (!result.messages) {
-            throw new SlackAPIError(`Failed to retrieve channel history${cursor ? ` (page with cursor: ${cursor.substring(0, 10)}...)` : ''}`);
+            throw new SlackAPIError(
+              `Failed to retrieve channel history${cursor ? ` (page with cursor: ${cursor.substring(0, 10)}...)` : ''}`
+            );
           }
 
           return result;
         },
 
         getCursor: (response) => response.response_metadata?.next_cursor,
-        
+
         getItems: (response) => response.messages || [],
-        
+
         formatResponse: async (data) => {
           const messages = data.items.map((message: any) => ({
             type: message.type,
@@ -271,7 +270,10 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         },
       });
 
-      return createServiceSuccess(paginationResult as ChannelHistoryOutput, 'Channel history retrieved successfully');
+      return createServiceSuccess(
+        paginationResult as ChannelHistoryOutput,
+        'Channel history retrieved successfully'
+      );
     } catch (error) {
       if (error instanceof SlackAPIError) {
         return createServiceError(error.message, 'Failed to retrieve channel history');
@@ -303,10 +305,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       });
 
       if (!result.user) {
-        return createServiceError(
-          'User not found',
-          'Requested user does not exist'
-        );
+        return createServiceError('User not found', 'Requested user does not exist');
       }
 
       // Create TypeSafeAPI-compliant output
@@ -430,10 +429,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       });
 
       if (!result.channel) {
-        return createServiceError(
-          'Channel not found',
-          'Requested channel does not exist'
-        );
+        return createServiceError('Channel not found', 'Requested channel does not exist');
       }
 
       // Create TypeSafeAPI-compliant output

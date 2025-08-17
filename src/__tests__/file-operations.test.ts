@@ -422,8 +422,8 @@ describe('SlackService - File Operations', () => {
       // Arrange
       const mockFileContent = Buffer.from('test file content');
       mockReadFile.mockResolvedValue(mockFileContent);
-      mockWebClientInstance.filesUploadV2.mockResolvedValue({ 
-        ok: false, 
+      mockWebClientInstance.filesUploadV2.mockResolvedValue({
+        ok: false,
         files: null,
         error: 'upload_failed',
       });
@@ -504,21 +504,21 @@ describe('SlackService - File Operations', () => {
       expect(mockWebClientInstance.filesUploadV2).toHaveBeenCalled();
       expect(result.isError).toBeUndefined(); // Successful operations don't have isError property
       expect(result.content).toBeDefined();
-      
+
       // Verify the response contains success but no ID field (since Slack didn't provide one)
       const content = extractTextContent(result.content?.[0]);
       expect(content).toContain('success');
       expect(content).toContain('File uploaded successfully');
       expect(content).toContain('test-file.txt'); // filename should be present
-      
+
       // Parse response to check file object structure
       const responseMatch = content.match(/"file":\s*\{([^}]+)\}/);
       expect(responseMatch).toBeTruthy();
       const fileObject = responseMatch?.[1];
-      
+
       // Verify ID field is absent (not generated artificially)
       expect(fileObject).not.toContain('"id"');
-      
+
       // Verify other fields are present
       expect(fileObject).toContain('"name"');
       expect(fileObject).toContain('"title"');
@@ -529,7 +529,7 @@ describe('SlackService - File Operations', () => {
       // Arrange
       const mockFileContent = Buffer.from('test file for multiple channels');
       mockReadFile.mockResolvedValue(mockFileContent);
-      
+
       const multiChannelArgs = {
         file_path: '/path/to/multi-channel-file.txt',
         filename: 'multi-channel-file.txt',
@@ -562,9 +562,9 @@ describe('SlackService - File Operations', () => {
           channel_id: 'C1234567890', // Only first channel used
         })
       );
-      
+
       expect(result.isError).toBeUndefined();
-      
+
       // Verify structured warning was logged about multiple channels limitation
       const { logger } = await import('../utils/logger');
       expect(logger.warn).toHaveBeenCalledWith(
