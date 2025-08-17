@@ -59,29 +59,6 @@ export interface ListChannelsOutput extends ServiceOutput {
   [key: string]: unknown;
 }
 
-export interface UserInfoOutput extends ServiceOutput {
-  id: string;
-  name: string;
-  displayName: string;
-  realName?: string;
-  email?: string;
-  isBot?: boolean;
-  isAdmin?: boolean;
-  isOwner?: boolean;
-  deleted?: boolean;
-  profile: {
-    image24?: string;
-    image32?: string;
-    image48?: string;
-    image72?: string;
-    image192?: string;
-    image512?: string;
-    statusText?: string;
-    statusEmoji?: string;
-    title?: string;
-  };
-  [key: string]: unknown;
-}
 
 export interface ChannelInfoOutput extends ServiceOutput {
   id: string;
@@ -106,5 +83,4 @@ export type SendMessageResult = ServiceResult<SendMessageOutput>;
 export type MessageSearchResult = ServiceResult<MessageSearchOutput>;
 export type ChannelHistoryResult = ServiceResult<ChannelHistoryOutput>;
 export type ListChannelsResult = ServiceResult<ListChannelsOutput>;
-export type UserInfoResult = ServiceResult<UserInfoOutput>;
 export type ChannelInfoResult = ServiceResult<ChannelInfoOutput>;

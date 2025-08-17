@@ -28,17 +28,23 @@ jest.mock('../utils/validation', () => ({
 }));
 
 // Mock the config
+const mockConfig = {
+  SLACK_BOT_TOKEN: 'xoxb-test-bot-token',
+  SLACK_USER_TOKEN: 'xoxp-test-user-token',
+  USE_USER_TOKEN_FOR_READ: true,
+  SLACK_ENABLE_RATE_LIMIT_RETRY: true,
+  SLACK_RATE_LIMIT_RETRIES: 3,
+  SLACK_MAX_REQUEST_CONCURRENCY: 3,
+  SLACK_REJECT_RATE_LIMITED_CALLS: false,
+  LOG_LEVEL: 'info',
+  MCP_SERVER_NAME: 'slack-mcp-server',
+  MCP_SERVER_VERSION: '1.0.0',
+  PORT: 3000,
+};
+
 jest.mock('../config/index', () => ({
-  CONFIG: {
-    SLACK_BOT_TOKEN: 'xoxb-test-bot-token',
-    SLACK_USER_TOKEN: 'xoxp-test-user-token',
-    USE_USER_TOKEN_FOR_READ: true,
-    ENABLE_RATE_LIMIT: true,
-    RATE_LIMIT_RETRIES: 3,
-    MAX_REQUEST_CONCURRENCY: 3,
-    REJECT_RATE_LIMITED_CALLS: false,
-    LOG_LEVEL: 'info',
-  },
+  getConfig: jest.fn(() => mockConfig),
+  CONFIG: mockConfig,
 }));
 
 // Mock the analysis functions

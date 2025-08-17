@@ -23,6 +23,7 @@ import type {
   WorkspaceActivityOutput,
   ServerHealthOutput,
 } from '../../types/outputs/workspace.js';
+import type { SlackUser } from '../../types/core/users.js';
 
 // Export types for external use
 export type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
@@ -510,7 +511,14 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
       }
 
       // Get user details if requested
-      const userDetails = new Map<string, { displayName: string }>();
+      const userDetails = new Map<string, { 
+        displayName: string;
+        isAdmin?: boolean;
+        isBot?: boolean;
+        isDeleted?: boolean;
+        isRestricted?: boolean;
+        userType?: 'admin' | 'owner' | 'bot' | 'restricted' | 'user' | 'unknown';
+      }>();
       if (input.include_user_details) {
         const topUsers = Array.from(activity.userActivity.entries())
           .sort((a, b) => b[1].messages - a[1].messages)
@@ -518,16 +526,41 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
 
         for (const [userId] of topUsers) {
           try {
-            const userInfo = await deps.userService.getUserInfo(userId);
-            userDetails.set(userId, {
-              displayName:
-                userInfo.profile?.display_name ||
-                userInfo.real_name ||
-                userInfo.name ||
-                userInfo.id,
-            });
+            const userResult = await deps.userService.getUserInfo(userId);
+            if (userResult.success) {
+              const userInfo = userResult.data as SlackUser;
+              userDetails.set(userId, {
+                displayName:
+                  userInfo.profile?.display_name ||
+                  userInfo.real_name ||
+                  userInfo.name ||
+                  userInfo.id,
+                // Enhanced user capabilities from SlackUser type
+                isAdmin: userInfo.is_admin,
+                isBot: userInfo.is_bot,
+                isDeleted: userInfo.deleted,
+                isRestricted: userInfo.is_restricted,
+                userType: userInfo.is_admin 
+                  ? 'admin' 
+                  : userInfo.is_owner 
+                  ? 'owner' 
+                  : userInfo.is_bot 
+                  ? 'bot' 
+                  : userInfo.is_restricted 
+                  ? 'restricted' 
+                  : 'user',
+              });
+            }
           } catch {
-            // Skip users we can't look up
+            // Skip users we can't look up - fallback to basic info
+            userDetails.set(userId, {
+              displayName: userId,
+              isAdmin: false,
+              isBot: false,
+              isDeleted: false,
+              isRestricted: false,
+              userType: 'unknown',
+            });
           }
         }
       }
@@ -541,12 +574,21 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         threads: stats.threads,
       }));
 
-      const userActivity = Array.from(activity.userActivity.entries()).map(([id, stats]) => ({
-        id,
-        messages: stats.messages,
-        uniqueChannels: stats.channels.size,
-        displayName: userDetails.get(id)?.displayName || id,
-      }));
+      const userActivity = Array.from(activity.userActivity.entries()).map(([id, stats]) => {
+        const userDetail = userDetails.get(id);
+        return {
+          id,
+          messages: stats.messages,
+          uniqueChannels: stats.channels.size,
+          displayName: userDetail?.displayName || id,
+          // Enhanced user capabilities from SlackUser integration
+          isAdmin: userDetail?.isAdmin,
+          isBot: userDetail?.isBot,
+          isDeleted: userDetail?.isDeleted,
+          isRestricted: userDetail?.isRestricted,
+          userType: userDetail?.userType,
+        };
+      });
 
       const dailyActivity = Array.from(activity.dailyActivity.entries()).map(([date, count]) => ({
         date,

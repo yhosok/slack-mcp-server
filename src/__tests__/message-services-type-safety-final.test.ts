@@ -46,7 +46,7 @@ describe('Message Services Type Safety - Final Implementation Validation', () =>
       type _SendMessageReturn = ReturnType<typeof _messageServiceInterface.sendMessage>;
       type _ListChannelsReturn = ReturnType<typeof _messageServiceInterface.listChannels>;
       type _GetChannelHistoryReturn = ReturnType<typeof _messageServiceInterface.getChannelHistory>;
-      type _GetUserInfoReturn = ReturnType<typeof _messageServiceInterface.getUserInfo>;
+      // type _GetUserInfoReturn = ReturnType<typeof _messageServiceInterface.getUserInfo>; // Moved to user service
       type _SearchMessagesReturn = ReturnType<typeof _messageServiceInterface.searchMessages>;
       type _GetChannelInfoReturn = ReturnType<typeof _messageServiceInterface.getChannelInfo>;
 

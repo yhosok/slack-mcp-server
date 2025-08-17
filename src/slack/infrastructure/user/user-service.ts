@@ -1,5 +1,6 @@
 import { logger } from '../../../utils/logger.js';
 import type { UserService, UserServiceDependencies } from './types.js';
+import type { SlackUser, SlackUserProfile } from '../../types/core/users.js';
 
 /**
  * Create a user service instance with caching capabilities
@@ -95,22 +96,37 @@ export const createUserService = (dependencies: UserServiceDependencies): UserSe
   /**
    * Get full user information for a user ID
    */
-  const getUserInfo = async (
-    userId: string
-  ): Promise<{
-    id: string;
-    name?: string;
-    real_name?: string;
-    profile?: { display_name?: string; email?: string };
-  }> => {
+  const getUserInfo = async (userId: string): Promise<SlackUser> => {
     try {
       const client = dependencies.getClient();
       const result = await client.users.info({ user: userId });
-      return result.user as {
-        id: string;
-        name?: string;
-        real_name?: string;
-        profile?: { display_name?: string; email?: string };
+      
+      if (!result.user) {
+        throw new Error('User not found');
+      }
+      
+      // Return complete SlackUser object instead of inline type
+      return {
+        id: result.user.id || '',
+        team_id: result.user.team_id || '',
+        name: result.user.name || '',
+        deleted: result.user.deleted || false,
+        color: result.user.color || '',
+        real_name: result.user.real_name || '',
+        tz: result.user.tz || '',
+        tz_label: result.user.tz_label || '',
+        tz_offset: result.user.tz_offset || 0,
+        profile: result.user.profile as SlackUserProfile,
+        is_admin: result.user.is_admin || false,
+        is_owner: result.user.is_owner || false,
+        is_primary_owner: result.user.is_primary_owner || false,
+        is_restricted: result.user.is_restricted || false,
+        is_ultra_restricted: result.user.is_ultra_restricted || false,
+        is_bot: result.user.is_bot || false,
+        is_app_user: result.user.is_app_user || false,
+        updated: result.user.updated || 0,
+        is_email_confirmed: result.user.is_email_confirmed || false,
+        who_can_share_contact_card: result.user.who_can_share_contact_card || '',
       };
     } catch (error) {
       logger.debug(`Failed to get user info for ${userId}: ${error}`);

@@ -129,6 +129,15 @@ export interface GetReactionsOutput extends ServiceOutput {
     count: number;
     /** Array of user IDs or display names (if full=true) */
     users: string[];
+    /** Enhanced user details when full=true (optional for backward compatibility) */
+    userDetails?: Array<{
+      id: string;
+      name: string;
+      isBot?: boolean;
+      isAdmin?: boolean;
+      isDeleted?: boolean;
+      isRestricted?: boolean;
+    }>;
   }>;
   /** Message context information */
   message: {

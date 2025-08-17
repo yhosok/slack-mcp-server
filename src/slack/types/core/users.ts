@@ -29,6 +29,7 @@ export interface SlackUser {
   updated: number;
   is_email_confirmed: boolean;
   who_can_share_contact_card: string;
+  [key: string]: unknown; // ServiceOutput compliance
 }
 
 /**
@@ -51,4 +52,5 @@ export interface SlackUserProfile {
   image_192: string;
   image_512: string;
   team: string;
+  title?: string;
 }

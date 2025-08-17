@@ -52,6 +52,11 @@ export interface ThreadParticipant {
   first_message_ts: string;
   last_message_ts: string;
   avg_response_time_minutes?: number;
+  // Enhanced user capabilities from SlackUser integration
+  is_admin?: boolean;
+  is_bot?: boolean;
+  is_deleted?: boolean;
+  is_restricted?: boolean;
 }
 
 /**

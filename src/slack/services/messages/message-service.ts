@@ -9,7 +9,6 @@ import {
   SendMessageSchema,
   ListChannelsSchema,
   GetChannelHistorySchema,
-  GetUserInfoSchema,
   SearchMessagesSchema,
   GetChannelInfoSchema,
   validateInput,
@@ -33,13 +32,11 @@ import type {
   MessageSearchResult,
   ChannelHistoryResult,
   ListChannelsResult,
-  UserInfoResult,
   ChannelInfoResult,
   SendMessageOutput,
   MessageSearchOutput,
   ChannelHistoryOutput,
   ListChannelsOutput,
-  UserInfoOutput,
   ChannelInfoOutput,
 } from '../../types/outputs/messages.js';
 
@@ -292,64 +289,6 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
     }
   };
 
-  /**
-   * Get information about a user with TypeSafeAPI + ts-pattern type safety
-   */
-  const getUserInfo = async (args: unknown): Promise<UserInfoResult> => {
-    try {
-      // Validate input using TypeSafeAPI validation pattern
-      const input = validateInput(GetUserInfoSchema, args);
-
-      const client = deps.clientManager.getClientForOperation('read');
-
-      // Get user display name from cache or API
-      const displayName = await deps.userService.getDisplayName(input.user);
-
-      // Get detailed user info from API
-      const result = await client.users.info({
-        user: input.user,
-      });
-
-      if (!result.user) {
-        return createServiceError('User not found', 'Requested user does not exist');
-      }
-
-      // Create TypeSafeAPI-compliant output
-      const output: UserInfoOutput = enforceServiceOutput({
-        id: result.user.id || '',
-        name: result.user.name || '',
-        displayName,
-        realName: result.user.real_name,
-        email: result.user.profile?.email,
-        isBot: result.user.is_bot,
-        isAdmin: result.user.is_admin,
-        isOwner: result.user.is_owner,
-        deleted: result.user.deleted,
-        profile: {
-          image24: result.user.profile?.image_24,
-          image32: result.user.profile?.image_32,
-          image48: result.user.profile?.image_48,
-          image72: result.user.profile?.image_72,
-          image192: result.user.profile?.image_192,
-          image512: result.user.profile?.image_512,
-          statusText: result.user.profile?.status_text,
-          statusEmoji: result.user.profile?.status_emoji,
-          title: result.user.profile?.title,
-        },
-      });
-
-      return createServiceSuccess(output, 'User information retrieved successfully');
-    } catch (error) {
-      if (error instanceof SlackAPIError) {
-        return createServiceError(error.message, 'Failed to retrieve user information');
-      }
-
-      return createServiceError(
-        `Failed to get user info: ${error}`,
-        'Unexpected error during user information retrieval'
-      );
-    }
-  };
 
   /**
    * Search for messages in the workspace with TypeSafeAPI + ts-pattern type safety
@@ -471,7 +410,6 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
     sendMessage,
     listChannels,
     getChannelHistory,
-    getUserInfo,
     searchMessages,
     getChannelInfo,
   };

@@ -1,3 +1,5 @@
+import type { SlackUser } from '../../types/core/users.js';
+
 /**
  * Interface for managing user information and caching
  */
@@ -19,16 +21,9 @@ export interface UserService {
   /**
    * Get full user information for a user ID
    * @param userId - The Slack user ID
-   * @returns Promise resolving to the user information
+   * @returns Promise resolving to complete SlackUser information
    */
-  getUserInfo(
-    userId: string
-  ): Promise<{
-    id: string;
-    name?: string;
-    real_name?: string;
-    profile?: { display_name?: string; email?: string };
-  }>;
+  getUserInfo(userId: string): Promise<SlackUser>;
 
   /**
    * Clear the user cache (useful for testing or when needed)

@@ -27,13 +27,13 @@ import type {
   MessageSearchOutput,
   ChannelHistoryOutput,
   ListChannelsOutput as _ListChannelsOutput,
-  UserInfoOutput as _UserInfoOutput,
+  // UserInfoOutput as _UserInfoOutput, // Moved to users domain
   ChannelInfoOutput as _ChannelInfoOutput,
   SendMessageResult,
   MessageSearchResult,
   ChannelHistoryResult,
   ListChannelsResult,
-  UserInfoResult,
+  // UserInfoResult, // Moved to users domain
   ChannelInfoResult,
 } from '../slack/types/outputs/messages.js';
 import type { MessageService } from '../slack/services/messages/types.js';
@@ -238,7 +238,7 @@ describe('Message Services TypeSafeAPI + ts-pattern Implementation (Green Phase)
       type _SendMessageReturn = ReturnType<MessageService['sendMessage']>;
       type _ListChannelsReturn = ReturnType<MessageService['listChannels']>;
       type _GetChannelHistoryReturn = ReturnType<MessageService['getChannelHistory']>;
-      type _GetUserInfoReturn = ReturnType<MessageService['getUserInfo']>;
+      // type _GetUserInfoReturn = ReturnType<MessageService['getUserInfo']>; // Moved to user service
       type _SearchMessagesReturn = ReturnType<MessageService['searchMessages']>;
       type _GetChannelInfoReturn = ReturnType<MessageService['getChannelInfo']>;
 
@@ -328,7 +328,7 @@ describe('Message Services TypeSafeAPI + ts-pattern Implementation (Green Phase)
       type _MessageSearchResultType = MessageSearchResult;
       type _ChannelHistoryResultType = ChannelHistoryResult;
       type _ListChannelsResultType = ListChannelsResult;
-      type _UserInfoResultType = UserInfoResult;
+      // type _UserInfoResultType = UserInfoResult; // Moved to users domain
       type _ChannelInfoResultType = ChannelInfoResult;
 
       // Should be discriminated union types

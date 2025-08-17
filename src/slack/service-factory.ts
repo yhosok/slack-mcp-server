@@ -6,6 +6,7 @@ import { createThreadServiceMCPAdapter } from './services/threads/thread-service
 import { createFileServiceMCPAdapter } from './services/files/file-service-mcp-adapter.js';
 import { createReactionServiceMCPAdapter } from './services/reactions/reaction-service-mcp-adapter.js';
 import { createWorkspaceServiceMCPAdapter } from './services/workspace/workspace-service-mcp-adapter.js';
+import { createUserServiceMCPAdapter } from './services/users/user-service-mcp-adapter.js';
 
 /**
  * Method registry mapping method names to service implementations
@@ -90,13 +91,14 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
   const fileService = createFileServiceMCPAdapter(infrastructure);
   const reactionService = createReactionServiceMCPAdapter(infrastructure);
   const workspaceService = createWorkspaceServiceMCPAdapter(infrastructure);
+  const userService = createUserServiceMCPAdapter(infrastructure);
 
   const methods: ServiceMethodRegistry = {
     // Message operations
     sendMessage: messageService.sendMessage,
     listChannels: messageService.listChannels,
     getChannelHistory: messageService.getChannelHistory,
-    getUserInfo: messageService.getUserInfo,
+    getUserInfo: userService.getUserInfo,
     searchMessages: messageService.searchMessages,
     getChannelInfo: messageService.getChannelInfo,
 

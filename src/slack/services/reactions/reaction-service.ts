@@ -20,6 +20,7 @@
 
 import type { ReactionsGetArguments } from '@slack/web-api';
 import type { SlackMessage } from '../../types/index.js';
+import type { SlackUser } from '../../types/core/users.js';
 import {
   AddReactionSchema,
   RemoveReactionSchema,
@@ -330,21 +331,56 @@ export const createReactionServiceTypeSafeAPI = (
           let users = reaction.users || [];
 
           if (input.full && users.length > 0) {
-            // Get display names for users
+            // Get enhanced user details with capabilities
             const userDetails = await Promise.all(
               users.map(async (userId: string) => {
                 try {
-                  const userInfo = await deps.userService.getUserInfo(userId);
+                  const userResult = await deps.userService.getUserInfo(userId);
+                  if (userResult.success) {
+                    const userInfo = userResult.data as SlackUser;
+                    return {
+                      id: userId,
+                      name: userInfo.real_name || userInfo.name || userId,
+                      // Enhanced user capabilities from SlackUser integration
+                      isBot: userInfo.is_bot,
+                      isAdmin: userInfo.is_admin,
+                      isDeleted: userInfo.deleted,
+                      isRestricted: userInfo.is_restricted,
+                    };
+                  } else {
+                    // Fallback for failed user lookup
+                    return {
+                      id: userId,
+                      name: userId,
+                      isBot: false,
+                      isAdmin: false,
+                      isDeleted: false,
+                      isRestricted: false,
+                    };
+                  }
+                } catch {
+                  // Fallback for any error
                   return {
                     id: userId,
-                    name: userInfo.real_name || userInfo.name || userId,
+                    name: userId,
+                    isBot: false,
+                    isAdmin: false,
+                    isDeleted: false,
+                    isRestricted: false,
                   };
-                } catch {
-                  return { id: userId, name: userId };
                 }
               })
             );
+            // For backward compatibility, still return names array but also include enhanced details
             users = userDetails.map((u) => u.name);
+            
+            return {
+              name,
+              count,
+              users,
+              // Include enhanced user details when full=true
+              userDetails,
+            };
           }
 
           return {

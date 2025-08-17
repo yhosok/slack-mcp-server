@@ -14,6 +14,7 @@ import type {
   MessageServiceMCPCompat,
   MessageServiceDependencies,
 } from './types.js';
+import type { InfrastructureServices } from '../../infrastructure/factory.js';
 import { createMessageService } from './message-service.js';
 import { convertToMCPResult } from '../../infrastructure/mcp-adapter-utils.js';
 
@@ -22,8 +23,13 @@ import { convertToMCPResult } from '../../infrastructure/mcp-adapter-utils.js';
  * Uses the shared conversion utilities to wrap the TypeSafeAPI message service
  */
 export const createMessageServiceMCPAdapter = (
-  deps: MessageServiceDependencies
+  infraDeps: InfrastructureServices
 ): MessageServiceMCPCompat => {
+  // Use infrastructure dependencies directly
+  const deps: MessageServiceDependencies = {
+    ...infraDeps,
+  };
+
   // Get the TypeSafeAPI type-safe message service
   const typeSafeApiService: MessageService = createMessageService(deps);
 
@@ -44,10 +50,6 @@ export const createMessageServiceMCPAdapter = (
       return convertToMCPResult(result);
     },
 
-    async getUserInfo(args: unknown): Promise<MCPToolResult> {
-      const result = await typeSafeApiService.getUserInfo(args);
-      return convertToMCPResult(result);
-    },
 
     async searchMessages(args: unknown): Promise<MCPToolResult> {
       const result = await typeSafeApiService.searchMessages(args);

@@ -26,6 +26,7 @@ import {
   validateInput,
 } from '../../../utils/validation.js';
 import type { ThreadService, ThreadServiceDependencies } from './types.js';
+import type { SlackUser } from '../../types/core/users.js';
 import {
   formatFindThreadsResponse as _formatFindThreadsResponse,
   formatCreateThreadResponse as _formatCreateThreadResponse,
@@ -357,15 +358,53 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       const participantMap = new Map<string, ThreadParticipant>();
       for (const message of messages) {
         if (message.user && !participantMap.has(message.user)) {
-          const userInfo = await deps.userService.getUserInfo(message.user);
-          participantMap.set(message.user, {
-            user_id: message.user,
-            username: userInfo.name || userInfo.real_name || message.user,
-            real_name: userInfo.real_name,
-            message_count: 0,
-            first_message_ts: message.ts || '',
-            last_message_ts: message.ts || '',
-          });
+          try {
+            const userResult = await deps.userService.getUserInfo(message.user);
+            if (userResult.success) {
+              const userInfo = userResult.data as SlackUser;
+              participantMap.set(message.user, {
+                user_id: message.user,
+                username: userInfo.name || userInfo.real_name || message.user,
+                real_name: userInfo.real_name,
+                // Enhanced user capabilities from SlackUser integration
+                is_admin: userInfo.is_admin,
+                is_bot: userInfo.is_bot,
+                is_deleted: userInfo.deleted,
+                is_restricted: userInfo.is_restricted,
+                message_count: 0,
+                first_message_ts: message.ts || '',
+                last_message_ts: message.ts || '',
+              });
+            } else {
+              // Fallback for failed user lookup
+              participantMap.set(message.user, {
+                user_id: message.user,
+                username: message.user,
+                real_name: '',
+                is_admin: false,
+                is_bot: false,
+                is_deleted: false,
+                is_restricted: false,
+                message_count: 0,
+                first_message_ts: message.ts || '',
+                last_message_ts: message.ts || '',
+              });
+            }
+          } catch {
+            // Fallback for any error
+            participantMap.set(message.user, {
+              user_id: message.user,
+              username: message.user,
+              real_name: '',
+              is_admin: false,
+              is_bot: false,
+              is_deleted: false,
+              is_restricted: false,
+              message_count: 0,
+              first_message_ts: message.ts || '',
+              last_message_ts: message.ts || '',
+            });
+          }
         }
 
         const participant = participantMap.get(message.user!);
@@ -451,15 +490,53 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         const participantMap = new Map<string, ThreadParticipant>();
         for (const message of messages) {
           if (message.user && !participantMap.has(message.user)) {
-            const userInfo = await deps.userService.getUserInfo(message.user);
-            participantMap.set(message.user, {
-              user_id: message.user,
-              username: userInfo.name || userInfo.real_name || message.user,
-              real_name: userInfo.real_name,
-              message_count: 0,
-              first_message_ts: message.ts || '',
-              last_message_ts: message.ts || '',
-            });
+            try {
+              const userResult = await deps.userService.getUserInfo(message.user);
+              if (userResult.success) {
+                const userInfo = userResult.data as SlackUser;
+                participantMap.set(message.user, {
+                  user_id: message.user,
+                  username: userInfo.name || userInfo.real_name || message.user,
+                  real_name: userInfo.real_name,
+                  // Enhanced user capabilities from SlackUser integration
+                  is_admin: userInfo.is_admin,
+                  is_bot: userInfo.is_bot,
+                  is_deleted: userInfo.deleted,
+                  is_restricted: userInfo.is_restricted,
+                  message_count: 0,
+                  first_message_ts: message.ts || '',
+                  last_message_ts: message.ts || '',
+                });
+              } else {
+                // Fallback for failed user lookup
+                participantMap.set(message.user, {
+                  user_id: message.user,
+                  username: message.user,
+                  real_name: '',
+                  is_admin: false,
+                  is_bot: false,
+                  is_deleted: false,
+                  is_restricted: false,
+                  message_count: 0,
+                  first_message_ts: message.ts || '',
+                  last_message_ts: message.ts || '',
+                });
+              }
+            } catch {
+              // Fallback for any error
+              participantMap.set(message.user, {
+                user_id: message.user,
+                username: message.user,
+                real_name: '',
+                is_admin: false,
+                is_bot: false,
+                is_deleted: false,
+                is_restricted: false,
+                message_count: 0,
+                first_message_ts: message.ts || '',
+                last_message_ts: message.ts || '',
+              });
+            }
           }
         }
         const participants = Array.from(participantMap.values());
@@ -542,15 +619,53 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       const participantMap = new Map<string, ThreadParticipant>();
       for (const message of messages) {
         if (message.user && !participantMap.has(message.user)) {
-          const userInfo = await deps.userService.getUserInfo(message.user);
-          participantMap.set(message.user, {
-            user_id: message.user,
-            username: userInfo.name || userInfo.real_name || message.user,
-            real_name: userInfo.real_name,
-            message_count: 0,
-            first_message_ts: message.ts || '',
-            last_message_ts: message.ts || '',
-          });
+          try {
+            const userResult = await deps.userService.getUserInfo(message.user);
+            if (userResult.success) {
+              const userInfo = userResult.data as SlackUser;
+              participantMap.set(message.user, {
+                user_id: message.user,
+                username: userInfo.name || userInfo.real_name || message.user,
+                real_name: userInfo.real_name,
+                // Enhanced user capabilities from SlackUser integration
+                is_admin: userInfo.is_admin,
+                is_bot: userInfo.is_bot,
+                is_deleted: userInfo.deleted,
+                is_restricted: userInfo.is_restricted,
+                message_count: 0,
+                first_message_ts: message.ts || '',
+                last_message_ts: message.ts || '',
+              });
+            } else {
+              // Fallback for failed user lookup
+              participantMap.set(message.user, {
+                user_id: message.user,
+                username: message.user,
+                real_name: '',
+                is_admin: false,
+                is_bot: false,
+                is_deleted: false,
+                is_restricted: false,
+                message_count: 0,
+                first_message_ts: message.ts || '',
+                last_message_ts: message.ts || '',
+              });
+            }
+          } catch {
+            // Fallback for any error
+            participantMap.set(message.user, {
+              user_id: message.user,
+              username: message.user,
+              real_name: '',
+              is_admin: false,
+              is_bot: false,
+              is_deleted: false,
+              is_restricted: false,
+              message_count: 0,
+              first_message_ts: message.ts || '',
+              last_message_ts: message.ts || '',
+            });
+          }
         }
       }
       const participants = Array.from(participantMap.values());
@@ -905,16 +1020,50 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       const messages = threadResult.messages as SlackMessage[];
 
       // Get user info if requested
-      const userInfoMap = new Map<string, { displayName: string }>();
+      const userInfoMap = new Map<string, { 
+        displayName: string;
+        isAdmin?: boolean;
+        isBot?: boolean;
+        isDeleted?: boolean;
+        isRestricted?: boolean;
+      }>();
       if (input.include_user_profiles) {
         const uniqueUsers = new Set(
           messages.map((m) => m.user).filter((user): user is string => Boolean(user))
         );
         for (const userId of uniqueUsers) {
-          const userInfo = await deps.userService.getUserInfo(userId);
-          userInfoMap.set(userId, {
-            displayName: userInfo.profile?.display_name || userInfo.real_name || userId,
-          });
+          try {
+            const userResult = await deps.userService.getUserInfo(userId);
+            if (userResult.success) {
+              const userInfo = userResult.data as SlackUser;
+              userInfoMap.set(userId, {
+                displayName: userInfo.profile?.display_name || userInfo.real_name || userId,
+                // Enhanced user capabilities from SlackUser integration
+                isAdmin: userInfo.is_admin,
+                isBot: userInfo.is_bot,
+                isDeleted: userInfo.deleted,
+                isRestricted: userInfo.is_restricted,
+              });
+            } else {
+              // Fallback for failed user lookup
+              userInfoMap.set(userId, {
+                displayName: userId,
+                isAdmin: false,
+                isBot: false,
+                isDeleted: false,
+                isRestricted: false,
+              });
+            }
+          } catch {
+            // Fallback for any error
+            userInfoMap.set(userId, {
+              displayName: userId,
+              isAdmin: false,
+              isBot: false,
+              isDeleted: false,
+              isRestricted: false,
+            });
+          }
         }
       }
 

@@ -5,12 +5,11 @@ import type {
   MessageSearchResult,
   ChannelHistoryResult,
   ListChannelsResult,
-  UserInfoResult,
   ChannelInfoResult,
 } from '../../types/outputs/messages.js';
-
 /**
  * Dependencies for message service operations
+ * Uses infrastructure services directly
  */
 export type MessageServiceDependencies = InfrastructureServices;
 
@@ -30,7 +29,6 @@ export interface MessageService {
   sendMessage(args: unknown): Promise<SendMessageResult>;
   listChannels(args: unknown): Promise<ListChannelsResult>;
   getChannelHistory(args: unknown): Promise<ChannelHistoryResult>;
-  getUserInfo(args: unknown): Promise<UserInfoResult>;
   searchMessages(args: unknown): Promise<MessageSearchResult>;
   getChannelInfo(args: unknown): Promise<ChannelInfoResult>;
 }
@@ -43,7 +41,6 @@ export interface MessageServiceMCPCompat {
   sendMessage(args: unknown): Promise<MCPToolResult>;
   listChannels(args: unknown): Promise<MCPToolResult>;
   getChannelHistory(args: unknown): Promise<MCPToolResult>;
-  getUserInfo(args: unknown): Promise<MCPToolResult>;
   searchMessages(args: unknown): Promise<MCPToolResult>;
   getChannelInfo(args: unknown): Promise<MCPToolResult>;
 }

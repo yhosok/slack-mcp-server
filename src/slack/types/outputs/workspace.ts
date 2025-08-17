@@ -93,6 +93,12 @@ export interface WorkspaceActivityOutput extends ServiceOutput {
     messages: number;
     uniqueChannels: number;
     displayName: string;
+    // Enhanced user capabilities from SlackUser integration
+    isAdmin?: boolean;
+    isBot?: boolean;
+    isDeleted?: boolean;
+    isRestricted?: boolean;
+    userType?: 'admin' | 'owner' | 'bot' | 'restricted' | 'user' | 'unknown';
   }>;
   trends: {
     daily: Array<{

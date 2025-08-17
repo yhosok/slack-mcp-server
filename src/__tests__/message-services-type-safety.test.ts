@@ -34,7 +34,6 @@ import {
   type MessageSearchResult as _MessageSearchResult,
   type ChannelHistoryResult as _ChannelHistoryResult,
   type ListChannelsResult as _ListChannelsResult,
-  type UserInfoResult as _UserInfoResult,
   type ChannelInfoResult as _ChannelInfoResult,
 } from '../slack/types/outputs/messages.js';
 import { createMessageService as _createMessageService } from '../slack/services/messages/message-service.js';
@@ -74,7 +73,7 @@ describe('Message Services TypeSafeAPI + ts-pattern Implementation Validation (R
       type _GetChannelHistoryInput = Parameters<
         typeof _messageServiceInterface.getChannelHistory
       >[0];
-      type _GetUserInfoInput = Parameters<typeof _messageServiceInterface.getUserInfo>[0];
+      // type _GetUserInfoInput = Parameters<typeof _messageServiceInterface.getUserInfo>[0]; // Moved to user service
       type _SearchMessagesInput = Parameters<typeof _messageServiceInterface.searchMessages>[0];
       type _GetChannelInfoInput = Parameters<typeof _messageServiceInterface.getChannelInfo>[0];
 
@@ -427,7 +426,7 @@ describe('Message Services TypeSafeAPI + ts-pattern Implementation Validation (R
       type _MessageSearchResultType = _MessageSearchResult;
       type _ChannelHistoryResultType = _ChannelHistoryResult;
       type _ListChannelsResultType = _ListChannelsResult;
-      type _UserInfoResultType = _UserInfoResult;
+      // type _UserInfoResultType = _UserInfoResult; // Moved to users domain
       type _ChannelInfoResultType = _ChannelInfoResult;
 
       // These should all be ServiceResult<T> discriminated unions
@@ -464,7 +463,7 @@ describe('Message Services TypeSafeAPI + ts-pattern Implementation Validation (R
       expect(typeof mcpAdapter.sendMessage).toBe('function');
       expect(typeof mcpAdapter.listChannels).toBe('function');
       expect(typeof mcpAdapter.getChannelHistory).toBe('function');
-      expect(typeof mcpAdapter.getUserInfo).toBe('function');
+      // expect(typeof mcpAdapter.getUserInfo).toBe('function'); // Moved to user service
       expect(typeof mcpAdapter.searchMessages).toBe('function');
       expect(typeof mcpAdapter.getChannelInfo).toBe('function');
 

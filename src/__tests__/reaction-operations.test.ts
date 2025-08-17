@@ -126,10 +126,22 @@ describe('ReactionService - Reaction Operations', () => {
       userService: {
         getUserInfo: jest.fn(() =>
           Promise.resolve({
-            id: 'U1234567890',
-            name: 'testuser',
-            real_name: 'Test User',
-            displayName: 'Test User',
+            success: true,
+            data: {
+              id: 'U1234567890',
+              name: 'testuser',
+              real_name: 'Test User',
+              displayName: 'Test User',
+              is_admin: false,
+              is_bot: false,
+              deleted: false,
+              is_restricted: false,
+              profile: {
+                display_name: 'Test User',
+                real_name: 'Test User',
+              },
+            },
+            message: 'User information retrieved successfully',
           })
         ),
         getDisplayName: jest.fn(() => Promise.resolve('Test User')),
