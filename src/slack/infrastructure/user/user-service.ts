@@ -1,10 +1,26 @@
 import { logger } from '../../../utils/logger.js';
 import type { UserService, UserServiceDependencies } from './types.js';
+import type { SlackUser, SlackUserProfile } from '../../types/core/users.js';
 
 /**
- * Create a user service instance with caching capabilities
+ * Create an Infrastructure User Service - Pure Utility for User Management
+ *
+ * This service provides shared user utilities that can be used across multiple
+ * infrastructure components like thread-service, reaction-service, etc.
+ *
+ * **Key Features:**
+ * - Display name resolution with caching
+ * - Bulk user operations for efficiency
+ * - Complete user information retrieval
+ * - Immutable cache management
+ *
+ * **Usage Pattern:**
+ * - Shared utility across Infrastructure layer services
+ * - NOT for MCP tool implementation (that's Services layer responsibility)
+ * - Optimized for repeated user lookups with caching
+ *
  * @param dependencies - Required dependencies for the service
- * @returns A new UserService instance
+ * @returns A new UserService instance with pure utility methods
  */
 export const createUserService = (dependencies: UserServiceDependencies): UserService => {
   // Immutable cache state management
@@ -95,11 +111,38 @@ export const createUserService = (dependencies: UserServiceDependencies): UserSe
   /**
    * Get full user information for a user ID
    */
-  const getUserInfo = async (userId: string): Promise<any> => {
+  const getUserInfo = async (userId: string): Promise<SlackUser> => {
     try {
       const client = dependencies.getClient();
       const result = await client.users.info({ user: userId });
-      return result.user;
+
+      if (!result.user) {
+        throw new Error('User not found');
+      }
+
+      // Return complete SlackUser object instead of inline type
+      return {
+        id: result.user.id || '',
+        team_id: result.user.team_id || '',
+        name: result.user.name || '',
+        deleted: result.user.deleted || false,
+        color: result.user.color || '',
+        real_name: result.user.real_name || '',
+        tz: result.user.tz || '',
+        tz_label: result.user.tz_label || '',
+        tz_offset: result.user.tz_offset || 0,
+        profile: result.user.profile as SlackUserProfile,
+        is_admin: result.user.is_admin || false,
+        is_owner: result.user.is_owner || false,
+        is_primary_owner: result.user.is_primary_owner || false,
+        is_restricted: result.user.is_restricted || false,
+        is_ultra_restricted: result.user.is_ultra_restricted || false,
+        is_bot: result.user.is_bot || false,
+        is_app_user: result.user.is_app_user || false,
+        updated: result.user.updated || 0,
+        is_email_confirmed: result.user.is_email_confirmed || false,
+        who_can_share_contact_card: result.user.who_can_share_contact_card || '',
+      };
     } catch (error) {
       logger.debug(`Failed to get user info for ${userId}: ${error}`);
       throw error;

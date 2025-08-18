@@ -9,7 +9,7 @@
  */
 
 import { jest } from '@jest/globals';
-import type { SlackMessage } from '../slack/types.js';
+import type { SlackMessage } from '../slack/types/index.js';
 import { SlackAPIError } from '../utils/errors.js';
 
 // Mock the logger to avoid console output during tests
@@ -28,17 +28,23 @@ jest.mock('../utils/validation', () => ({
 }));
 
 // Mock the config
+const mockConfig = {
+  SLACK_BOT_TOKEN: 'xoxb-test-bot-token',
+  SLACK_USER_TOKEN: 'xoxp-test-user-token',
+  USE_USER_TOKEN_FOR_READ: true,
+  SLACK_ENABLE_RATE_LIMIT_RETRY: true,
+  SLACK_RATE_LIMIT_RETRIES: 3,
+  SLACK_MAX_REQUEST_CONCURRENCY: 3,
+  SLACK_REJECT_RATE_LIMITED_CALLS: false,
+  LOG_LEVEL: 'info',
+  MCP_SERVER_NAME: 'slack-mcp-server',
+  MCP_SERVER_VERSION: '1.0.0',
+  PORT: 3000,
+};
+
 jest.mock('../config/index', () => ({
-  CONFIG: {
-    SLACK_BOT_TOKEN: 'xoxb-test-bot-token',
-    SLACK_USER_TOKEN: 'xoxp-test-user-token',
-    USE_USER_TOKEN_FOR_READ: true,
-    ENABLE_RATE_LIMIT: true,
-    RATE_LIMIT_RETRIES: 3,
-    MAX_REQUEST_CONCURRENCY: 3,
-    REJECT_RATE_LIMITED_CALLS: false,
-    LOG_LEVEL: 'info',
-  },
+  getConfig: jest.fn(() => mockConfig),
+  CONFIG: mockConfig,
 }));
 
 // Mock the analysis functions
@@ -79,7 +85,7 @@ jest.mock('@slack/web-api', () => ({
 }));
 
 // Import after mocks are set up
-import { createThreadService } from '../slack/services/threads/thread-service.js';
+import { createThreadServiceMCPAdapter } from '../slack/services/threads/thread-service-mcp-adapter.js';
 import { createInfrastructureServices } from '../slack/infrastructure/index.js';
 import {
   performQuickAnalysis,
@@ -97,7 +103,9 @@ describe('Advanced Thread Features', () => {
     const textContent = response?.content?.[0] as MCPTextContent;
     if (textContent?.text) {
       try {
-        return JSON.parse(textContent.text);
+        const parsed = JSON.parse(textContent.text);
+        // Extract data field from MCP adapter JSON structure
+        return parsed.data || parsed;
       } catch {
         return textContent.text;
       }
@@ -108,7 +116,16 @@ describe('Advanced Thread Features', () => {
   // Helper function to get error text from response
   const getErrorText = (response: MCPToolResult): string => {
     const textContent = response?.content?.[0] as MCPTextContent;
-    return textContent?.text || '';
+    if (textContent?.text) {
+      try {
+        const parsed = JSON.parse(textContent.text);
+        // Return error field from MCP adapter JSON structure
+        return parsed.error || textContent.text;
+      } catch {
+        return textContent.text;
+      }
+    }
+    return '';
   };
 
   // Test data
@@ -169,8 +186,8 @@ describe('Advanced Thread Features', () => {
       logLevel: 'info',
     });
 
-    // Create thread service
-    threadService = createThreadService(mockInfrastructure);
+    // Create thread service with MCP adapter
+    threadService = createThreadServiceMCPAdapter(mockInfrastructure);
 
     // Setup default mock responses
     mockWebClientInstance.conversations.replies.mockResolvedValue({
@@ -642,7 +659,7 @@ describe('Advanced Thread Features', () => {
 
       // Should return error response, not throw
       expect(response.isError).toBe(true);
-      expect(getErrorText(response)).toContain('Error: API Error');
+      expect(getErrorText(response)).toContain('API Error');
     });
 
     it('should handle API errors gracefully in exportThread', async () => {
@@ -655,7 +672,7 @@ describe('Advanced Thread Features', () => {
 
       // Should return error response, not throw
       expect(response.isError).toBe(true);
-      expect(getErrorText(response)).toContain('Error: API Error');
+      expect(getErrorText(response)).toContain('API Error');
     });
 
     it('should handle API errors gracefully in findRelatedThreads', async () => {
@@ -668,7 +685,7 @@ describe('Advanced Thread Features', () => {
 
       // Should return error response, not throw
       expect(response.isError).toBe(true);
-      expect(getErrorText(response)).toContain('Error: API Error');
+      expect(getErrorText(response)).toContain('API Error');
     });
 
     it('should handle search API unavailable in getThreadsByParticipants', async () => {
@@ -685,7 +702,7 @@ describe('Advanced Thread Features', () => {
         },
       };
 
-      const serviceWithBadSearch = createThreadService(infrastructureWithBadSearch);
+      const serviceWithBadSearch = createThreadServiceMCPAdapter(infrastructureWithBadSearch);
 
       const response = await serviceWithBadSearch.getThreadsByParticipants({
         participants: [testUserId1],
@@ -693,7 +710,7 @@ describe('Advanced Thread Features', () => {
 
       // Should return error response, not throw
       expect(response.isError).toBe(true);
-      expect(getErrorText(response)).toContain('Slack API Error: Search API requires user token');
+      expect(getErrorText(response)).toContain('Search API requires user token');
     });
 
     it('should handle malformed search results', async () => {

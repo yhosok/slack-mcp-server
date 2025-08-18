@@ -3,7 +3,7 @@
  * No side effects, fully testable and functional
  */
 
-import type { SlackMessage, ActionItem } from '../../types.js';
+import type { SlackMessage, ActionItem } from '../../types/index.js';
 import type {
   ActionItemExtractionResult,
   PriorityAnalysisResult,

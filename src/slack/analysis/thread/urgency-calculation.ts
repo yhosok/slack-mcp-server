@@ -3,7 +3,7 @@
  * No side effects, fully testable and functional
  */
 
-import type { SlackMessage, ThreadParticipant } from '../../types.js';
+import type { SlackMessage, ThreadParticipant } from '../../types/index.js';
 import type { UrgencyScore, ImportanceScore, UrgencyConfig, ImportanceConfig } from './types.js';
 
 /**

@@ -18,7 +18,9 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   Tool,
+  type CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
+import type { MCPToolResult } from './mcp/types.js';
 import { SlackService } from './slack/slack-service.js';
 import { CONFIG } from './config/index.js';
 import { logger } from './utils/logger.js';
@@ -73,7 +75,7 @@ class SlackMCPServer {
       try {
         const result = await this.executeSlackTool(name, args);
         // SlackService methods return MCPToolResult with content array
-        return result;
+        return result as CallToolResult;
       } catch (error) {
         logger.error(`Error executing tool ${name}:`, error);
         throw error;
@@ -84,7 +86,7 @@ class SlackMCPServer {
   /**
    * Execute a Slack tool by name with proper routing
    */
-  private async executeSlackTool(name: string, args: unknown): Promise<any> {
+  private async executeSlackTool(name: string, args: unknown): Promise<MCPToolResult> {
     switch (name) {
       // Original tools
       case 'send_message':

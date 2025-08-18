@@ -85,6 +85,7 @@ jest.mock('../utils/logger', () => ({
 jest.mock('fs', () => ({
   promises: {
     readFile: jest.fn(),
+    stat: jest.fn(),
   },
 }));
 
@@ -115,11 +116,20 @@ jest.mock('../slack/analysis/formatters/file-formatters', () => ({
 describe('SlackService - File Operations', () => {
   let slackService: SlackService;
   const mockReadFile = fs.readFile as jest.MockedFunction<typeof fs.readFile>;
+  const mockStat = fs.stat as jest.MockedFunction<typeof fs.stat>;
 
   beforeEach(() => {
     // Clear all mocks before each test
     jest.clearAllMocks();
     mockReadFile.mockClear();
+    mockStat.mockClear();
+
+    // Set up default successful stat mock (file exists and is valid size)
+    mockStat.mockResolvedValue({
+      size: 1024, // 1KB file
+      isFile: () => true,
+      isDirectory: () => false,
+    } as any);
 
     // Reset the mock WebClient instance
     mockWebClientInstance = createMockWebClient();
@@ -247,7 +257,7 @@ describe('SlackService - File Operations', () => {
 
       // Assert
       expect(result.isError).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Slack API Error');
+      expect(extractTextContent(result.content?.[0])).toContain('Slack API error');
       expect(extractTextContent(result.content?.[0])).toContain('File upload failed');
     });
 
@@ -261,7 +271,7 @@ describe('SlackService - File Operations', () => {
         files: [
           {
             id: 'F1234567892',
-            name: 'large-file.bin',
+            name: 'large-file.zip',
             title: 'Large Binary File',
             size: largeBuffer.length,
             url_private: 'https://files.slack.com/files-pri/large',
@@ -274,7 +284,7 @@ describe('SlackService - File Operations', () => {
       mockWebClientInstance.filesUploadV2.mockResolvedValue(mockResult);
 
       const largeFileArgs = {
-        file_path: '/path/to/large-file.bin',
+        file_path: '/path/to/large-file.zip',
         channels: ['C1234567890'],
       };
 
@@ -284,7 +294,7 @@ describe('SlackService - File Operations', () => {
       // Assert
       expect(mockWebClientInstance.filesUploadV2).toHaveBeenCalledWith(
         expect.objectContaining({
-          filename: 'large-file.bin',
+          filename: 'large-file.zip',
           channel_id: 'C1234567890', // V2 API uses channel_id instead of channels
         })
       );
@@ -412,8 +422,8 @@ describe('SlackService - File Operations', () => {
       // Arrange
       const mockFileContent = Buffer.from('test file content');
       mockReadFile.mockResolvedValue(mockFileContent);
-      mockWebClientInstance.filesUploadV2.mockResolvedValue({ 
-        ok: false, 
+      mockWebClientInstance.filesUploadV2.mockResolvedValue({
+        ok: false,
         files: null,
         error: 'upload_failed',
       });
@@ -494,21 +504,21 @@ describe('SlackService - File Operations', () => {
       expect(mockWebClientInstance.filesUploadV2).toHaveBeenCalled();
       expect(result.isError).toBeUndefined(); // Successful operations don't have isError property
       expect(result.content).toBeDefined();
-      
+
       // Verify the response contains success but no ID field (since Slack didn't provide one)
       const content = extractTextContent(result.content?.[0]);
       expect(content).toContain('success');
-      expect(content).toContain('true'); // success: true
+      expect(content).toContain('File uploaded successfully');
       expect(content).toContain('test-file.txt'); // filename should be present
-      
+
       // Parse response to check file object structure
       const responseMatch = content.match(/"file":\s*\{([^}]+)\}/);
       expect(responseMatch).toBeTruthy();
       const fileObject = responseMatch?.[1];
-      
+
       // Verify ID field is absent (not generated artificially)
       expect(fileObject).not.toContain('"id"');
-      
+
       // Verify other fields are present
       expect(fileObject).toContain('"name"');
       expect(fileObject).toContain('"title"');
@@ -519,7 +529,7 @@ describe('SlackService - File Operations', () => {
       // Arrange
       const mockFileContent = Buffer.from('test file for multiple channels');
       mockReadFile.mockResolvedValue(mockFileContent);
-      
+
       const multiChannelArgs = {
         file_path: '/path/to/multi-channel-file.txt',
         filename: 'multi-channel-file.txt',
@@ -552,9 +562,9 @@ describe('SlackService - File Operations', () => {
           channel_id: 'C1234567890', // Only first channel used
         })
       );
-      
+
       expect(result.isError).toBeUndefined();
-      
+
       // Verify structured warning was logged about multiple channels limitation
       const { logger } = await import('../utils/logger');
       expect(logger.warn).toHaveBeenCalledWith(
@@ -807,7 +817,7 @@ describe('SlackService - File Operations', () => {
 
       // Assert
       expect(result.isError).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error');
+      expect(extractTextContent(result.content?.[0])).toContain('error');
     });
 
     it('should validate required file_id parameter', async () => {
@@ -826,7 +836,7 @@ describe('SlackService - File Operations', () => {
 
       // Assert
       expect(result.isError).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error');
+      expect(extractTextContent(result.content?.[0])).toContain('error');
     });
   });
 
@@ -861,8 +871,8 @@ describe('SlackService - File Operations', () => {
 
       // Assert
       const content = extractTextContent(result.content?.[0]);
-      expect(content).toContain('success');
-      expect(content).toContain('false');
+      expect(content).toContain('Failed to delete file');
+      expect(content).toContain('not_allowed');
     });
 
     it('should handle permission errors', async () => {
@@ -874,7 +884,7 @@ describe('SlackService - File Operations', () => {
 
       // Assert
       expect(result.isError).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error');
+      expect(extractTextContent(result.content?.[0])).toContain('error');
     });
 
     it('should validate required file_id parameter', async () => {
@@ -939,7 +949,7 @@ describe('SlackService - File Operations', () => {
         file: 'F1234567890',
       });
       expect(result.isError).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error');
+      expect(extractTextContent(result.content?.[0])).toContain('error');
     });
 
     it('should handle sharing failure when file has no permalink', async () => {
@@ -957,7 +967,7 @@ describe('SlackService - File Operations', () => {
 
       // Assert
       expect(result.isError).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error');
+      expect(extractTextContent(result.content?.[0])).toContain('error');
     });
 
     it('should handle chat message posting failure', async () => {
@@ -979,7 +989,7 @@ describe('SlackService - File Operations', () => {
 
       // Assert
       expect(result.isError).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error');
+      expect(extractTextContent(result.content?.[0])).toContain('error');
     });
 
     it('should validate required parameters', async () => {
@@ -1043,8 +1053,8 @@ describe('SlackService - File Operations', () => {
 
       // The response format has changed to return JSON data
       const content = extractTextContent(result.content?.[0]);
-      expect(content).toContain('files');
-      expect(content).toContain('bytes');
+      expect(content).toContain('totalFiles');
+      expect(content).toContain('totalSizeBytes');
     });
 
     it('should analyze files with custom options', async () => {
@@ -1085,8 +1095,8 @@ describe('SlackService - File Operations', () => {
 
       // The response format has changed to return JSON data
       const content = extractTextContent(result.content?.[0]);
-      expect(content).toContain('files');
-      expect(content).toContain('bytes');
+      expect(content).toContain('totalFiles');
+      expect(content).toContain('totalSizeBytes');
     });
 
     it('should handle empty file list for analysis', async () => {
@@ -1099,7 +1109,7 @@ describe('SlackService - File Operations', () => {
       // Assert
       // Response format changed - checking for structure instead
       const content = extractTextContent(result.content?.[0]);
-      expect(content).toContain('files');
+      expect(content).toContain('No files found');
       expect(content).toBeDefined();
     });
 
@@ -1143,8 +1153,8 @@ describe('SlackService - File Operations', () => {
       // Assert - Check that analysis was performed and returned
       // The response format has changed to return JSON data
       const content = extractTextContent(result.content?.[0]);
-      expect(content).toContain('files');
-      expect(content).toContain('bytes');
+      expect(content).toContain('totalFiles');
+      expect(content).toContain('totalSizeBytes');
     });
 
     it('should identify large files correctly', async () => {
@@ -1172,8 +1182,8 @@ describe('SlackService - File Operations', () => {
       // Assert - Should identify and report the large file
       // The response format has changed to return JSON data
       const content = extractTextContent(result.content?.[0]);
-      expect(content).toContain('files');
-      expect(content).toContain('bytes');
+      expect(content).toContain('totalFiles');
+      expect(content).toContain('totalSizeBytes');
     });
 
     it('should validate days_back parameter limits', async () => {

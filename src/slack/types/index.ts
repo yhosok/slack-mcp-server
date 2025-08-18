@@ -1,0 +1,100 @@
+/**
+ * Centralized type exports for Slack MCP Server
+ *
+ * This module implements the TypeSafeAPI re-export pattern, providing a single
+ * source of truth for all Slack-related type definitions. The modular structure
+ * enables better maintainability while preserving backward compatibility.
+ *
+ * Architecture:
+ * - All types are organized by functional domain in core/ directory
+ * - This index.ts serves as the re-export hub following TypeScript official patterns
+ * - Existing import statements continue to work without modification
+ * - Future outputs/ directory is prepared for service output types
+ */
+
+// ===================================================================
+// CORE TYPE RE-EXPORTS
+// ===================================================================
+
+// Common types (exported first as they're used by other modules)
+export type { SlackReaction, ActionItem } from './core/common.js';
+
+// User types
+export type { SlackUser, SlackUserProfile } from './core/users.js';
+
+// Message types (includes SlackReaction re-export for backward compatibility)
+export type {
+  SlackMessage,
+  SlackBlock,
+  SlackAttachment,
+  SlackAttachmentField,
+} from './core/messages.js';
+
+// Channel types removed - TypeSafeAPI pattern uses Slack Web API types directly
+
+// File types
+export type { SlackFile, SlackFileShare, SlackFileComment, FileAnalysis } from './core/files.js';
+
+// Thread types (depends on SlackMessage)
+export type {
+  SlackThread,
+  ThreadAnalysis,
+  ThreadParticipant,
+  ThreadTimelineEvent,
+  ThreadSummary,
+  ThreadMetrics,
+} from './core/threads.js';
+
+// ===================================================================
+// SERVICE OUTPUT TYPES (TypeSafeAPI Pattern)
+// ===================================================================
+
+// File service outputs
+export type {
+  DeleteFileOutput,
+  UploadFileOutput,
+  FileAnalysisOutput,
+  ShareFileOutput,
+} from './outputs/files.js';
+
+// Thread service outputs
+export type {
+  ThreadAnalysisOutput,
+  ThreadSummaryOutput,
+  CreateThreadOutput,
+  ThreadMetricsOutput,
+} from './outputs/threads.js';
+
+// Message service outputs
+export type {
+  SendMessageOutput,
+  MessageSearchOutput,
+  ChannelHistoryOutput,
+} from './outputs/messages.js';
+
+// Reaction service outputs
+export type {
+  AddReactionOutput,
+  RemoveReactionOutput,
+  GetReactionsOutput,
+  ReactionStatisticsOutput,
+} from './outputs/reactions.js';
+
+// Workspace service outputs
+export type {
+  WorkspaceInfoOutput,
+  TeamMembersOutput,
+  WorkspaceActivityOutput,
+  ServerHealthOutput,
+} from './outputs/workspace.js';
+
+// ===================================================================
+// LEGACY COMPATIBILITY LAYER
+// ===================================================================
+
+/**
+ * Re-export SlackReaction from messages module for complete backward compatibility
+ * This ensures that existing code importing SlackReaction from the main types
+ * file continues to work without modification.
+ */
+// SlackReaction is already exported above from common.js

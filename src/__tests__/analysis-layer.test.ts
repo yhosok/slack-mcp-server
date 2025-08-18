@@ -16,7 +16,7 @@ import {
   formatThreadAnalysis,
 } from '../slack/analysis/index.js';
 
-import type { SlackMessage, ThreadParticipant } from '../slack/types.js';
+import type { SlackMessage, ThreadParticipant } from '../slack/types/index.js';
 
 // Mock messages for testing
 const mockMessages: SlackMessage[] = [

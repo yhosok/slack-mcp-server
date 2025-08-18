@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { describe, it, expect, jest } from '@jest/globals';
-import { executePagination, type PaginationConfig } from '../slack/infrastructure/generic-pagination.js';
+import {
+  executePagination,
+  type PaginationConfig,
+} from '../slack/infrastructure/generic-pagination.js';
 import type { MCPToolResult } from '../mcp/types.js';
 
 // Mock pagination helper module
@@ -32,10 +35,12 @@ describe('Generic Pagination Type Tests', () => {
   describe('executePagination type compatibility', () => {
     it('should handle synchronous formatResponse functions', async () => {
       const config: PaginationConfig<MockApiResponse, MockItem, { result: string }> = {
-        fetchPage: jest.fn(() => Promise.resolve({
-          messages: [{ id: '1', text: 'test' }],
-          response_metadata: {},
-        })),
+        fetchPage: jest.fn(() =>
+          Promise.resolve({
+            messages: [{ id: '1', text: 'test' }],
+            response_metadata: {},
+          })
+        ),
         getCursor: () => undefined,
         getItems: (response) => response.messages || [],
         formatResponse: (data) => ({
@@ -49,20 +54,24 @@ describe('Generic Pagination Type Tests', () => {
 
     it('should handle asynchronous formatResponse functions', async () => {
       const config: PaginationConfig<MockApiResponse, MockItem, Promise<MCPToolResult>> = {
-        fetchPage: jest.fn(() => Promise.resolve({
-          messages: [{ id: '1', text: 'test' }],
-          response_metadata: {},
-        })),
+        fetchPage: jest.fn(() =>
+          Promise.resolve({
+            messages: [{ id: '1', text: 'test' }],
+            response_metadata: {},
+          })
+        ),
         getCursor: () => undefined,
         getItems: (response) => response.messages || [],
         formatResponse: async (data) => {
           // Simulate async formatting (e.g., user lookup)
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
           return {
-            content: [{
-              type: 'text',
-              text: `Async result: ${data.items.length} items`,
-            }],
+            content: [
+              {
+                type: 'text',
+                text: `Async result: ${data.items.length} items`,
+              },
+            ],
           };
         },
       };
@@ -76,7 +85,7 @@ describe('Generic Pagination Type Tests', () => {
 
     it('should handle mixed async/sync formatter usage patterns', async () => {
       // Test case representing current real usage patterns
-      
+
       // Pattern 1: Sync formatter returning object directly (workspace, files)
       const syncConfig: PaginationConfig<MockApiResponse, MockItem, { data: any[] }> = {
         fetchPage: jest.fn(() => Promise.resolve({ messages: [], response_metadata: {} })),
@@ -88,7 +97,7 @@ describe('Generic Pagination Type Tests', () => {
       // Pattern 2: Async formatter returning Promise<MCPToolResult> (messages, threads)
       const asyncConfig: PaginationConfig<MockApiResponse, MockItem, Promise<MCPToolResult>> = {
         fetchPage: jest.fn(() => Promise.resolve({ messages: [], response_metadata: {} })),
-        getCursor: () => undefined, 
+        getCursor: () => undefined,
         getItems: (response) => response.messages || [],
         formatResponse: async (data) => ({
           content: [{ type: 'text', text: `Async: ${data.items.length}` }],
@@ -109,10 +118,12 @@ describe('Generic Pagination Type Tests', () => {
     it('should reproduce message-service pattern (missing await)', async () => {
       // This reproduces the actual pattern from message-service.ts
       const messageServicePattern = {
-        fetchPage: jest.fn(() => Promise.resolve({
-          messages: [{ id: '1', text: 'message' }],
-          response_metadata: {},
-        })),
+        fetchPage: jest.fn(() =>
+          Promise.resolve({
+            messages: [{ id: '1', text: 'message' }],
+            response_metadata: {},
+          })
+        ),
         getCursor: () => undefined,
         getItems: (response: any) => response.messages || [],
         formatResponse: (data: any) => {
@@ -125,7 +136,7 @@ describe('Generic Pagination Type Tests', () => {
 
       // This creates Promise<Promise<MCPToolResult>> instead of Promise<MCPToolResult>
       const result = await executePagination({}, messageServicePattern);
-      
+
       // After fix, this should work properly
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
@@ -135,10 +146,12 @@ describe('Generic Pagination Type Tests', () => {
     it('should reproduce thread-service findThreadsInChannel pattern (correct await)', async () => {
       // This reproduces the pattern from thread-service.ts findThreadsInChannel
       const threadServicePattern = {
-        fetchPage: jest.fn(() => Promise.resolve({
-          messages: [{ id: '1', text: 'thread parent' }],
-          response_metadata: {},
-        })),
+        fetchPage: jest.fn(() =>
+          Promise.resolve({
+            messages: [{ id: '1', text: 'thread parent' }],
+            response_metadata: {},
+          })
+        ),
         getCursor: () => undefined,
         getItems: (response: any) => response.messages || [],
         formatResponse: async (data: any) => {

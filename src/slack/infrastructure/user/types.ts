@@ -1,5 +1,16 @@
+import type { SlackUser } from '../../types/core/users.js';
+
 /**
- * Interface for managing user information and caching
+ * Infrastructure User Service - Pure Utility for User Information Management
+ *
+ * This service provides shared user utilities across the Infrastructure layer.
+ *
+ * **Role**: Pure utility service for display name resolution, caching, and basic user info
+ * **Used by**: thread-service, reaction-service, workspace-service, and other infrastructure components
+ * **Responsibility**: Efficient user data retrieval with caching, NOT MCP tool implementation
+ *
+ * Note: This is distinct from Services layer UserService which implements MCP tools.
+ * Both services have different responsibilities and can coexist.
  */
 export interface UserService {
   /**
@@ -19,9 +30,9 @@ export interface UserService {
   /**
    * Get full user information for a user ID
    * @param userId - The Slack user ID
-   * @returns Promise resolving to the user information
+   * @returns Promise resolving to complete SlackUser information
    */
-  getUserInfo(userId: string): Promise<any>;
+  getUserInfo(userId: string): Promise<SlackUser>;
 
   /**
    * Clear the user cache (useful for testing or when needed)
@@ -30,7 +41,11 @@ export interface UserService {
 }
 
 /**
- * Dependencies for creating a UserService
+ * Dependencies for creating an Infrastructure UserService
+ *
+ * Provides the WebClient needed for user API operations.
+ * The client is obtained through dependency injection to ensure
+ * proper token strategy and rate limiting.
  */
 export interface UserServiceDependencies {
   /**

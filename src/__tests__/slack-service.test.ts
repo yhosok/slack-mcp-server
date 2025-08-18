@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { jest } from '@jest/globals';
 import { SlackService } from '../slack/slack-service';
-import { extractTextContent } from '../utils/helpers';
+import {
+  extractTextContent,
+  parseJsonResponse,
+  extractJsonData as _extractJsonData,
+} from '../utils/helpers';
 
 // Create a shared mock WebClient instance
 const createMockWebClient = (): any => ({
@@ -137,14 +141,15 @@ describe('SlackService', () => {
         thread_ts: undefined,
       });
 
-      expect(result).toEqual({
-        content: [
-          {
-            type: 'text',
-            text: 'Message sent successfully to undefined. Timestamp: 1234567890.123456',
-          },
-        ],
-      });
+      // Parse the JSON response from TypeSafeAPI implementation
+      const responseText = extractTextContent(result.content?.[0]);
+      const parsedResponse = JSON.parse(responseText);
+
+      expect(parsedResponse.statusCode).toBe('10000');
+      expect(parsedResponse.message).toBe('Message sent successfully');
+      expect(parsedResponse.data).toHaveProperty('success', true);
+      expect(parsedResponse.data).toHaveProperty('channel', 'C1234567890');
+      expect(parsedResponse.data).toHaveProperty('ts', '1234567890.123456');
     });
 
     it('should throw SlackAPIError when Slack API returns error', async () => {
@@ -162,8 +167,13 @@ describe('SlackService', () => {
 
       // Assert
       expect(result.isError).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Slack API Error');
-      expect(extractTextContent(result.content?.[0])).toContain('Failed to send message');
+      const responseText = extractTextContent(result.content?.[0]);
+      const parsedResponse = JSON.parse(responseText);
+
+      expect(parsedResponse.statusCode).toBe('10001');
+      expect(parsedResponse.message).toBe('Message delivery failed');
+      expect(parsedResponse.error).toContain('Failed to send message');
+      expect(parsedResponse.error).toContain('channel_not_found');
     });
 
     it('should validate input parameters', async () => {
@@ -263,9 +273,20 @@ describe('SlackService', () => {
         limit: 10,
       });
 
-      expect(extractTextContent(result.content?.[0])).toContain('Channel history (2 messages)');
-      expect(extractTextContent(result.content?.[0])).toContain('U1234567890: Hello!');
-      expect(extractTextContent(result.content?.[0])).toContain('U0987654321: Hi there!');
+      // Parse the JSON response from TypeSafeAPI implementation
+      const responseText = extractTextContent(result.content?.[0]);
+      const parsedResponse = JSON.parse(responseText);
+
+      expect(parsedResponse.statusCode).toBe('10000');
+      expect(parsedResponse.message).toBe('Channel history retrieved successfully');
+      expect(parsedResponse.data).toHaveProperty('messages');
+      expect(parsedResponse.data.messages).toHaveLength(2);
+      expect(parsedResponse.data.messages[0]).toHaveProperty('user', 'U1234567890');
+      expect(parsedResponse.data.messages[0]).toHaveProperty('text', 'Hello!');
+      expect(parsedResponse.data.messages[1]).toHaveProperty('user', 'U0987654321');
+      expect(parsedResponse.data.messages[1]).toHaveProperty('text', 'Hi there!');
+      expect(parsedResponse.data).toHaveProperty('channel', 'C1234567890');
+      expect(parsedResponse.data).toHaveProperty('hasMore', false);
     });
   });
 
@@ -379,8 +400,12 @@ describe('SlackService', () => {
           include_all_metadata: false,
         });
 
-        expect(extractTextContent(result.content?.[0])).toContain('Found 1 threads');
-        expect(extractTextContent(result.content?.[0])).toContain('Thread 1234567890.123456');
+        const response = parseJsonResponse(result.content?.[0]);
+        expect(response.success).toBe(true);
+        expect(response.statusCode).toBe('10000');
+        expect((response.data as any)?.threads).toHaveLength(1);
+        expect((response.data as any)?.threads[0]?.threadTs).toBe('1234567890.123456');
+        expect((response.data as any)?.total).toBe(1);
       });
     });
 
@@ -431,10 +456,12 @@ describe('SlackService', () => {
         });
 
         // Response format has changed to JSON data
-        const content = extractTextContent(result.content?.[0]);
-        expect(content).toContain('messages');
-        expect(content).toContain('1234567890.123456');
-        expect(content).toContain('Parent message');
+        const response = parseJsonResponse(result.content?.[0]);
+        expect(response.success).toBe(true);
+        expect(response.statusCode).toBe('10000');
+        expect((response.data as any)?.messages).toHaveLength(3);
+        expect((response.data as any)?.messages[0]?.ts).toBe('1234567890.123456');
+        expect((response.data as any)?.messages[0]?.text).toBe('Parent message');
       });
     });
 
@@ -530,20 +557,23 @@ describe('SlackService', () => {
         // Assert - The method should return a response (success or error)
         expect(result.content).toBeDefined();
         expect(result.content[0]).toBeDefined();
-        const content = extractTextContent(result.content?.[0]);
-        expect(content).toBeDefined();
-        // If error, it should be a descriptive error message
-        if (result.isError) {
-          expect(content).toContain('Error');
+        const response = parseJsonResponse(result.content?.[0]);
+        expect(response).toBeDefined();
+
+        // Check if it's a success or error response
+        if (response.success) {
+          expect(response.statusCode).toBe('10000');
+          expect((response.data as any)?.participants).toBeDefined();
         } else {
-          expect(content).toContain('participants');
+          expect(response.statusCode).toBe('10001');
+          expect(response.error).toBeDefined();
         }
       });
 
       it('should calculate duration_hours correctly from first and last message timestamps', async () => {
         // Arrange - Create messages with specific timestamps for precise duration calculation
         const firstMessageTs = '1699564800.000100'; // Nov 9, 2023 16:00:00 GMT
-        const lastMessageTs = '1699568400.000200';  // Nov 9, 2023 17:00:00 GMT (1 hour later)
+        const lastMessageTs = '1699568400.000200'; // Nov 9, 2023 17:00:00 GMT (1 hour later)
         const expectedDurationHours = 1.0; // Exactly 1 hour
 
         const mockMessages = [
@@ -575,9 +605,18 @@ describe('SlackService', () => {
         // Mock user info for each user
         mockWebClientInstance.users.info.mockImplementation((params: { user: string }) => {
           const userMocks = {
-            'U1234567890': { ok: true, user: { id: 'U1234567890', name: 'alice', real_name: 'Alice Smith' } },
-            'U0987654321': { ok: true, user: { id: 'U0987654321', name: 'bob', real_name: 'Bob Johnson' } },
-            'U1111111111': { ok: true, user: { id: 'U1111111111', name: 'charlie', real_name: 'Charlie Brown' } },
+            U1234567890: {
+              ok: true,
+              user: { id: 'U1234567890', name: 'alice', real_name: 'Alice Smith' },
+            },
+            U0987654321: {
+              ok: true,
+              user: { id: 'U0987654321', name: 'bob', real_name: 'Bob Johnson' },
+            },
+            U1111111111: {
+              ok: true,
+              user: { id: 'U1111111111', name: 'charlie', real_name: 'Charlie Brown' },
+            },
           };
           return Promise.resolve(userMocks[params.user as keyof typeof userMocks]);
         });
@@ -594,27 +633,22 @@ describe('SlackService', () => {
         // Assert
         expect(result.content).toBeDefined();
         expect(result.content[0]).toBeDefined();
-        const content = extractTextContent(result.content?.[0]);
-        expect(content).toBeDefined();
+        const response = parseJsonResponse(result.content?.[0]);
+        expect(response).toBeDefined();
 
-        if (!result.isError) {
-          // Parse the response to extract duration_hours
-          const lines = content.split('\n');
-          const durationLine = lines.find(line => line.includes('Duration:'));
-          expect(durationLine).toBeDefined();
-          
-          // Extract duration from the line (expected format: "Duration: X.X hours")
-          const durationMatch = durationLine!.match(/Duration:\s*([0-9.]+)\s*hours?/);
-          expect(durationMatch).toBeDefined();
-          expect(durationMatch![1]).toBeDefined();
-          
-          const actualDurationHours = parseFloat(durationMatch![1]!);
-          
+        if (response.success) {
+          // Extract duration from JSON data structure
+          expect(response.statusCode).toBe('10000');
+          expect((response.data as any)?.durationHours).toBeDefined();
+
+          const actualDurationHours = (response.data as any).durationHours;
+          expect(typeof actualDurationHours).toBe('number');
+
           // The duration should be calculated from first to last message, not from thread start to now
           expect(actualDurationHours).toBeCloseTo(expectedDurationHours, 1);
         } else {
-          // If there's an error, the test fails - this should not happen in Red phase
-          throw new Error(`Expected successful analysis but got error: ${content}`);
+          // If there's an error, the test fails - this should not happen in normal operation
+          throw new Error(`Expected successful analysis but got error: ${response.error}`);
         }
       });
 
@@ -650,9 +684,18 @@ describe('SlackService', () => {
         // Mock user info for each user
         mockWebClientInstance.users.info.mockImplementation((params: { user: string }) => {
           const userMocks = {
-            'U1234567890': { ok: true, user: { id: 'U1234567890', name: 'alice', real_name: 'Alice Smith' } },
-            'U0987654321': { ok: true, user: { id: 'U0987654321', name: 'bob', real_name: 'Bob Johnson' } },
-            'U1111111111': { ok: true, user: { id: 'U1111111111', name: 'charlie', real_name: 'Charlie Brown' } },
+            U1234567890: {
+              ok: true,
+              user: { id: 'U1234567890', name: 'alice', real_name: 'Alice Smith' },
+            },
+            U0987654321: {
+              ok: true,
+              user: { id: 'U0987654321', name: 'bob', real_name: 'Bob Johnson' },
+            },
+            U1111111111: {
+              ok: true,
+              user: { id: 'U1111111111', name: 'charlie', real_name: 'Charlie Brown' },
+            },
           };
           return Promise.resolve(userMocks[params.user as keyof typeof userMocks]);
         });
@@ -668,28 +711,23 @@ describe('SlackService', () => {
         // Assert
         expect(result.content).toBeDefined();
         expect(result.content[0]).toBeDefined();
-        const content = extractTextContent(result.content?.[0]);
-        expect(content).toBeDefined();
+        const response = parseJsonResponse(result.content?.[0]);
+        expect(response).toBeDefined();
 
-        if (!result.isError) {
-          // Parse the response to extract word_count
-          const lines = content.split('\n');
-          const wordCountLine = lines.find(line => line.includes('Word Count:'));
-          expect(wordCountLine).toBeDefined();
-          
-          // Extract word count from the line (expected format: "Word Count: X")
-          const wordCountMatch = wordCountLine!.match(/Word Count:\s*([0-9]+)/);
-          expect(wordCountMatch).toBeDefined();
-          expect(wordCountMatch![1]).toBeDefined();
-          
-          const actualWordCount = parseInt(wordCountMatch![1]!);
-          
+        if (response.success) {
+          // Extract word count from JSON data structure
+          expect(response.statusCode).toBe('10000');
+          expect((response.data as any)?.wordCount).toBeDefined();
+
+          const actualWordCount = (response.data as any).wordCount;
+          expect(typeof actualWordCount).toBe('number');
+
           // The word count should be calculated from actual message content, not estimated
           const expectedWordCount = 16;
           expect(actualWordCount).toBe(expectedWordCount);
         } else {
-          // If there's an error, the test fails - this should not happen in Red phase
-          throw new Error(`Expected successful analysis but got error: ${content}`);
+          // If there's an error, the test fails - this should not happen in normal operation
+          throw new Error(`Expected successful analysis but got error: ${response.error}`);
         }
       });
     });
@@ -732,13 +770,16 @@ describe('SlackService', () => {
         // Assert - The method should return a response (success or error)
         expect(result.content).toBeDefined();
         expect(result.content[0]).toBeDefined();
-        const content = extractTextContent(result.content?.[0]);
-        expect(content).toBeDefined();
-        // If error, it should be a descriptive error message
-        if (result.isError) {
-          expect(content).toContain('Error');
+        const response = parseJsonResponse(result.content?.[0]);
+        expect(response).toBeDefined();
+
+        // Check if it's a success or error response
+        if (response.success) {
+          expect(response.statusCode).toBe('10000');
+          expect((response.data as any)?.summary).toBeDefined();
         } else {
-          expect(content).toContain('summary');
+          expect(response.statusCode).toBe('10001');
+          expect(response.error).toBeDefined();
         }
       });
     });
@@ -782,13 +823,16 @@ describe('SlackService', () => {
         // Assert - The method should return a response (success or error)
         expect(result.content).toBeDefined();
         expect(result.content[0]).toBeDefined();
-        const content = extractTextContent(result.content?.[0]);
-        expect(content).toBeDefined();
-        // If error, it should be a descriptive error message
-        if (result.isError) {
-          expect(content).toContain('Error');
+        const response = parseJsonResponse(result.content?.[0]);
+        expect(response).toBeDefined();
+
+        // Check if it's a success or error response
+        if (response.success) {
+          expect(response.statusCode).toBe('10000');
+          expect((response.data as any)?.actionItems).toBeDefined();
         } else {
-          expect(content).toContain('actionItems');
+          expect(response.statusCode).toBe('10001');
+          expect(response.error).toBeDefined();
         }
       });
     });
@@ -900,10 +944,12 @@ describe('SlackService', () => {
 
         // Assert
         expect(mockWebClientInstance.chat.postMessage).toHaveBeenCalledTimes(2);
-        expect(extractTextContent(result.content?.[0])).toContain('Thread created successfully');
-        expect(extractTextContent(result.content?.[0])).toContain(
-          'Parent message: 1234567890.123456'
-        );
+        const response = parseJsonResponse(result.content?.[0]);
+        expect(response.success).toBe(true);
+        expect(response.statusCode).toBe('10000');
+        expect(response.message).toContain('Thread created successfully');
+        expect((response.data as any)?.threadTs).toBe('1234567890.123456');
+        expect((response.data as any)?.parentMessage?.timestamp).toBe('1234567890.123456');
       });
 
       it('should create thread without reply', async () => {
@@ -921,11 +967,13 @@ describe('SlackService', () => {
 
         // Assert
         expect(mockWebClientInstance.chat.postMessage).toHaveBeenCalledTimes(1);
-        expect(extractTextContent(result.content?.[0])).toContain('Thread created successfully');
-        expect(extractTextContent(result.content?.[0])).toContain(
-          'Parent message: 1234567890.123456'
-        );
-        expect(extractTextContent(result.content?.[0])).not.toContain('Reply:');
+        const response = parseJsonResponse(result.content?.[0]);
+        expect(response.success).toBe(true);
+        expect(response.statusCode).toBe('10000');
+        expect(response.message).toContain('Thread created successfully');
+        expect((response.data as any)?.threadTs).toBe('1234567890.123456');
+        expect((response.data as any)?.parentMessage?.timestamp).toBe('1234567890.123456');
+        expect((response.data as any)?.reply).toBeNull();
       });
     });
 
@@ -1142,8 +1190,10 @@ describe('SlackService', () => {
 
       // Assert
       expect(result.isError).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Slack API Error');
-      expect(extractTextContent(result.content?.[0])).toContain('Thread not found');
+      const response = parseJsonResponse(result.content?.[0]);
+      expect(response.success).toBe(false);
+      expect(response.statusCode).toBe('10001');
+      expect(response.error).toContain('thread_not_found');
     });
 
     it('should validate thread input parameters', async () => {
@@ -1175,7 +1225,10 @@ describe('SlackService', () => {
 
       // Assert
       expect(result.isError).toBe(true);
-      expect(extractTextContent(result.content?.[0])).toContain('Error: Network error');
+      const response = parseJsonResponse(result.content?.[0]);
+      expect(response.success).toBe(false);
+      expect(response.statusCode).toBe('10001');
+      expect(response.error).toContain('Network error');
     });
   });
 });

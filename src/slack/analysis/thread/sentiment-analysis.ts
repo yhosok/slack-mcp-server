@@ -3,7 +3,7 @@
  * No side effects, fully testable and functional
  */
 
-import type { SlackMessage } from '../../types.js';
+import type { SlackMessage } from '../../types/index.js';
 import type { SentimentScore, SentimentAnalysisResult, SentimentConfig } from './types.js';
 import { cleanText, tokenizeText } from './topic-extraction.js';
 
@@ -93,14 +93,14 @@ export function countWordOccurrences(text: string, words: readonly string[]): nu
 
 /**
  * Count words in text with multilingual support (English and Japanese)
- * 
+ *
  * Uses the same tokenization logic as topic extraction for consistency.
  * This function properly handles:
  * - English words separated by spaces
  * - Japanese text including Hiragana, Katakana, and Kanji
  * - Mixed language content
  * - Slack-specific formatting (links, mentions, emoji codes)
- * 
+ *
  * @param text - Text to count words in
  * @returns Number of meaningful words/tokens
  */
@@ -112,30 +112,30 @@ export function countWordsInText(text: string): number {
   // Clean and tokenize the text using existing multilingual infrastructure
   const cleanedText = cleanText(text);
   const tokens = tokenizeText(cleanedText);
-  
+
   // Filter out empty tokens and single characters (except for valid single-character words)
   const meaningfulTokens = tokens.filter((token: string) => {
     if (!token || token.length === 0) {
       return false;
     }
-    
+
     // Allow single character tokens if they are meaningful (numbers, letters, or Japanese characters)
     if (token.length === 1) {
       return /[a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(token);
     }
-    
+
     return true;
   });
-  
+
   return meaningfulTokens.length;
 }
 
 /**
  * Count total words in an array of Slack messages with multilingual support
- * 
+ *
  * Aggregates word counts from all message texts using the same tokenization
  * logic as other analysis functions for consistency.
- * 
+ *
  * @param messages - Array of Slack messages to count words in
  * @returns Total number of words across all messages
  */
