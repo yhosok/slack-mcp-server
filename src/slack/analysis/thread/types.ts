@@ -28,6 +28,12 @@ export interface SentimentAnalysisResult {
   readonly positiveCount: number;
   readonly negativeCount: number;
   readonly totalWords: number;
+  readonly japanesePositiveCount?: number;
+  readonly japaneseNegativeCount?: number;
+  readonly negationAdjustments?: number;
+  readonly emphasisAdjustments?: number;
+  readonly mitigationAdjustments?: number;
+  readonly languageContent?: MultilingualContent;
 }
 
 /**
@@ -47,6 +53,10 @@ export interface UrgencyScore {
   readonly score: number;
   readonly urgentKeywords: readonly string[];
   readonly messageCountFactor: number;
+  readonly punctuationScore?: number;
+  readonly timeBasedScore?: number;
+  readonly punctuationInfo?: PunctuationInfo;
+  readonly timeUrgencyInfo?: TimeUrgencyInfo;
 }
 
 export interface ImportanceScore {
@@ -120,6 +130,12 @@ export interface SentimentConfig {
   readonly positiveWords: readonly string[];
   readonly negativeWords: readonly string[];
   readonly threshold: number;
+  readonly japanesePositiveWords?: readonly string[];
+  readonly japaneseNegativeWords?: readonly string[];
+  readonly negationPatterns?: readonly string[];
+  readonly emphasisPatterns?: ReadonlyMap<string, number>;
+  readonly mitigationPatterns?: ReadonlyMap<string, number>;
+  readonly enableJapaneseProcessing?: boolean;
 }
 
 export interface TopicExtractionConfig {
@@ -129,6 +145,7 @@ export interface TopicExtractionConfig {
   readonly englishStopWords: ReadonlySet<string>;
   readonly preferKanji: boolean;
   readonly preferKatakana: boolean;
+  readonly enableConjugationNormalization?: boolean;
 }
 
 export interface UrgencyConfig {
@@ -139,6 +156,10 @@ export interface UrgencyConfig {
     readonly high: number;
   };
   readonly messageCountWeight: number;
+  readonly consecutivePunctuationWeight?: number;
+  readonly maxPunctuationBonus?: number;
+  readonly timeBasedKeywords?: readonly string[];
+  readonly timeBasedWeight?: number;
 }
 
 export interface ImportanceConfig {
@@ -160,4 +181,67 @@ export interface ActionItemConfig {
     readonly completed: readonly string[];
     readonly inProgress: readonly string[];
   };
+  readonly bulletPointConfig?: BulletPointConfig;
+  readonly enableLineScoring?: boolean;
+  readonly enableConjugationNormalization?: boolean;
+}
+
+/**
+ * Configuration for bullet point detection and scoring
+ */
+export interface BulletPointConfig {
+  readonly japaneseBullets: readonly string[];
+  readonly westernBullets: readonly string[];
+  readonly numberedPatterns: readonly RegExp[];
+  readonly bulletPointWeight: number;
+}
+
+/**
+ * Information about detected bullet points
+ */
+export interface BulletPointInfo {
+  readonly hasBulletPoint: boolean;
+  readonly bulletType: string;
+  readonly weight: number;
+}
+
+/**
+ * Information about detected Japanese request patterns
+ */
+export interface RequestPatternInfo {
+  readonly hasRequestPattern: boolean;
+  readonly patterns: readonly string[];
+  readonly weight: number;
+}
+
+/**
+ * Line scoring result for action item detection
+ */
+export interface LineScoreInfo {
+  readonly score: number;
+  readonly bulletPointInfo: BulletPointInfo;
+  readonly requestPatternInfo: RequestPatternInfo;
+  readonly hasMentions: boolean;
+  readonly hasUrgencyKeywords: boolean;
+  readonly urgencyKeywords: readonly string[];
+}
+
+/**
+ * Information about detected consecutive punctuation
+ */
+export interface PunctuationInfo {
+  readonly hasConsecutivePunctuation: boolean;
+  readonly maxConsecutiveCount: number;
+  readonly punctuationTypes: readonly string[];
+  readonly totalPunctuationCount: number;
+}
+
+/**
+ * Information about detected time-based urgency
+ */
+export interface TimeUrgencyInfo {
+  readonly hasTimeBasedUrgency: boolean;
+  readonly timeKeywords: readonly string[];
+  readonly deadlineIndicators: readonly string[];
+  readonly meetingUrgency: readonly string[];
 }

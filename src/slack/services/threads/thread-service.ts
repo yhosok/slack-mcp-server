@@ -495,12 +495,12 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
         const channelId = typeof match.channel === 'string' 
           ? match.channel 
-          : (match.channel as any)?.id || '';
+          : (match.channel as { id?: string })?.id || '';
         if (!channelId) continue;
 
         // Extract thread_ts from search result (improved logic)
         let threadTs: string;
-        const searchMatchWithThread = match as any;
+        const searchMatchWithThread = match as { thread_ts?: string };
         if (searchMatchWithThread.thread_ts && 
             typeof searchMatchWithThread.thread_ts === 'string' &&
             searchMatchWithThread.thread_ts !== messageTs) {
@@ -1816,14 +1816,14 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
         const channelId = typeof match.channel === 'string' 
           ? match.channel 
-          : (match.channel as any)?.id || '';
+          : (match.channel as { id?: string })?.id || '';
         if (!channelId) continue;
 
         // Key improvement: Properly extract thread_ts from search results
         let actualThreadTs: string;
         
         // First, check if the search result has thread_ts (indicates this is a reply)
-        const searchMatchWithThread = match as any;
+        const searchMatchWithThread = match as { thread_ts?: string };
         if (searchMatchWithThread.thread_ts && 
             typeof searchMatchWithThread.thread_ts === 'string' &&
             searchMatchWithThread.thread_ts !== messageTs) {

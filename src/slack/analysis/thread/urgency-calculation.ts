@@ -4,13 +4,21 @@
  */
 
 import type { SlackMessage, ThreadParticipant } from '../../types/index.js';
-import type { UrgencyScore, ImportanceScore, UrgencyConfig, ImportanceConfig } from './types.js';
+import type { 
+  UrgencyScore, 
+  ImportanceScore, 
+  UrgencyConfig, 
+  ImportanceConfig,
+  PunctuationInfo,
+  TimeUrgencyInfo
+} from './types.js';
 
 /**
  * Default urgency calculation configuration
  */
 export const DEFAULT_URGENCY_CONFIG: UrgencyConfig = {
   urgentKeywords: [
+    // English urgent keywords
     'urgent',
     'asap',
     'immediately',
@@ -26,11 +34,21 @@ export const DEFAULT_URGENCY_CONFIG: UrgencyConfig = {
     'fast',
     'quick',
     'hurry',
+    // Basic Japanese urgent keywords
     '緊急',
     '至急',
     '急ぎ',
     'すぐ',
-    '今すぐ', // Japanese urgent keywords
+    '今すぐ',
+    // Enhanced Japanese urgent keywords
+    '大至急',
+    '緊急対応',
+    '急ぎです',
+    '優先',
+    '重要',
+    'エスカレーション',
+    '上長確認',
+    '承認急ぎ',
   ] as const,
   keywordWeight: 0.2,
   messageCountThresholds: {
@@ -38,6 +56,30 @@ export const DEFAULT_URGENCY_CONFIG: UrgencyConfig = {
     high: 20,
   },
   messageCountWeight: 0.3,
+  consecutivePunctuationWeight: 0.03,
+  maxPunctuationBonus: 0.1,
+  timeBasedKeywords: [
+    // English time-based urgency
+    'deadline',
+    'due by',
+    'before 5pm',
+    'end of day',
+    'eod',
+    'before meeting',
+    'call前',
+    'meeting前',
+    // Japanese time-based urgency
+    '本日中',
+    '明日まで',
+    '今日中',
+    '午前中',
+    '夕方まで',
+    '期限',
+    '会議前',
+    '週末まで',
+    '月末まで',
+  ] as const,
+  timeBasedWeight: 0.15,
 } as const;
 
 /**
@@ -161,6 +203,126 @@ export function calculateMessageCountFactor(
 }
 
 /**
+ * Detect consecutive punctuation patterns in text
+ * @param text - Text to analyze
+ * @returns Information about consecutive punctuation found
+ */
+export function detectConsecutivePunctuation(text: string): PunctuationInfo {
+  // Find all consecutive punctuation runs (2 or more)
+  const consecutivePunctuationRegex = /[!?！？]{2,}/g;
+  
+  let hasConsecutivePunctuation = false;
+  let maxConsecutiveCount = 0;
+  const punctuationTypes: string[] = [];
+  let totalPunctuationCount = 0;
+
+  let match;
+  while ((match = consecutivePunctuationRegex.exec(text)) !== null) {
+    hasConsecutivePunctuation = true;
+    const matchText = match[0];
+    const matchLength = matchText.length;
+    
+    totalPunctuationCount += matchLength;
+    maxConsecutiveCount = Math.max(maxConsecutiveCount, matchLength);
+    
+    // Collect unique punctuation types from this match
+    const uniqueChars = [...new Set(matchText.split(''))];
+    for (const char of uniqueChars) {
+      if (!punctuationTypes.includes(char)) {
+        punctuationTypes.push(char);
+      }
+    }
+  }
+
+  return {
+    hasConsecutivePunctuation,
+    maxConsecutiveCount,
+    punctuationTypes,
+    totalPunctuationCount,
+  };
+}
+
+/**
+ * Calculate punctuation urgency score based on consecutive punctuation
+ * @param punctuationInfo - Information about detected punctuation
+ * @param weight - Weight per consecutive punctuation level
+ * @param maxBonus - Maximum bonus score from punctuation
+ * @returns Punctuation contribution to urgency score
+ */
+export function calculatePunctuationScore(
+  punctuationInfo: PunctuationInfo,
+  weight: number,
+  maxBonus: number
+): number {
+  if (!punctuationInfo.hasConsecutivePunctuation) {
+    return 0;
+  }
+
+  // Calculate bonus based on consecutive count
+  let bonus = 0;
+  const { maxConsecutiveCount } = punctuationInfo;
+
+  if (maxConsecutiveCount >= 4) {
+    bonus = maxBonus; // Maximum bonus for 4+ consecutive
+  } else if (maxConsecutiveCount === 3) {
+    bonus = weight * 2; // 0.06 for 3 consecutive
+  } else if (maxConsecutiveCount === 2) {
+    bonus = weight; // 0.03 for 2 consecutive
+  }
+
+  return Math.min(maxBonus, bonus);
+}
+
+/**
+ * Detect time-based urgency patterns in text
+ * @param text - Text to analyze
+ * @param timeKeywords - Time-based urgency keywords
+ * @returns Information about time-based urgency found
+ */
+export function detectTimeBasedUrgency(
+  text: string,
+  timeKeywords: readonly string[]
+): TimeUrgencyInfo {
+  const lowerText = text.toLowerCase();
+  
+  const timeKeywordsFound: string[] = [];
+  const deadlineIndicators: string[] = [];
+  const meetingUrgency: string[] = [];
+
+  // Categorize time-based keywords
+  const deadlinePatterns = ['deadline', 'due by', '期限', '本日中', '明日まで', '今日中', '午前中', '夕方まで', '週末まで', '月末まで'];
+  const meetingPatterns = ['before meeting', 'call前', 'meeting前', '会議前'];
+
+  for (const keyword of timeKeywords) {
+    const lowerKeyword = keyword.toLowerCase();
+    
+    // Use word boundary matching for English, character matching for Japanese
+    const isJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(keyword);
+    const regex = isJapanese
+      ? new RegExp(lowerKeyword, 'g')
+      : new RegExp(`\\b${lowerKeyword}\\b`, 'g');
+
+    if (regex.test(lowerText)) {
+      timeKeywordsFound.push(keyword);
+      
+      // Categorize the keyword
+      if (deadlinePatterns.some(pattern => pattern.toLowerCase() === lowerKeyword)) {
+        deadlineIndicators.push(keyword);
+      } else if (meetingPatterns.some(pattern => pattern.toLowerCase() === lowerKeyword)) {
+        meetingUrgency.push(keyword);
+      }
+    }
+  }
+
+  return {
+    hasTimeBasedUrgency: timeKeywordsFound.length > 0,
+    timeKeywords: timeKeywordsFound,
+    deadlineIndicators,
+    meetingUrgency,
+  };
+}
+
+/**
  * Calculate urgency score for thread messages
  * @param messages - Array of messages to analyze
  * @param config - Configuration for urgency calculation
@@ -180,13 +342,40 @@ export function calculateUrgencyScore(
     config.messageCountWeight
   );
 
-  const totalScore = Math.min(1, keywordScore + messageCountFactor);
+  // New punctuation analysis
+  const punctuationInfo = detectConsecutivePunctuation(text);
+  const punctuationScore = calculatePunctuationScore(
+    punctuationInfo,
+    config.consecutivePunctuationWeight ?? 0.03,
+    config.maxPunctuationBonus ?? 0.1
+  );
+
+  // New time-based urgency analysis
+  const timeUrgencyInfo = config.timeBasedKeywords 
+    ? detectTimeBasedUrgency(text, config.timeBasedKeywords)
+    : {
+        hasTimeBasedUrgency: false,
+        timeKeywords: [],
+        deadlineIndicators: [],
+        meetingUrgency: [],
+      };
+
+  const timeBasedScore = timeUrgencyInfo.hasTimeBasedUrgency
+    ? (timeUrgencyInfo.timeKeywords.length * (config.timeBasedWeight ?? 0.15))
+    : 0;
+
+  // Combine all scores with cap at 1.0
+  const totalScore = Math.min(1, keywordScore + messageCountFactor + punctuationScore + timeBasedScore);
   const urgentKeywords = Array.from(keywordCounts.keys());
 
   return {
     score: totalScore,
     urgentKeywords,
     messageCountFactor,
+    punctuationScore: punctuationScore > 0 ? punctuationScore : undefined,
+    timeBasedScore: timeBasedScore > 0 ? timeBasedScore : undefined,
+    punctuationInfo: punctuationInfo.hasConsecutivePunctuation ? punctuationInfo : undefined,
+    timeUrgencyInfo: timeUrgencyInfo.hasTimeBasedUrgency ? timeUrgencyInfo : undefined,
   };
 }
 
@@ -326,6 +515,27 @@ export function explainPriorityAnalysis(
 
   if (importanceScore.importantKeywords.length > 0) {
     explanation += `• Important keywords found: ${importanceScore.importantKeywords.join(', ')}\n`;
+  }
+
+  // Add new punctuation analysis information
+  if (urgencyScore.punctuationInfo?.hasConsecutivePunctuation) {
+    const punctInfo = urgencyScore.punctuationInfo;
+    explanation += `• Emphasis detected: ${punctInfo.maxConsecutiveCount} consecutive punctuation (${punctInfo.punctuationTypes.join(', ')}) - `;
+    explanation += `+${((urgencyScore.punctuationScore ?? 0) * 100).toFixed(1)}% urgency\n`;
+  }
+
+  // Add new time-based urgency information
+  if (urgencyScore.timeUrgencyInfo?.hasTimeBasedUrgency) {
+    const timeInfo = urgencyScore.timeUrgencyInfo;
+    explanation += `• Time sensitivity: ${timeInfo.timeKeywords.join(', ')} - `;
+    explanation += `+${((urgencyScore.timeBasedScore ?? 0) * 100).toFixed(1)}% urgency\n`;
+    
+    if (timeInfo.deadlineIndicators.length > 0) {
+      explanation += `• Deadline indicators: ${timeInfo.deadlineIndicators.join(', ')}\n`;
+    }
+    if (timeInfo.meetingUrgency.length > 0) {
+      explanation += `• Meeting urgency: ${timeInfo.meetingUrgency.join(', ')}\n`;
+    }
   }
 
   explanation += `• Message activity factor: ${(urgencyScore.messageCountFactor * 100).toFixed(1)}%\n`;
