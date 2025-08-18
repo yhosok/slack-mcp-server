@@ -56,6 +56,7 @@ import {
   processConcurrently,
   processConcurrentlyInBatches,
   createSimpleCache,
+  createDefaultConfigWithConcurrency,
 } from '../../infrastructure/concurrent-utils.js';
 import { logger } from '../../../utils/logger.js';
 import type {
@@ -80,6 +81,9 @@ import { countWordsInMessages } from '../../analysis/thread/sentiment-analysis.j
 export const createThreadService = (deps: ThreadServiceDependencies): ThreadService => {
   // Performance optimization: Create cache for channel name resolution
   const channelNameCache = createSimpleCache<string, string>(10 * 60 * 1000); // 10-minute TTL
+  
+  // Create default concurrent processing config using infrastructure configuration
+  const getDefaultConcurrency = () => createDefaultConfigWithConcurrency(deps.maxRequestConcurrency);
   /**
    * Find all threads in a channel using TypeSafeAPI + ts-pattern patterns
    */
@@ -161,7 +165,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
               };
             },
             {
-              concurrency: 5, // Higher concurrency for thread discovery
+              ...getDefaultConcurrency(),
               failFast: false,
             }
           );
@@ -566,7 +570,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           }
         },
         {
-          concurrency: 5,
+          ...getDefaultConcurrency(),
           failFast: false,
         }
       );
@@ -1098,7 +1102,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           return null;
         },
         {
-          concurrency: 4, // Moderate concurrency for importance analysis
+          ...getDefaultConcurrency(),
           failFast: false,
         }
       );
@@ -1288,7 +1292,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           );
         },
         {
-          concurrency: 2, // Conservative for channel history calls
+          ...getDefaultConcurrency(),
           failFast: false,
         }
       );
@@ -1415,7 +1419,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         },
         50, // Process 50 threads per batch
         {
-          concurrency: 4, // Moderate concurrency for thread comparison
+          ...getDefaultConcurrency(),
           failFast: false,
         }
       );
@@ -1546,7 +1550,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           },
           50, // Process 50 threads per batch
           {
-            concurrency: 5, // Higher concurrency for metrics processing
+            ...getDefaultConcurrency(),
             failFast: false, // Continue on individual thread failures
           }
         );

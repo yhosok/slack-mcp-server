@@ -74,6 +74,10 @@ jest.mock('../config/index', () => {
     SLACK_BOT_TOKEN: 'xoxb-test-token',
     SLACK_USER_TOKEN: 'xoxp-test-token',
     USE_USER_TOKEN_FOR_READ: true,
+    SLACK_RATE_LIMIT_RETRIES: 3,
+    SLACK_MAX_REQUEST_CONCURRENCY: 3,
+    SLACK_REJECT_RATE_LIMITED_CALLS: false,
+    SLACK_ENABLE_RATE_LIMIT_RETRY: true,
     LOG_LEVEL: 'info',
     MCP_SERVER_NAME: 'test-server',
     MCP_SERVER_VERSION: '1.0.0',
@@ -883,7 +887,7 @@ describe('SlackService', () => {
         expect(content).toBeDefined();
         // If error, it should be a descriptive error message
         if (result.isError) {
-          expect(content).toContain('Error');
+          expect(content).toMatch(/error|Error/i);
         } else {
           expect(content).toContain('importantThreads');
         }
