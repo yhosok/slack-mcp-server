@@ -59,6 +59,7 @@ const createMockWebClient = (): any => ({
   conversations: {
     history: jest.fn(),
     replies: jest.fn(),
+    info: jest.fn(),
   },
   search: {
     all: jest.fn(),
@@ -87,6 +88,8 @@ jest.mock('@slack/web-api', () => ({
 // Import after mocks are set up
 import { createThreadServiceMCPAdapter } from '../slack/services/threads/thread-service-mcp-adapter.js';
 import { createInfrastructureServices } from '../slack/infrastructure/index.js';
+import { createUserService } from '../slack/services/users/user-service.js';
+import { createParticipantTransformationService } from '../slack/services/threads/participant-transformation-service.js';
 import {
   performQuickAnalysis,
   performComprehensiveAnalysis,
@@ -186,8 +189,27 @@ describe('Advanced Thread Features', () => {
       logLevel: 'info',
     });
 
+    // Create domain user service for complete TypeSafeAPI operations
+    const domainUserService = createUserService({
+      client: mockInfrastructure.clientManager.getClientForOperation('read'),
+    });
+
+    // Create participant transformation service for optimized participant building
+    const participantTransformationService = createParticipantTransformationService({
+      domainUserService,
+      infrastructureUserService: mockInfrastructure.userService,
+    });
+
+    // Create enhanced thread service dependencies
+    const threadServiceDeps = {
+      ...mockInfrastructure,
+      infrastructureUserService: mockInfrastructure.userService,
+      domainUserService,
+      participantTransformationService,
+    };
+
     // Create thread service with MCP adapter
-    threadService = createThreadServiceMCPAdapter(mockInfrastructure);
+    threadService = createThreadServiceMCPAdapter(threadServiceDeps);
 
     // Setup default mock responses
     mockWebClientInstance.conversations.replies.mockResolvedValue({
@@ -218,6 +240,15 @@ describe('Advanced Thread Features', () => {
       user: mockUserInfo,
     });
 
+    // Setup channel info mock for channel name resolution
+    mockWebClientInstance.conversations.info.mockResolvedValue({
+      ok: true,
+      channel: {
+        id: testChannel,
+        name: testChannel, // Return channel ID as name for testing
+      },
+    });
+
     mockWebClientInstance.search.all.mockResolvedValue({
       ok: true,
       messages: {
@@ -234,7 +265,7 @@ describe('Advanced Thread Features', () => {
     });
 
     // Setup analysis mocks
-    (performQuickAnalysis as jest.MockedFunction<typeof performQuickAnalysis>).mockReturnValue({
+    (performQuickAnalysis as jest.MockedFunction<typeof performQuickAnalysis>).mockResolvedValue({
       urgencyLevel: 'high' as const,
       sentiment: {
         sentiment: 'neutral' as const,
@@ -249,7 +280,7 @@ describe('Advanced Thread Features', () => {
 
     (
       performComprehensiveAnalysis as jest.MockedFunction<typeof performComprehensiveAnalysis>
-    ).mockReturnValue({
+    ).mockResolvedValue({
       timeline: {
         events: [
           {
@@ -570,7 +601,7 @@ describe('Advanced Thread Features', () => {
 
       expect(mockWebClientInstance.search.all).toHaveBeenCalledWith({
         query: expect.stringContaining('from:<@U1234567890>'),
-        count: 20,
+        count: 60, // Updated: implementation uses limit * 3 for search
         sort: 'timestamp',
         sort_dir: 'desc',
       });
@@ -586,23 +617,49 @@ describe('Advanced Thread Features', () => {
       expect(result.requireAllParticipants).toBe(true);
       expect(mockWebClientInstance.search.all).toHaveBeenCalledWith({
         query: expect.stringContaining('from:<@U1234567890>'),
-        count: 20,
+        count: 60, // Updated: implementation uses limit * 3 for search
         sort: 'timestamp',
         sort_dir: 'desc',
       });
     });
 
     it('should filter by channel when provided', async () => {
+      // Mock conversations.history for findThreadsInChannel (new strategy)
+      mockWebClientInstance.conversations.history.mockResolvedValue({
+        ok: true,
+        messages: [
+          {
+            ts: '1699564800.000100',
+            thread_ts: '1699564800.000100',
+            reply_count: 2,
+            user: testUserId1,
+            text: 'Thread parent message',
+          },
+        ],
+      });
+
+      // Mock conversations.replies for thread details
+      mockWebClientInstance.conversations.replies.mockResolvedValue({
+        ok: true,
+        messages: [
+          { ts: '1699564800.000100', user: testUserId1, text: 'Thread parent message' },
+          { ts: '1699564801.000100', user: testUserId1, text: 'Thread reply' },
+        ],
+      });
+
       await threadService.getThreadsByParticipants({
         participants: [testUserId1],
         channel: testChannel,
       });
 
-      expect(mockWebClientInstance.search.all).toHaveBeenCalledWith({
-        query: expect.stringContaining(`in:<#${testChannel}>`),
-        count: 20,
-        sort: 'timestamp',
-        sort_dir: 'desc',
+      // Updated: Now uses findThreadsInChannel strategy for channel-specific searches
+      expect(mockWebClientInstance.conversations.history).toHaveBeenCalledWith({
+        channel: testChannel,
+        limit: 20,
+        cursor: undefined,
+        oldest: undefined,
+        latest: undefined,
+        include_all_metadata: undefined,
       });
     });
 
@@ -615,7 +672,7 @@ describe('Advanced Thread Features', () => {
 
       expect(mockWebClientInstance.search.all).toHaveBeenCalledWith({
         query: expect.stringMatching(/after:2023-11-01.*before:2023-11-30/),
-        count: 20,
+        count: 60, // Updated: implementation uses limit * 3 for search
         sort: 'timestamp',
         sort_dir: 'desc',
       });
@@ -629,7 +686,7 @@ describe('Advanced Thread Features', () => {
 
       expect(mockWebClientInstance.search.all).toHaveBeenCalledWith({
         query: expect.any(String),
-        count: 50,
+        count: 100, // Updated: implementation uses Math.min(limit * 3, 100)
         sort: 'timestamp',
         sort_dir: 'desc',
       });
@@ -702,7 +759,26 @@ describe('Advanced Thread Features', () => {
         },
       };
 
-      const serviceWithBadSearch = createThreadServiceMCPAdapter(infrastructureWithBadSearch);
+      // Create domain user service for complete TypeSafeAPI operations
+      const domainUserService = createUserService({
+        client: infrastructureWithBadSearch.clientManager.getClientForOperation('read'),
+      });
+
+      // Create participant transformation service for optimized participant building
+      const participantTransformationService = createParticipantTransformationService({
+        domainUserService,
+        infrastructureUserService: infrastructureWithBadSearch.userService,
+      });
+
+      // Create enhanced thread service dependencies
+      const threadServiceDepsWithBadSearch = {
+        ...infrastructureWithBadSearch,
+        infrastructureUserService: infrastructureWithBadSearch.userService,
+        domainUserService,
+        participantTransformationService,
+      };
+
+      const serviceWithBadSearch = createThreadServiceMCPAdapter(threadServiceDepsWithBadSearch);
 
       const response = await serviceWithBadSearch.getThreadsByParticipants({
         participants: [testUserId1],

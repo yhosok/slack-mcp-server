@@ -1243,7 +1243,7 @@ describe('SlackService - File Operations', () => {
       const searchCall = mockWebClientInstance.search.files.mock.calls[0][0];
       expect(searchCall.query).toContain('test document');
       expect(searchCall.query).toContain('filetype:pdf OR filetype:doc');
-      expect(searchCall.query).toContain('in:<#C1234567890>');
+      expect(searchCall.query).toContain('in:#C1234567890');
       expect(searchCall.query).toContain('from:<@U1234567890>');
       expect(searchCall.query).toContain('after:2023-01-01');
       expect(searchCall.query).toContain('before:2023-12-31');
@@ -1357,7 +1357,7 @@ describe('SlackService - File Operations', () => {
       const searchCall = mockWebClientInstance.search.files.mock.calls[0][0];
       expect(searchCall.query).toContain('financial report');
       expect(searchCall.query).toContain('filetype:pdf OR filetype:xlsx OR filetype:doc');
-      expect(searchCall.query).toContain('in:<#C1234567890>');
+      expect(searchCall.query).toContain('in:#C1234567890');
       expect(searchCall.query).toContain('from:<@U1234567890>');
       expect(searchCall.query).toContain('after:2023-06-01');
       expect(searchCall.query).toContain('before:2023-06-30');

@@ -18,6 +18,7 @@ import type {
 } from '../../types/outputs/threads.js';
 import type { UserService as DomainUserService } from '../users/types.js';
 import type { UserService as InfraUserService } from '../../infrastructure/user/types.js';
+import type { ParticipantTransformationService } from './participant-transformation-service.js';
 
 /**
  * Dependencies for thread service operations
@@ -35,6 +36,12 @@ export interface ThreadServiceDependencies extends InfrastructureServices {
    * Use for: Full user information when detailed data is required
    */
   domainUserService: DomainUserService;
+
+  /**
+   * Participant transformation service - centralized participant building logic
+   * Use for: Optimized participant list construction, bulk user operations
+   */
+  participantTransformationService: ParticipantTransformationService;
 }
 
 /**

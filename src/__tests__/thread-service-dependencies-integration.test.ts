@@ -37,6 +37,7 @@ describe('Thread Service Dependencies Integration', () => {
   let mockRequestHandler: jest.Mocked<RequestHandler>;
   let mockInfraUserService: jest.Mocked<InfraUserService>;
   let mockDomainUserService: jest.Mocked<DomainUserService>;
+  let mockParticipantTransformationService: any;
   let threadServiceDeps: ThreadServiceDependencies;
 
   beforeEach(() => {
@@ -87,6 +88,12 @@ describe('Thread Service Dependencies Integration', () => {
       clearCache: jest.fn(),
     } as jest.Mocked<DomainUserService>;
 
+    // Mock participant transformation service
+    mockParticipantTransformationService = {
+      buildParticipantsFromMessages: jest.fn(),
+      getEnhancedUserInfoForExport: jest.fn(),
+    };
+
     // Create enhanced dependencies with both user services
     threadServiceDeps = {
       clientManager: mockClientManager,
@@ -95,6 +102,7 @@ describe('Thread Service Dependencies Integration', () => {
       requestHandler: mockRequestHandler,
       infrastructureUserService: mockInfraUserService,
       domainUserService: mockDomainUserService,
+      participantTransformationService: mockParticipantTransformationService,
     } as ThreadServiceDependencies;
   });
 
@@ -175,10 +183,51 @@ describe('Thread Service Dependencies Integration', () => {
   });
 
   describe('Efficient User Service Usage Patterns', () => {
-    it('should use domain service for detailed user information in analysis', async () => {
-      // Mock domain user service for comprehensive user data
+    it('should use participant transformation service for detailed user information in analysis', async () => {
+      // Mock participant transformation service for comprehensive user data
+      mockParticipantTransformationService.buildParticipantsFromMessages.mockResolvedValue({
+        success: true,
+        message: 'Participants built successfully',
+        data: {
+          participants: [
+            {
+              user_id: 'U1234567890',
+              username: 'john.doe',
+              real_name: 'John Doe',
+              message_count: 1,
+              first_message_ts: '1234567890.123456',
+              last_message_ts: '1234567890.123456',
+              is_admin: true,
+              is_bot: false,
+              is_deleted: false,
+              is_restricted: false,
+            },
+            {
+              user_id: 'U0987654321',
+              username: 'jane.doe',
+              real_name: 'Jane Doe',
+              message_count: 1,
+              first_message_ts: '1234567890.123457',
+              last_message_ts: '1234567890.123457',
+              is_admin: false,
+              is_bot: false,
+              is_deleted: false,
+              is_restricted: false,
+            },
+          ],
+          metadata: {
+            totalUsers: 2,
+            successfulLookups: 2,
+            fallbackUsers: 0,
+            processingTimeMs: 5,
+          },
+        },
+      });
+
+      // Mock domain user service for comprehensive user data (for legacy compatibility)
       mockDomainUserService.getUserInfo.mockResolvedValue({
         success: true,
+        message: 'User retrieved',
         data: {
           id: 'U1234567890',
           name: 'john.doe',
@@ -192,7 +241,6 @@ describe('Thread Service Dependencies Integration', () => {
           deleted: false,
           is_restricted: false,
         } as SlackUser,
-        message: 'User info retrieved',
       });
 
       const threadService = createThreadService(threadServiceDeps);
@@ -214,16 +262,15 @@ describe('Thread Service Dependencies Integration', () => {
         ],
       });
 
-      // This should efficiently use domain service for detailed user info in analysis
+      // This should efficiently use participant transformation service for analysis
       const result = await threadService.analyzeThread({
         channel: 'C1234567890',
         thread_ts: '1234567890.123456',
       });
 
-      // Verify domain service is used for comprehensive user information
+      // Verify participant transformation service is used for comprehensive user information
       expect(result.success).toBe(true);
-      expect(mockDomainUserService.getUserInfo).toHaveBeenCalledWith({ user: 'U1234567890' });
-      expect(mockDomainUserService.getUserInfo).toHaveBeenCalledWith({ user: 'U0987654321' });
+      expect(mockParticipantTransformationService.buildParticipantsFromMessages).toHaveBeenCalled();
     });
   });
 

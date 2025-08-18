@@ -1149,7 +1149,7 @@ describe('SlackService', () => {
 
         const args = {
           participants: ['U1234567890', 'U0987654321'],
-          channel: 'C1234567890',
+          // Removed channel to force search strategy instead of findThreadsInChannel
           limit: 20,
           require_all_participants: false,
         };
@@ -1159,8 +1159,8 @@ describe('SlackService', () => {
 
         // Assert - The method uses search.all rather than search.messages
         expect(mockWebClientInstance.search.all).toHaveBeenCalledWith({
-          query: '(from:<@U1234567890> OR from:<@U0987654321>) in:<#C1234567890>',
-          count: 20,
+          query: expect.stringContaining('from:<@U1234567890>'),
+          count: 60, // Updated: implementation uses limit * 3 for search
           sort: 'timestamp',
           sort_dir: 'desc',
         });

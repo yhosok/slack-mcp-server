@@ -20,7 +20,6 @@ import {
   validateInput,
 } from '../../../utils/validation.js';
 import type { ThreadService, ThreadServiceDependencies } from './types.js';
-import type { SlackUser } from '../../types/core/users.js';
 import {
   formatFindThreadsResponse as _formatFindThreadsResponse,
   formatCreateThreadResponse as _formatCreateThreadResponse,
@@ -53,9 +52,14 @@ import type {
 // Export types for external use
 export type { ThreadService, ThreadServiceDependencies } from './types.js';
 import { SlackAPIError } from '../../../utils/errors.js';
+import {
+  processConcurrently,
+  processConcurrentlyInBatches,
+  createSimpleCache,
+} from '../../infrastructure/concurrent-utils.js';
+import { logger } from '../../../utils/logger.js';
 import type {
   SlackMessage,
-  ThreadParticipant,
   ThreadAnalysis as _ThreadAnalysis,
   ThreadSummary as _ThreadSummary,
 } from '../../types/index.js';
@@ -74,6 +78,8 @@ import { countWordsInMessages } from '../../analysis/thread/sentiment-analysis.j
  * @returns Thread service instance
  */
 export const createThreadService = (deps: ThreadServiceDependencies): ThreadService => {
+  // Performance optimization: Create cache for channel name resolution
+  const channelNameCache = createSimpleCache<string, string>(10 * 60 * 1000); // 10-minute TTL
   /**
    * Find all threads in a channel using TypeSafeAPI + ts-pattern patterns
    */
@@ -115,53 +121,94 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
         formatResponse: async (data) => {
           const threadParents = data.items;
-          const threads = [];
+          
+          // Performance optimization: Process thread replies concurrently
+          const threadProcessingResult = await processConcurrently(
+            threadParents,
+            async (parentMsg) => {
+              const parentMsgElement = parentMsg as MessageElement;
+              if (!parentMsgElement.ts) return null;
+              
+              // Get thread replies for each parent message
+              const repliesResult = await client.conversations.replies({
+                channel: input.channel,
+                ts: parentMsgElement.ts,
+                limit: 100,
+              });
 
-          for (const parentMsg of threadParents) {
-            // Get thread replies for each parent message (maintains compatibility)
-            const repliesResult = await client.conversations.replies({
-              channel: input.channel,
-              ts: (parentMsg as MessageElement).ts!,
-              limit: 100,
-            });
-
-            if (repliesResult.ok && repliesResult.messages) {
-              const [parent, ...replies] = repliesResult.messages;
-
-              if (parent) {
-                const participants = [
-                  ...new Set(
-                    replies
-                      .map((r: MessageElement) => r.user)
-                      .filter((user): user is string => Boolean(user))
-                  ),
-                ];
-
-                // Get display names for participants efficiently using infrastructure service
-                const allUserIds = [parent.user, ...participants].filter((user): user is string =>
-                  Boolean(user)
-                );
-                const displayNameMap =
-                  await deps.infrastructureUserService.bulkGetDisplayNames(allUserIds);
-
-                threads.push({
-                  threadTs: parent.ts,
-                  parentMessage: {
-                    text: parent.text,
-                    user: parent.user,
-                    timestamp: parent.ts,
-                    userDisplayName: parent.user ? displayNameMap.get(parent.user) : undefined,
-                  },
-                  replyCount: replies.length,
-                  lastReply: replies[replies.length - 1]?.ts || parent.ts,
-                  participants,
-                  participantDisplayNames: participants.map((userId) => ({
-                    id: userId,
-                    displayName: displayNameMap.get(userId) || userId,
-                  })),
-                });
+              if (!repliesResult.ok || !repliesResult.messages) {
+                return null;
               }
+
+              const [parent, ...replies] = repliesResult.messages;
+              if (!parent) return null;
+
+              const participants = [
+                ...new Set(
+                  replies
+                    .map((r: MessageElement) => r.user)
+                    .filter((user): user is string => Boolean(user))
+                ),
+              ];
+
+              return {
+                parent,
+                replies,
+                participants,
+                allUserIds: [parent.user, ...participants].filter((user): user is string =>
+                  Boolean(user)
+                ),
+              };
+            },
+            {
+              concurrency: 5, // Higher concurrency for thread discovery
+              failFast: false,
             }
+          );
+
+          // Collect all user IDs for bulk display name lookup
+          const allUserIds = new Set<string>();
+          for (const threadData of threadProcessingResult.results) {
+            if (threadData) {
+              threadData.allUserIds.forEach((userId) => allUserIds.add(userId));
+            }
+          }
+
+          // Single bulk call for all display names
+          const displayNameMap = await deps.infrastructureUserService.bulkGetDisplayNames(
+            Array.from(allUserIds)
+          );
+
+          // Build final thread objects
+          const threads = [];
+          for (const threadData of threadProcessingResult.results) {
+            if (!threadData) continue;
+
+            const { parent, replies, participants } = threadData;
+            
+            threads.push({
+              threadTs: parent.ts,
+              parentMessage: {
+                text: parent.text,
+                user: parent.user,
+                timestamp: parent.ts,
+                userDisplayName: parent.user ? displayNameMap.get(parent.user) : undefined,
+              },
+              replyCount: replies.length,
+              lastReply: replies[replies.length - 1]?.ts || parent.ts,
+              participants,
+              participantDisplayNames: participants.map((userId) => ({
+                id: userId,
+                displayName: displayNameMap.get(userId) || userId,
+              })),
+            });
+          }
+
+          // Log performance metrics
+          if (threadProcessingResult.errorCount > 0) {
+            logger.warn(
+              `Thread discovery: ${threadProcessingResult.successCount}/${threadProcessingResult.totalProcessed} threads processed successfully`
+            );
           }
 
           return {
@@ -300,7 +347,99 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   };
 
   /**
+   * Resolve channel ID to channel name for search queries with caching
+   * Provides consistent channel resolution across all search functions
+   * Performance optimization: Uses cache to avoid redundant API calls
+   */
+  const resolveChannelName = async (channelId: string): Promise<string> => {
+    // Check cache first
+    const cached = channelNameCache.get(channelId);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const client = deps.clientManager.getClientForOperation('read');
+      const channelInfo = await client.conversations.info({ channel: channelId });
+      
+      if (channelInfo.ok && channelInfo.channel?.name) {
+        const channelName = channelInfo.channel.name;
+        channelNameCache.set(channelId, channelName);
+        return channelName;
+      }
+      
+      // Fallback to channel ID if name resolution fails
+      channelNameCache.set(channelId, channelId);
+      return channelId;
+    } catch {
+      // Fallback to channel ID if any error occurs
+      channelNameCache.set(channelId, channelId);
+      return channelId;
+    }
+  };
+
+  /**
+   * Escape special characters in search query terms
+   * Prevents query injection and handles edge cases
+   */
+  const escapeSearchQuery = (query: string): string => {
+    if (!query || typeof query !== 'string') {
+      return '';
+    }
+    // Remove or escape potentially problematic characters
+    // Keep basic search operators but escape quotes and other special chars
+    return query
+      .replace(/["]/g, '\\"') // Escape quotes
+      .replace(/[\r\n]/g, ' ') // Replace newlines with spaces
+      .trim();
+  };
+
+  /**
+   * Build search query with proper syntax and escaping
+   * Centralizes query construction logic for consistency
+   */
+  const buildSearchQuery = async (options: {
+    baseQuery: string;
+    channel?: string;
+    user?: string;
+    after?: string;
+    before?: string;
+    additionalFilters?: string[];
+  }): Promise<string> => {
+    let searchQuery = escapeSearchQuery(options.baseQuery);
+
+    // Add channel filter if specified
+    if (options.channel) {
+      const channelName = await resolveChannelName(options.channel);
+      searchQuery += ` in:#${channelName}`;
+    }
+
+    // Add user filter if specified
+    if (options.user) {
+      searchQuery += ` from:<@${options.user}>`;
+    }
+
+    // Add date filters if specified
+    if (options.after) {
+      searchQuery += ` after:${options.after}`;
+    }
+    if (options.before) {
+      searchQuery += ` before:${options.before}`;
+    }
+
+    // Add any additional filters
+    if (options.additionalFilters) {
+      for (const filter of options.additionalFilters) {
+        searchQuery += ` ${filter}`;
+      }
+    }
+
+    return searchQuery.trim();
+  };
+
+  /**
    * Search for threads by keywords or content using TypeSafeAPI + ts-pattern patterns
+   * Improved version: validates thread existence and provides proper thread context
    */
   const searchThreads = async (args: unknown): Promise<ThreadSearchResult> => {
     try {
@@ -314,31 +453,19 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       const client = deps.clientManager.getClientForOperation('read');
 
-      let searchQuery = input.query;
-
-      // Add channel filter if specified
-      if (input.channel) {
-        searchQuery += ` in:#${input.channel}`;
-      }
-
-      // Add user filter if specified
-      if (input.user) {
-        searchQuery += ` from:<@${input.user}>`;
-      }
-
-      // Add date filters if specified
-      if (input.after) {
-        searchQuery += ` after:${input.after}`;
-      }
-      if (input.before) {
-        searchQuery += ` before:${input.before}`;
-      }
+      const searchQuery = await buildSearchQuery({
+        baseQuery: input.query,
+        channel: input.channel,
+        user: input.user,
+        after: input.after,
+        before: input.before,
+      });
 
       const searchArgs: SearchAllArguments = {
         query: searchQuery,
         sort: input.sort === 'timestamp' ? 'timestamp' : 'score',
         sort_dir: input.sort_dir || 'desc',
-        count: input.limit || 20,
+        count: Math.min((input.limit || 20) * 2, 100), // Search more to account for thread filtering
       };
 
       const result = await client.search.all(searchArgs);
@@ -353,44 +480,115 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         return createServiceSuccess(output, 'No threads found matching search criteria');
       }
 
-      // Filter for messages that are part of threads
-      // Note: SearchMessageElement doesn't have thread_ts/reply_count, so we consider all matches
-      const threadMessages = result.messages.matches.filter((match: SearchMessageElement) => {
-        // For search results, we consider all matches as potential thread content
-        return match.text && match.text.length > 0;
-      });
+      // Step 1: Extract potential threads from search results
+      const threadCandidates = new Map<string, {
+        channel: string;
+        threadTs: string;
+        searchMatch: SearchMessageElement;
+      }>();
+
+      for (const match of result.messages.matches) {
+        if (!match.text || match.text.length === 0) continue;
+
+        const messageTs = typeof match.ts === 'string' ? match.ts : String(match.ts);
+        if (!messageTs || messageTs === 'undefined') continue;
+
+        const channelId = typeof match.channel === 'string' 
+          ? match.channel 
+          : (match.channel as any)?.id || '';
+        if (!channelId) continue;
+
+        // Extract thread_ts from search result (improved logic)
+        let threadTs: string;
+        const searchMatchWithThread = match as any;
+        if (searchMatchWithThread.thread_ts && 
+            typeof searchMatchWithThread.thread_ts === 'string' &&
+            searchMatchWithThread.thread_ts !== messageTs) {
+          // This is a reply message, use thread_ts
+          threadTs = searchMatchWithThread.thread_ts;
+        } else {
+          // This might be the parent message
+          threadTs = messageTs;
+        }
+
+        const threadKey = `${channelId}-${threadTs}`;
+        if (!threadCandidates.has(threadKey)) {
+          threadCandidates.set(threadKey, {
+            channel: channelId,
+            threadTs,
+            searchMatch: match,
+          });
+        }
+      }
+
+      // Step 2: Validate threads and get thread context concurrently
+      const threadValidationResult = await processConcurrently(
+        Array.from(threadCandidates.values()),
+        async (candidate) => {
+          try {
+            const threadResult = await client.conversations.replies({
+              channel: candidate.channel,
+              ts: candidate.threadTs,
+              limit: 10, // Just need to validate and get basic info
+            });
+
+            // Validate this is actually a thread (has replies)
+            if (!threadResult.messages || threadResult.messages.length < 2) {
+              return null; // Skip standalone messages
+            }
+
+            const parentMessage = threadResult.messages[0];
+            const channelName = await resolveChannelName(candidate.channel);
+
+            return {
+              text: candidate.searchMatch.text || '',
+              user: typeof candidate.searchMatch.user === 'string'
+                ? candidate.searchMatch.user
+                : typeof candidate.searchMatch.user === 'object' && candidate.searchMatch.user && 'id' in candidate.searchMatch.user
+                  ? String((candidate.searchMatch.user as Record<string, unknown>).id)
+                  : '',
+              ts: candidate.threadTs,
+              channel: {
+                id: candidate.channel,
+                name: channelName,
+              },
+              thread_ts: candidate.threadTs,
+              reply_count: threadResult.messages.length - 1,
+              permalink: candidate.searchMatch.permalink || '',
+              parentMessage: {
+                text: parentMessage?.text,
+                user: parentMessage?.user,
+                timestamp: parentMessage?.ts,
+              },
+            };
+          } catch {
+            return null; // Skip on any error
+          }
+        },
+        {
+          concurrency: 5,
+          failFast: false,
+        }
+      );
+
+      // Filter out null results and limit to requested amount
+      const validThreads = threadValidationResult.results
+        .filter((thread) => thread !== null)
+        .slice(0, input.limit || 20);
 
       const output = enforceServiceOutput({
-        results: threadMessages.map((match: SearchMessageElement) => ({
-          text: match.text || '',
-          user:
-            typeof match.user === 'string'
-              ? match.user
-              : typeof match.user === 'object' && match.user && 'id' in match.user
-                ? String((match.user as Record<string, unknown>).id)
-                : '',
-          ts: typeof match.ts === 'string' ? match.ts : String(match.ts) || '',
-          channel: {
-            id:
-              typeof match.channel === 'string'
-                ? match.channel
-                : typeof match.channel === 'object' && match.channel && 'id' in match.channel
-                  ? String((match.channel as Record<string, unknown>).id)
-                  : '',
-            name: '',
-          },
-          thread_ts: '', // SearchMessageElement doesn't have thread_ts
-          reply_count: 0, // SearchMessageElement doesn't have reply_count
-          permalink: match.permalink || '',
-        })),
-        total: threadMessages.length,
+        results: validThreads,
+        total: validThreads.length,
         query: searchQuery,
-        hasMore: result.messages.paging?.total
-          ? threadMessages.length < result.messages.paging.total
-          : false,
+        hasMore: threadCandidates.size > validThreads.length,
+        threadsValidated: threadValidationResult.successCount,
+        threadCandidatesFound: threadCandidates.size,
       });
 
-      return createServiceSuccess(output, 'Thread search completed successfully');
+      return createServiceSuccess(
+        output, 
+        `Found ${validThreads.length} valid threads from ${threadCandidates.size} candidates`
+      );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return createServiceError(errorMessage, 'Failed to search threads');
@@ -418,70 +616,17 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       const messages = threadResult.messages as SlackMessage[];
 
-      // Build participants list
-      const participantMap = new Map<string, ThreadParticipant>();
-      for (const message of messages) {
-        if (message.user && !participantMap.has(message.user)) {
-          try {
-            const userResult = await deps.domainUserService.getUserInfo({ user: message.user });
-            if (userResult.success) {
-              const userInfo = userResult.data as SlackUser;
-              participantMap.set(message.user, {
-                user_id: message.user,
-                username: userInfo.name || userInfo.real_name || message.user,
-                real_name: userInfo.real_name,
-                // Enhanced user capabilities from SlackUser integration
-                is_admin: userInfo.is_admin,
-                is_bot: userInfo.is_bot,
-                is_deleted: userInfo.deleted,
-                is_restricted: userInfo.is_restricted,
-                message_count: 0,
-                first_message_ts: message.ts || '',
-                last_message_ts: message.ts || '',
-              });
-            } else {
-              // Fallback for failed user lookup
-              participantMap.set(message.user, {
-                user_id: message.user,
-                username: message.user,
-                real_name: '',
-                is_admin: false,
-                is_bot: false,
-                is_deleted: false,
-                is_restricted: false,
-                message_count: 0,
-                first_message_ts: message.ts || '',
-                last_message_ts: message.ts || '',
-              });
-            }
-          } catch {
-            // Fallback for any error
-            participantMap.set(message.user, {
-              user_id: message.user,
-              username: message.user,
-              real_name: '',
-              is_admin: false,
-              is_bot: false,
-              is_deleted: false,
-              is_restricted: false,
-              message_count: 0,
-              first_message_ts: message.ts || '',
-              last_message_ts: message.ts || '',
-            });
-          }
-        }
-
-        const participant = participantMap.get(message.user!);
-        if (participant) {
-          participant.message_count++;
-          participant.last_message_ts = message.ts || '';
-        }
+      // Build participants list using centralized service (replaces lines 490-548)
+      const participantsResult = await deps.participantTransformationService.buildParticipantsFromMessages(messages);
+      
+      if (!participantsResult.success) {
+        throw new SlackAPIError(`Failed to build participants: ${participantsResult.error}`);
       }
 
-      const participants = Array.from(participantMap.values());
+      const participants = participantsResult.data.participants;
 
-      // Perform comprehensive analysis
-      const analysis = performComprehensiveAnalysis(messages, participants);
+      // Perform comprehensive analysis (now async for parallel processing)
+      const analysis = await performComprehensiveAnalysis(messages, participants);
 
       const output = enforceServiceOutput({
         threadInfo: {
@@ -546,65 +691,19 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       const messages = threadResult.messages as SlackMessage[];
 
-      // Perform analysis for summary
-      const analysis = performQuickAnalysis(messages);
+      // Perform analysis for summary (now async for parallel processing)
+      const analysis = await performQuickAnalysis(messages);
 
-      // Build participants for comprehensive analysis if needed
+      // Build participants for comprehensive analysis if needed (replaces lines 622-674)
       if (input.include_decisions || input.include_action_items) {
-        const participantMap = new Map<string, ThreadParticipant>();
-        for (const message of messages) {
-          if (message.user && !participantMap.has(message.user)) {
-            try {
-              const userResult = await deps.domainUserService.getUserInfo({ user: message.user });
-              if (userResult.success) {
-                const userInfo = userResult.data as SlackUser;
-                participantMap.set(message.user, {
-                  user_id: message.user,
-                  username: userInfo.name || userInfo.real_name || message.user,
-                  real_name: userInfo.real_name,
-                  // Enhanced user capabilities from SlackUser integration
-                  is_admin: userInfo.is_admin,
-                  is_bot: userInfo.is_bot,
-                  is_deleted: userInfo.deleted,
-                  is_restricted: userInfo.is_restricted,
-                  message_count: 0,
-                  first_message_ts: message.ts || '',
-                  last_message_ts: message.ts || '',
-                });
-              } else {
-                // Fallback for failed user lookup
-                participantMap.set(message.user, {
-                  user_id: message.user,
-                  username: message.user,
-                  real_name: '',
-                  is_admin: false,
-                  is_bot: false,
-                  is_deleted: false,
-                  is_restricted: false,
-                  message_count: 0,
-                  first_message_ts: message.ts || '',
-                  last_message_ts: message.ts || '',
-                });
-              }
-            } catch {
-              // Fallback for any error
-              participantMap.set(message.user, {
-                user_id: message.user,
-                username: message.user,
-                real_name: '',
-                is_admin: false,
-                is_bot: false,
-                is_deleted: false,
-                is_restricted: false,
-                message_count: 0,
-                first_message_ts: message.ts || '',
-                last_message_ts: message.ts || '',
-              });
-            }
-          }
+        const participantsResult = await deps.participantTransformationService.buildParticipantsFromMessages(messages);
+        
+        if (!participantsResult.success) {
+          throw new SlackAPIError(`Failed to build participants: ${participantsResult.error}`);
         }
-        const participants = Array.from(participantMap.values());
-        const fullAnalysis = performComprehensiveAnalysis(messages, participants);
+
+        const participants = participantsResult.data.participants;
+        const fullAnalysis = await performComprehensiveAnalysis(messages, participants);
 
         const output = enforceServiceOutput({
           threadInfo: {
@@ -679,63 +778,17 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       const messages = threadResult.messages as SlackMessage[];
 
-      // Build participants
-      const participantMap = new Map<string, ThreadParticipant>();
-      for (const message of messages) {
-        if (message.user && !participantMap.has(message.user)) {
-          try {
-            const userResult = await deps.domainUserService.getUserInfo({ user: message.user });
-            if (userResult.success) {
-              const userInfo = userResult.data as SlackUser;
-              participantMap.set(message.user, {
-                user_id: message.user,
-                username: userInfo.name || userInfo.real_name || message.user,
-                real_name: userInfo.real_name,
-                // Enhanced user capabilities from SlackUser integration
-                is_admin: userInfo.is_admin,
-                is_bot: userInfo.is_bot,
-                is_deleted: userInfo.deleted,
-                is_restricted: userInfo.is_restricted,
-                message_count: 0,
-                first_message_ts: message.ts || '',
-                last_message_ts: message.ts || '',
-              });
-            } else {
-              // Fallback for failed user lookup
-              participantMap.set(message.user, {
-                user_id: message.user,
-                username: message.user,
-                real_name: '',
-                is_admin: false,
-                is_bot: false,
-                is_deleted: false,
-                is_restricted: false,
-                message_count: 0,
-                first_message_ts: message.ts || '',
-                last_message_ts: message.ts || '',
-              });
-            }
-          } catch {
-            // Fallback for any error
-            participantMap.set(message.user, {
-              user_id: message.user,
-              username: message.user,
-              real_name: '',
-              is_admin: false,
-              is_bot: false,
-              is_deleted: false,
-              is_restricted: false,
-              message_count: 0,
-              first_message_ts: message.ts || '',
-              last_message_ts: message.ts || '',
-            });
-          }
-        }
+      // Build participants using centralized service (replaces lines 751-803)
+      const participantsResult = await deps.participantTransformationService.buildParticipantsFromMessages(messages);
+      
+      if (!participantsResult.success) {
+        throw new SlackAPIError(`Failed to build participants: ${participantsResult.error}`);
       }
-      const participants = Array.from(participantMap.values());
 
-      // Perform comprehensive analysis
-      const analysis = performComprehensiveAnalysis(messages, participants);
+      const participants = participantsResult.data.participants;
+
+      // Perform comprehensive analysis (now async for parallel processing)
+      const analysis = await performComprehensiveAnalysis(messages, participants);
 
       // Filter action items by priority if specified
       let actionItems = analysis.actionItems.actionItems;
@@ -788,16 +841,15 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       const input = validateInput(PostThreadReplySchema, args);
       const client = deps.clientManager.getClientForOperation('write');
 
-      // Using any for Slack API compatibility - ChatPostMessageArguments has complex union types
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const messageArgs: any = {
+      // Using Record<string, unknown> for Slack API compatibility - ChatPostMessageArguments has complex union types
+      const messageArgs: Record<string, unknown> = {
         channel: input.channel,
         text: input.text,
         thread_ts: input.thread_ts,
         ...(input.reply_broadcast && { reply_broadcast: true }),
       };
 
-      const result = await client.chat.postMessage(messageArgs);
+      const result = await client.chat.postMessage(messageArgs as unknown as Parameters<typeof client.chat.postMessage>[0]);
 
       const output = enforceServiceOutput({
         success: true,
@@ -839,16 +891,15 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       // Post the first reply if provided
       let replyResult;
       if (input.reply_text) {
-        // Using any for Slack API compatibility - ChatPostMessageArguments has complex union types
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const replyArgs: any = {
+        // Using Record<string, unknown> for Slack API compatibility - ChatPostMessageArguments has complex union types
+        const replyArgs: Record<string, unknown> = {
           channel: input.channel,
           text: input.reply_text,
           thread_ts: parentResult.ts,
           ...(input.broadcast && { reply_broadcast: true }),
         };
 
-        replyResult = await client.chat.postMessage(replyArgs);
+        replyResult = await client.chat.postMessage(replyArgs as unknown as Parameters<typeof client.chat.postMessage>[0]);
       }
 
       const output = enforceServiceOutput({
@@ -969,44 +1020,52 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         (message: MessageElement) => message.reply_count && message.reply_count > 0
       );
 
-      const importantThreads = [];
+      // Performance optimization: Pre-compute criteria and threshold
+      const criteria = input.criteria || ['participant_count', 'message_count', 'urgency_keywords'];
+      const importanceThreshold = input.importance_threshold || 0.7;
+      const limitThreads = input.limit || 10;
 
-      for (const parent of threadParents.slice(0, input.limit || 10)) {
-        // Get thread replies for analysis
-        const threadResult = await client.conversations.replies({
-          channel: input.channel,
-          ts: parent.ts || '',
-          limit: 100,
-        });
+      // Performance optimization: Process threads concurrently for importance analysis
+      const importanceAnalysisResult = await processConcurrently(
+        threadParents.slice(0, Math.max(limitThreads * 2, 50)), // Process more threads to find best ones
+        async (parent) => {
+          if (!parent.ts) return null;
+          
+          const threadResult = await client.conversations.replies({
+            channel: input.channel,
+            ts: parent.ts,
+            limit: 100,
+          });
 
-        if (threadResult.messages) {
+          if (!threadResult.messages) return null;
+
           const messages = threadResult.messages as SlackMessage[];
-          const analysis = performQuickAnalysis(messages);
+          const analysis = await performQuickAnalysis(messages);
 
-          // Calculate importance score based on criteria
+          // Calculate importance score based on criteria (optimized with pre-computed values)
           let importanceScore = 0;
 
-          if (!input.criteria || input.criteria.includes('message_count')) {
+          if (criteria.includes('message_count')) {
             importanceScore += Math.min(messages.length / 20, 1) * 0.3;
           }
 
-          if (!input.criteria || input.criteria.includes('urgency_keywords')) {
-            importanceScore +=
-              analysis.urgencyLevel === 'critical'
-                ? 0.4
-                : analysis.urgencyLevel === 'high'
-                  ? 0.3
-                  : analysis.urgencyLevel === 'medium'
-                    ? 0.2
-                    : 0.1;
+          if (criteria.includes('urgency_keywords')) {
+            const urgencyScores = {
+              critical: 0.4,
+              high: 0.3,
+              medium: 0.2,
+              low: 0.1,
+            };
+            importanceScore += urgencyScores[analysis.urgencyLevel];
           }
 
-          if (!input.criteria || input.criteria.includes('participant_count')) {
-            const uniqueUsers = new Set(messages.map((m) => m.user)).size;
+          if (criteria.includes('participant_count')) {
+            // Use consistent participant counting (filter out undefined users)
+            const uniqueUsers = new Set(messages.map((m) => m.user).filter((u): u is string => Boolean(u))).size;
             importanceScore += Math.min(uniqueUsers / 10, 1) * 0.2;
           }
 
-          if (!input.criteria || input.criteria.includes('mention_frequency')) {
+          if (criteria.includes('mention_frequency')) {
             const mentionCount = messages.reduce(
               (count, msg) => count + (msg.text?.match(/<@[UW][A-Z0-9]+>/g)?.length || 0),
               0
@@ -1014,8 +1073,10 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
             importanceScore += Math.min(mentionCount / 5, 1) * 0.1;
           }
 
-          if (importanceScore >= (input.importance_threshold || 0.7)) {
-            importantThreads.push({
+          // Only return if above threshold
+          if (importanceScore >= importanceThreshold) {
+            const uniqueUsers = new Set(messages.map((m) => m.user));
+            return {
               channel: input.channel,
               threadTs: parent.ts,
               parentMessage: {
@@ -1026,14 +1087,30 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
               importanceScore,
               analysis: {
                 messageCount: messages.length,
-                participantCount: new Set(messages.map((m) => m.user)).size,
+                participantCount: uniqueUsers.size,
                 urgencyLevel: analysis.urgencyLevel,
                 actionItemCount: analysis.actionItemCount,
                 duration: analysis.duration,
               },
-            });
+            };
           }
+          
+          return null;
+        },
+        {
+          concurrency: 4, // Moderate concurrency for importance analysis
+          failFast: false,
         }
+      );
+
+      // Filter null results and get important threads
+      const importantThreads = importanceAnalysisResult.results.filter((thread) => thread !== null);
+      
+      // Log performance metrics
+      if (importanceAnalysisResult.errorCount > 0) {
+        logger.warn(
+          `Important threads analysis: ${importanceAnalysisResult.successCount}/${importanceAnalysisResult.totalProcessed} threads analyzed successfully`
+        );
       }
 
       // Sort by importance score
@@ -1079,8 +1156,8 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       const messages = threadResult.messages as SlackMessage[];
 
-      // Get user info if requested
-      const userInfoMap = new Map<
+      // Get user info if requested (replaces lines 1161-1199)
+      let userInfoMap = new Map<
         string,
         {
           displayName: string;
@@ -1090,43 +1167,20 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           isRestricted?: boolean;
         }
       >();
+      
       if (input.include_user_profiles) {
-        const uniqueUsers = new Set(
-          messages.map((m) => m.user).filter((user): user is string => Boolean(user))
+        const uniqueUsers = Array.from(
+          new Set(messages.map((m) => m.user).filter((user): user is string => Boolean(user)))
         );
-        for (const userId of uniqueUsers) {
-          try {
-            const userResult = await deps.domainUserService.getUserInfo({ user: userId });
-            if (userResult.success) {
-              const userInfo = userResult.data as SlackUser;
-              userInfoMap.set(userId, {
-                displayName: userInfo.profile?.display_name || userInfo.real_name || userId,
-                // Enhanced user capabilities from SlackUser integration
-                isAdmin: userInfo.is_admin,
-                isBot: userInfo.is_bot,
-                isDeleted: userInfo.deleted,
-                isRestricted: userInfo.is_restricted,
-              });
-            } else {
-              // Fallback for failed user lookup
-              userInfoMap.set(userId, {
-                displayName: userId,
-                isAdmin: false,
-                isBot: false,
-                isDeleted: false,
-                isRestricted: false,
-              });
-            }
-          } catch {
-            // Fallback for any error
-            userInfoMap.set(userId, {
-              displayName: userId,
-              isAdmin: false,
-              isBot: false,
-              isDeleted: false,
-              isRestricted: false,
-            });
-          }
+        
+        const enhancedUserInfoResult = await deps.participantTransformationService.getEnhancedUserInfoForExport(uniqueUsers);
+        
+        if (enhancedUserInfoResult.success) {
+          // Convert Record to Map
+          userInfoMap = new Map(Object.entries(enhancedUserInfoResult.data.userInfoMap));
+        } else {
+          // Fallback to empty map if enhanced user info fails
+          logger.warn(`Failed to get enhanced user info for export: ${enhancedUserInfoResult.error}`);
         }
       }
 
@@ -1164,6 +1218,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
   /**
    * Find threads related to a given thread using TypeSafeAPI + ts-pattern patterns
+   * Optimized version with improved similarity calculation and performance
    */
   const findRelatedThreads = async (args: unknown): Promise<RelatedThreadsResult> => {
     try {
@@ -1182,17 +1237,65 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       }
 
       const refMessages = refThreadResult.messages as SlackMessage[];
-      const refAnalysis = performQuickAnalysis(refMessages);
+      
+      // Build participants using centralized service for consistency
+      const refParticipantsResult = await deps.participantTransformationService.buildParticipantsFromMessages(refMessages);
+      
+      if (!refParticipantsResult.success) {
+        throw new SlackAPIError(`Failed to build reference thread participants: ${refParticipantsResult.error}`);
+      }
 
-      // Get other threads in the channel (last 30 days for comparison)
-      const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
-      const historyResult = await client.conversations.history({
-        channel: input.channel,
-        limit: 1000,
-        oldest: thirtyDaysAgo.toString(),
-      });
+      const refParticipants = refParticipantsResult.data.participants;
+      const refAnalysis = await performQuickAnalysis(refMessages);
 
-      if (!historyResult.messages) {
+      // Determine search scope - include cross-channel if requested
+      const searchChannels: string[] = [input.channel];
+      if (input.include_cross_channel) {
+        // For cross-channel search, we'd need to get channel list
+        // For now, limit to current channel to avoid excessive API calls
+        logger.info('Cross-channel search requested but limited to current channel for performance');
+      }
+
+      // Performance optimization: Pre-compute reference thread data for comparison
+      const refText = refMessages
+        .map((m) => m.text || '')
+        .join(' ')
+        .toLowerCase();
+      const refWords = new Set(refText.split(/\s+/).filter((w) => w.length > 3));
+      const refUsers = new Set(refParticipants.map((p) => p.user_id));
+      const refTime = parseInt(input.thread_ts);
+      const maxTime = 7 * 24 * 60 * 60; // 7 days in seconds
+      const similarityThreshold = input.similarity_threshold || 0.3;
+      const relationshipTypes = input.relationship_types || ['keyword_overlap', 'participant_overlap'];
+
+      // Get candidate threads from all search channels
+      const candidateThreadsResult = await processConcurrently(
+        searchChannels,
+        async (channelId) => {
+          // Get threads from last 30 days for comparison
+          const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+          const historyResult = await client.conversations.history({
+            channel: channelId,
+            limit: 1000,
+            oldest: thirtyDaysAgo.toString(),
+          });
+
+          if (!historyResult.messages) return [];
+
+          return historyResult.messages.filter(
+            (message: MessageElement) =>
+              message.reply_count && message.reply_count > 0 && message.ts !== input.thread_ts
+          );
+        },
+        {
+          concurrency: 2, // Conservative for channel history calls
+          failFast: false,
+        }
+      );
+
+      const allThreadParents = candidateThreadsResult.results.flat();
+      
+      if (allThreadParents.length === 0) {
         const output = enforceServiceOutput({
           relatedThreads: [],
           total: 0,
@@ -1203,87 +1306,94 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
             'participant_overlap',
           ],
         });
-        return createServiceSuccess(output, 'No other threads found in channel');
+        return createServiceSuccess(output, 'No other threads found for comparison');
       }
 
-      const threadParents = historyResult.messages.filter(
-        (message: MessageElement) =>
-          message.reply_count && message.reply_count > 0 && message.ts !== input.thread_ts
-      );
+      // Performance optimization: Process thread comparison concurrently with batching
+      const threadComparisonResult = await processConcurrentlyInBatches(
+        allThreadParents.slice(0, 150), // Increased limit for better coverage
+        async (parent) => {
+          if (!parent.ts) return null;
+          
+          const threadResult = await client.conversations.replies({
+            channel: input.channel,
+            ts: parent.ts,
+            limit: 100,
+          });
 
-      const relatedThreads = [];
+          if (!threadResult.messages) return null;
 
-      for (const parent of threadParents.slice(0, 50)) {
-        // Limit comparison threads
-        const threadResult = await client.conversations.replies({
-          channel: input.channel,
-          ts: parent.ts || '',
-          limit: 100,
-        });
-
-        if (threadResult.messages) {
           const messages = threadResult.messages as SlackMessage[];
-          const analysis = performQuickAnalysis(messages);
+          const analysis = await performQuickAnalysis(messages);
 
           let similarityScore = 0;
 
-          // Keyword overlap similarity
-          if (!input.relationship_types || input.relationship_types.includes('keyword_overlap')) {
-            // Simple keyword similarity (this could be enhanced with proper NLP)
-            const refText = refMessages
-              .map((m) => m.text || '')
-              .join(' ')
-              .toLowerCase();
+          // Enhanced keyword overlap similarity (using Jaccard similarity)
+          if (relationshipTypes.includes('keyword_overlap')) {
             const compText = messages
               .map((m) => m.text || '')
               .join(' ')
               .toLowerCase();
-            const refWords = new Set(refText.split(/\s+/).filter((w) => w.length > 3));
             const compWords = new Set(compText.split(/\s+/).filter((w) => w.length > 3));
             const intersection = new Set([...refWords].filter((w) => compWords.has(w)));
             const union = new Set([...refWords, ...compWords]);
             if (union.size > 0) {
-              similarityScore += (intersection.size / union.size) * 0.4;
+              const jaccardSimilarity = intersection.size / union.size;
+              similarityScore += jaccardSimilarity * 0.4;
             }
           }
 
-          // Participant overlap
-          if (
-            !input.relationship_types ||
-            input.relationship_types.includes('participant_overlap')
-          ) {
-            const refUsers = new Set(refMessages.map((m) => m.user).filter(Boolean));
-            const compUsers = new Set(messages.map((m) => m.user).filter(Boolean));
-            const userIntersection = new Set([...refUsers].filter((u) => compUsers.has(u)));
-            const userUnion = new Set([...refUsers, ...compUsers]);
-            if (userUnion.size > 0) {
-              similarityScore += (userIntersection.size / userUnion.size) * 0.3;
+          // Enhanced participant overlap (using participant display names)
+          if (relationshipTypes.includes('participant_overlap')) {
+            const compParticipantsResult = await deps.participantTransformationService.buildParticipantsFromMessages(messages);
+            if (compParticipantsResult.success) {
+              const compUsers = new Set(compParticipantsResult.data.participants.map((p) => p.user_id));
+              const userIntersection = new Set([...refUsers].filter((u) => compUsers.has(u)));
+              const userUnion = new Set([...refUsers, ...compUsers]);
+              if (userUnion.size > 0) {
+                const participantSimilarity = userIntersection.size / userUnion.size;
+                similarityScore += participantSimilarity * 0.3;
+              }
             }
           }
 
-          // Temporal proximity (messages close in time are more related)
-          if (
-            !input.relationship_types ||
-            input.relationship_types.includes('temporal_proximity')
-          ) {
-            const refTime = parseInt(input.thread_ts);
+          // Improved temporal proximity (non-linear decay)
+          if (relationshipTypes.includes('temporal_proximity')) {
             const compTime = parseInt(parent.ts || '0');
             const timeDiff = Math.abs(refTime - compTime);
-            const maxTime = 7 * 24 * 60 * 60; // 7 days in seconds
             if (timeDiff < maxTime) {
-              similarityScore += (1 - timeDiff / maxTime) * 0.2;
+              // Use exponential decay for temporal proximity
+              const temporalSimilarity = Math.exp(-timeDiff / (maxTime / 3));
+              similarityScore += temporalSimilarity * 0.2;
             }
           }
 
-          // Topic similarity (basic implementation)
-          if (!input.relationship_types || input.relationship_types.includes('topic_similarity')) {
+          // Enhanced topic similarity (multiple factors)
+          if (relationshipTypes.includes('topic_similarity')) {
+            let topicScore = 0;
+            
+            // Urgency level similarity
             if (refAnalysis.urgencyLevel === analysis.urgencyLevel) {
-              similarityScore += 0.1;
+              topicScore += 0.5;
             }
+            
+            // Message length similarity (normalized)
+            const refLength = refMessages.length;
+            const compLength = messages.length;
+            const lengthSimilarity = 1 - Math.abs(refLength - compLength) / Math.max(refLength, compLength);
+            topicScore += lengthSimilarity * 0.3;
+            
+            // Action item presence similarity
+            if ((refAnalysis.actionItemCount > 0) === (analysis.actionItemCount > 0)) {
+              topicScore += 0.2;
+            }
+            
+            similarityScore += topicScore * 0.1;
           }
 
-          if (similarityScore >= (input.similarity_threshold || 0.3)) {
-            relatedThreads.push({
+          // Only return if above threshold
+          if (similarityScore >= similarityThreshold) {
+            return {
               channel: input.channel,
               threadTs: parent.ts,
               parentMessage: {
@@ -1292,21 +1402,35 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
                 timestamp: parent.ts,
               },
               similarityScore,
-              relationshipTypes: input.relationship_types || [
-                'keyword_overlap',
-                'participant_overlap',
-              ],
+              relationshipTypes,
               analysis: {
                 messageCount: messages.length,
                 urgencyLevel: analysis.urgencyLevel,
                 actionItemCount: analysis.actionItemCount,
               },
-            });
+            };
           }
+          
+          return null;
+        },
+        50, // Process 50 threads per batch
+        {
+          concurrency: 4, // Moderate concurrency for thread comparison
+          failFast: false,
         }
+      );
+
+      // Filter null results and collect related threads
+      const relatedThreads = threadComparisonResult.results.filter((thread) => thread !== null);
+      
+      // Log performance metrics
+      if (threadComparisonResult.errorCount > 0) {
+        logger.warn(
+          `Related threads analysis: ${threadComparisonResult.successCount}/${threadComparisonResult.totalProcessed} threads analyzed successfully`
+        );
       }
 
-      // Sort by similarity score
+      // Sort by similarity score (highest first)
       relatedThreads.sort((a, b) => b.similarityScore - a.similarityScore);
 
       const output = enforceServiceOutput({
@@ -1318,9 +1442,16 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           'keyword_overlap',
           'participant_overlap',
         ],
+        analysisMetrics: {
+          threadsAnalyzed: threadComparisonResult.totalProcessed,
+          threadsAboveThreshold: relatedThreads.length,
+          averageSimilarity: relatedThreads.length > 0 
+            ? relatedThreads.reduce((sum, t) => sum + t.similarityScore, 0) / relatedThreads.length 
+            : 0,
+        },
       });
 
-      return createServiceSuccess(output, `Found ${relatedThreads.length} related threads`);
+      return createServiceSuccess(output, `Found ${relatedThreads.length} related threads from ${threadComparisonResult.totalProcessed} analyzed`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return createServiceError(errorMessage, 'Failed to find related threads');
@@ -1364,7 +1495,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         }
       }
 
-      // Analyze threads
+      // Performance optimization: Analyze threads concurrently with batch processing
       const metrics = {
         totalThreads: allThreads.length,
         averageReplies: 0,
@@ -1374,41 +1505,84 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         totalMessages: 0,
       };
 
-      if (allThreads.length > 0) {
-        let totalReplies = 0;
+      if (allThreads.length > 0 && input.channel) {
+        // Filter valid threads and prepare for concurrent processing
+        const validThreads = allThreads.filter((thread) => thread.ts);
+        
+        // Performance improvement: Process threads concurrently in batches
+        const threadAnalysisResult = await processConcurrentlyInBatches(
+          validThreads,
+          async (thread) => {
+            if (!thread.ts) return null;
+            
+            const threadResult = await client.conversations.replies({
+              channel: input.channel!,
+              ts: thread.ts,
+              limit: 100,
+            });
 
-        for (const thread of allThreads.slice(0, 100)) {
-          // Limit for performance - need to ensure we have a valid channel and timestamp
-          if (!input.channel || !thread.ts) continue;
+            if (!threadResult.messages) return null;
 
-          const threadResult = await client.conversations.replies({
-            channel: input.channel,
-            ts: thread.ts,
-            limit: 100,
-          });
-
-          if (threadResult.messages) {
             const messageCount = threadResult.messages.length;
-            totalReplies += messageCount - 1; // Subtract parent message
-            metrics.totalMessages += messageCount;
+            const participants = new Map<string, number>();
+            const hour = new Date(parseFloat(thread.ts) * 1000).getHours();
 
-            // Track participants
+            // Count participants in this thread
             for (const message of threadResult.messages) {
               if (message.user) {
-                metrics.participantStats.set(
+                participants.set(
                   message.user,
-                  (metrics.participantStats.get(message.user) || 0) + 1
+                  (participants.get(message.user) || 0) + 1
                 );
               }
             }
 
-            // Track time distribution (hour of day)
-            const hour = new Date(parseFloat(thread.ts || '0') * 1000).getHours();
-            metrics.timeDistribution.set(hour, (metrics.timeDistribution.get(hour) || 0) + 1);
+            return {
+              messageCount,
+              replyCount: messageCount - 1, // Subtract parent message
+              participants,
+              hour,
+            };
+          },
+          50, // Process 50 threads per batch
+          {
+            concurrency: 5, // Higher concurrency for metrics processing
+            failFast: false, // Continue on individual thread failures
           }
+        );
+
+        // Aggregate results from concurrent processing
+        let totalReplies = 0;
+        
+        for (const threadData of threadAnalysisResult.results) {
+          if (!threadData) continue;
+          
+          totalReplies += threadData.replyCount;
+          metrics.totalMessages += threadData.messageCount;
+
+          // Merge participant stats
+          for (const [user, count] of threadData.participants) {
+            metrics.participantStats.set(
+              user,
+              (metrics.participantStats.get(user) || 0) + count
+            );
+          }
+
+          // Track time distribution
+          metrics.timeDistribution.set(
+            threadData.hour,
+            (metrics.timeDistribution.get(threadData.hour) || 0) + 1
+          );
         }
 
-        metrics.averageReplies = totalReplies / allThreads.length;
+        metrics.averageReplies = validThreads.length > 0 ? totalReplies / validThreads.length : 0;
+        
+        // Log performance metrics
+        if (threadAnalysisResult.errorCount > 0) {
+          logger.warn(
+            `Thread metrics analysis: ${threadAnalysisResult.successCount}/${threadAnalysisResult.totalProcessed} threads processed successfully`
+          );
+        }
       }
 
       // Convert Maps to arrays for JSON serialization
@@ -1456,133 +1630,154 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
   /**
    * Find threads that include specific participants using TypeSafeAPI + ts-pattern patterns
+   * Uses hybrid approach: findThreadsInChannel for single-channel, improved search for cross-channel
    */
   const getThreadsByParticipants = async (args: unknown): Promise<ThreadsByParticipantsResult> => {
     try {
       const input = validateInput(GetThreadsByParticipantsSchema, args);
 
-      // Check if search API is available for broader search
-      deps.clientManager.checkSearchApiAvailability(
-        'getThreadsByParticipants',
-        'Use findThreadsInChannel with filtering instead'
-      );
-
-      const client = deps.clientManager.getClientForOperation('read');
-
-      // Build search query for participants
-      let searchQuery = '';
-      if (input.require_all_participants) {
-        // All participants must be in thread
-        searchQuery = input.participants.map((p) => `from:<@${p}>`).join(' ');
-      } else {
-        // Any participant can be in thread
-        searchQuery = `(${input.participants.map((p) => `from:<@${p}>`).join(' OR ')})`;
-      }
-
-      // Add channel filter if specified
+      // Strategy 1: Use findThreadsInChannel for single-channel searches (more reliable)
       if (input.channel) {
-        searchQuery += ` in:<#${input.channel}>`;
-      }
-
-      // Add date filters
-      if (input.after) {
-        searchQuery += ` after:${input.after}`;
-      }
-      if (input.before) {
-        searchQuery += ` before:${input.before}`;
-      }
-
-      const searchResult = await client.search.all({
-        query: searchQuery,
-        count: input.limit || 20,
-        sort: 'timestamp',
-        sort_dir: 'desc',
-      });
-
-      if (!searchResult.messages?.matches) {
-        const output = enforceServiceOutput({
-          threads: [],
-          total: 0,
-          searchedParticipants: input.participants,
-          requireAllParticipants: input.require_all_participants || false,
-          searchCriteria: {
-            channelFilter: input.channel,
-            dateRange: {
-              after: input.after,
-              before: input.before,
-            },
-          },
+        return await getThreadsByParticipantsInChannel({
+          ...input,
+          channel: input.channel, // Ensure channel is not undefined
         });
-        return createServiceSuccess(output, 'No threads found with specified participants');
       }
 
-      // Filter for actual threads and verify participant requirements
-      const threadMap = new Map<
-        string,
-        {
-          channel: string;
-          threadTs: string;
-          parentMessage: {
-            text?: string;
-            user?: string;
-            timestamp?: string;
-          };
-          participants: string[];
-          messageCount: number;
-          matchingParticipants: string[];
-        }
-      >();
+      // Strategy 2: Use improved search for cross-channel searches
+      return await getThreadsByParticipantsViaSearch(input);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      return createServiceError(errorMessage, 'Failed to find threads by participants');
+    }
+  };
 
-      for (const match of searchResult.messages.matches) {
-        // For search results, use the message timestamp as thread timestamp
-        const threadTs = typeof match.ts === 'string' ? match.ts : String(match.ts);
-        if (!threadTs || threadTs === 'undefined' || threadTs === 'null') continue;
+  /**
+   * Helper: Find threads by participants within a specific channel using findThreadsInChannel
+   */
+  const getThreadsByParticipantsInChannel = async (
+    input: {
+      participants: string[];
+      channel: string;
+      require_all_participants?: boolean;
+      after?: string;
+      before?: string;
+      limit?: number;
+    }
+  ): Promise<ThreadsByParticipantsResult> => {
+    // Use existing findThreadsInChannel and filter by participants
+    const findThreadsInput = {
+      channel: input.channel,
+      fetch_all_pages: false,
+      limit: Math.min(input.limit || 20, 100), // Reasonable limit for processing
+      oldest: input.after,
+      latest: input.before,
+    };
 
-        const threadKey = `${match.channel?.id || match.channel?.name}-${threadTs}`;
-        if (threadMap.has(threadKey)) continue;
+    const threadsResult = await findThreadsInChannel(findThreadsInput);
+    
+    if (!threadsResult.success) {
+      return createServiceError(threadsResult.error, 'Failed to find threads in channel');
+    }
 
-        // Get full thread to verify participants
-        const threadResult = await client.conversations.replies({
-          channel: typeof match.channel === 'string' ? match.channel : match.channel?.id || '',
-          ts: threadTs,
-          limit: 100,
+    const allThreads = threadsResult.data.threads || [];
+    const matchingThreads = [];
+
+    for (const thread of allThreads) {
+      const threadParticipants = new Set(thread.participants || []);
+      
+      let includeThread = false;
+      if (input.require_all_participants) {
+        // ALL participants must be in thread
+        includeThread = input.participants.every((p) => threadParticipants.has(p));
+      } else {
+        // ANY participant can be in thread
+        includeThread = input.participants.some((p) => threadParticipants.has(p));
+      }
+
+      if (includeThread && thread.threadTs) {
+        matchingThreads.push({
+          channel: input.channel,
+          threadTs: thread.threadTs,
+          parentMessage: thread.parentMessage,
+          participants: Array.from(threadParticipants).filter((p): p is string => Boolean(p)),
+          messageCount: thread.replyCount + 1, // Include parent message
+          matchingParticipants: input.participants.filter((p) => threadParticipants.has(p)),
         });
-
-        if (threadResult.messages) {
-          const threadUsers = new Set(
-            threadResult.messages?.map((m: MessageElement) => m.user).filter(Boolean) || []
-          );
-
-          let includeThread = false;
-          if (input.require_all_participants) {
-            includeThread = input.participants.every((p) => threadUsers.has(p));
-          } else {
-            includeThread = input.participants.some((p) => threadUsers.has(p));
-          }
-
-          if (includeThread) {
-            const firstMessage = threadResult.messages?.[0];
-            threadMap.set(threadKey, {
-              channel: typeof match.channel === 'string' ? match.channel : match.channel?.id || '',
-              threadTs,
-              parentMessage: {
-                text: firstMessage?.text,
-                user: firstMessage?.user,
-                timestamp: firstMessage?.ts,
-              },
-              participants: Array.from(threadUsers).filter(Boolean) as string[],
-              messageCount: threadResult.messages?.length || 0,
-              matchingParticipants: input.participants.filter((p) => threadUsers.has(p)),
-            });
-          }
-        }
       }
+    }
 
-      const threads = Array.from(threadMap.values());
+    const output = enforceServiceOutput({
+      threads: matchingThreads.slice(0, input.limit || 20),
+      total: matchingThreads.length,
+      searchedParticipants: input.participants,
+      requireAllParticipants: input.require_all_participants || false,
+      searchCriteria: {
+        channelFilter: input.channel,
+        dateRange: {
+          after: input.after,
+          before: input.before,
+        },
+      },
+    });
 
+    return createServiceSuccess(
+      output,
+      `Found ${matchingThreads.length} threads with specified participants in channel`
+    );
+  };
+
+  /**
+   * Helper: Find threads by participants via search API with improved thread identification
+   */
+  const getThreadsByParticipantsViaSearch = async (
+    input: {
+      participants: string[];
+      channel?: string;
+      require_all_participants?: boolean;
+      after?: string;
+      before?: string;
+      limit?: number;
+    }
+  ): Promise<ThreadsByParticipantsResult> => {
+    // Check if search API is available for broader search
+    deps.clientManager.checkSearchApiAvailability(
+      'getThreadsByParticipants',
+      'Use findThreadsInChannel with filtering instead'
+    );
+
+    const client = deps.clientManager.getClientForOperation('read');
+
+    // Build participant query - use improved logic for better search results
+    let participantQuery = '';
+    if (input.require_all_participants) {
+      // For ALL participants (AND logic), we need to search sequentially
+      // Slack search doesn't support native AND for participants
+      // We'll search for the first participant and filter programmatically
+      participantQuery = `from:<@${input.participants[0]}>`;
+    } else {
+      // Any participant can be in thread (OR logic)
+      participantQuery = input.participants.map((p) => `from:<@${p}>`).join(' OR ');
+    }
+
+    const searchQuery = await buildSearchQuery({
+      baseQuery: participantQuery,
+      channel: input.channel,
+      after: input.after,
+      before: input.before,
+    });
+
+    const searchResult = await client.search.all({
+      query: searchQuery,
+      count: Math.min((input.limit || 20) * 3, 100), // Search more to account for filtering
+      sort: 'timestamp',
+      sort_dir: 'desc',
+    });
+
+    if (!searchResult.messages?.matches) {
       const output = enforceServiceOutput({
-        threads,
-        total: threads.length,
+        threads: [],
+        total: 0,
         searchedParticipants: input.participants,
         requireAllParticipants: input.require_all_participants || false,
         searchCriteria: {
@@ -1593,15 +1788,127 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           },
         },
       });
-
-      return createServiceSuccess(
-        output,
-        `Found ${threads.length} threads with specified participants`
-      );
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      return createServiceError(errorMessage, 'Failed to find threads by participants');
+      return createServiceSuccess(output, 'No threads found with specified participants');
     }
+
+    // Process search results with improved thread identification
+    const threadMap = new Map<
+      string,
+      {
+        channel: string;
+        threadTs: string;
+        parentMessage: {
+          text?: string;
+          user?: string;
+          timestamp?: string;
+        };
+        participants: string[];
+        messageCount: number;
+        matchingParticipants: string[];
+      }
+    >();
+
+    for (const match of searchResult.messages.matches) {
+      try {
+        // Improved thread identification logic
+        const messageTs = typeof match.ts === 'string' ? match.ts : String(match.ts);
+        if (!messageTs || messageTs === 'undefined' || messageTs === 'null') continue;
+
+        const channelId = typeof match.channel === 'string' 
+          ? match.channel 
+          : (match.channel as any)?.id || '';
+        if (!channelId) continue;
+
+        // Key improvement: Properly extract thread_ts from search results
+        let actualThreadTs: string;
+        
+        // First, check if the search result has thread_ts (indicates this is a reply)
+        const searchMatchWithThread = match as any;
+        if (searchMatchWithThread.thread_ts && 
+            typeof searchMatchWithThread.thread_ts === 'string' &&
+            searchMatchWithThread.thread_ts !== messageTs) {
+          // This is a reply message, use thread_ts as the actual thread parent
+          actualThreadTs = searchMatchWithThread.thread_ts;
+        } else {
+          // This might be the thread parent or a standalone message
+          // We need to check if this message actually has replies
+          actualThreadTs = messageTs;
+        }
+
+        const threadKey = `${channelId}-${actualThreadTs}`;
+        if (threadMap.has(threadKey)) continue;
+
+        // Validate thread existence and get full thread data
+        const threadResult = await client.conversations.replies({
+          channel: channelId,
+          ts: actualThreadTs,
+          limit: 100,
+        });
+
+        // Check if this is actually a thread (has more than one message)
+        if (!threadResult.messages || threadResult.messages.length < 2) {
+          continue; // Skip standalone messages
+        }
+
+        const threadUsers = new Set(
+          threadResult.messages.map((m: MessageElement) => m.user).filter((u): u is string => Boolean(u))
+        );
+
+        // Apply participant filtering
+        let includeThread = false;
+        if (input.require_all_participants) {
+          // ALL participants must be in thread
+          includeThread = input.participants.every((p) => threadUsers.has(p));
+        } else {
+          // ANY participant can be in thread
+          includeThread = input.participants.some((p) => threadUsers.has(p));
+        }
+
+        if (includeThread) {
+          const parentMessage = threadResult.messages[0];
+          threadMap.set(threadKey, {
+            channel: channelId,
+            threadTs: actualThreadTs,
+            parentMessage: {
+              text: parentMessage?.text,
+              user: parentMessage?.user,
+              timestamp: parentMessage?.ts,
+            },
+            participants: Array.from(threadUsers),
+            messageCount: threadResult.messages.length,
+            matchingParticipants: input.participants.filter((p) => threadUsers.has(p)),
+          });
+        }
+      } catch {
+        // Skip individual thread processing errors and continue
+        continue;
+      }
+    }
+
+    const threads = Array.from(threadMap.values());
+
+    // Sort by timestamp (most recent first) and limit results
+    threads.sort((a, b) => parseFloat(b.threadTs) - parseFloat(a.threadTs));
+    const limitedThreads = threads.slice(0, input.limit || 20);
+
+    const output = enforceServiceOutput({
+      threads: limitedThreads,
+      total: threads.length,
+      searchedParticipants: input.participants,
+      requireAllParticipants: input.require_all_participants || false,
+      searchCriteria: {
+        channelFilter: input.channel,
+        dateRange: {
+          after: input.after,
+          before: input.before,
+        },
+      },
+    });
+
+    return createServiceSuccess(
+      output,
+      `Found ${limitedThreads.length} threads with specified participants via search`
+    );
   };
 
   return {

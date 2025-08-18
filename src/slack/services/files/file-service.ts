@@ -1107,35 +1107,92 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
 
       const client = deps.clientManager.getClientForOperation('read');
 
-      // Build search query
-      let searchQuery = input.query;
+      /**
+       * Helper function to resolve channel ID to channel name for file search
+       */
+      const resolveChannelName = async (channelId: string): Promise<string> => {
+        try {
+          const channelInfo = await client.conversations.info({ channel: channelId });
+          
+          if (channelInfo.ok && channelInfo.channel?.name) {
+            return channelInfo.channel.name;
+          }
+          
+          // Fallback to channel ID if name resolution fails
+          return channelId;
+        } catch {
+          // Fallback to channel ID if any error occurs
+          return channelId;
+        }
+      };
 
-      // Add file type filter if specified
-      if (input.types) {
-        const types = input.types
-          .split(',')
-          .map((t) => `filetype:${t.trim()}`)
-          .join(' OR ');
-        searchQuery += ` (${types})`;
-      }
+      /**
+       * Escape special characters in search query terms for file search
+       */
+      const escapeSearchQuery = (query: string): string => {
+        if (!query || typeof query !== 'string') {
+          return '';
+        }
+        // Remove or escape potentially problematic characters
+        return query
+          .replace(/["]/g, '\\"') // Escape quotes
+          .replace(/[\r\n]/g, ' ') // Replace newlines with spaces
+          .trim();
+      };
 
-      // Add channel filter if specified
-      if (input.channel) {
-        searchQuery += ` in:<#${input.channel}>`;
-      }
+      /**
+       * Build file search query with proper syntax and escaping
+       */
+      const buildFileSearchQuery = async (options: {
+        baseQuery: string;
+        types?: string;
+        channel?: string;
+        user?: string;
+        after?: string;
+        before?: string;
+      }): Promise<string> => {
+        let searchQuery = escapeSearchQuery(options.baseQuery);
 
-      // Add user filter if specified
-      if (input.user) {
-        searchQuery += ` from:<@${input.user}>`;
-      }
+        // Add file type filter if specified
+        if (options.types) {
+          const types = options.types
+            .split(',')
+            .map((t) => `filetype:${t.trim()}`)
+            .join(' OR ');
+          searchQuery += ` (${types})`;
+        }
 
-      // Add date filters if specified
-      if (input.after) {
-        searchQuery += ` after:${input.after}`;
-      }
-      if (input.before) {
-        searchQuery += ` before:${input.before}`;
-      }
+        // Add channel filter if specified - FIXED: Use proper channel name syntax
+        if (options.channel) {
+          const channelName = await resolveChannelName(options.channel);
+          searchQuery += ` in:#${channelName}`;
+        }
+
+        // Add user filter if specified
+        if (options.user) {
+          searchQuery += ` from:<@${options.user}>`;
+        }
+
+        // Add date filters if specified
+        if (options.after) {
+          searchQuery += ` after:${options.after}`;
+        }
+        if (options.before) {
+          searchQuery += ` before:${options.before}`;
+        }
+
+        return searchQuery.trim();
+      };
+
+      // Build search query with proper escaping and channel resolution
+      const searchQuery = await buildFileSearchQuery({
+        baseQuery: input.query,
+        types: input.types,
+        channel: input.channel,
+        user: input.user,
+        after: input.after,
+        before: input.before,
+      });
 
       const searchResult = await client.search.files({
         query: searchQuery,

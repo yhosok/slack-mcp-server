@@ -31,6 +31,7 @@ import { createReactionServiceMCPAdapter } from './services/reactions/reaction-s
 import { createWorkspaceServiceMCPAdapter } from './services/workspace/workspace-service-mcp-adapter.js';
 import { createUserServiceMCPAdapter } from './services/users/user-service-mcp-adapter.js';
 import { createUserService } from './services/users/user-service.js';
+import { createParticipantTransformationService } from './services/threads/participant-transformation-service.js';
 import type { ThreadServiceDependencies } from './services/threads/types.js';
 import type { ReactionServiceDependencies } from './services/reactions/types.js';
 import type { WorkspaceServiceDependencies } from './services/workspace/types.js';
@@ -117,11 +118,18 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
     client: infrastructure.clientManager.getClientForOperation('read'),
   });
 
-  // Create enhanced thread service dependencies with both user services
+  // Create participant transformation service for optimized participant building
+  const participantTransformationService = createParticipantTransformationService({
+    domainUserService,
+    infrastructureUserService: infrastructure.userService,
+  });
+
+  // Create enhanced thread service dependencies with both user services and participant transformation
   const threadServiceDeps: ThreadServiceDependencies = {
     ...infrastructure,
     infrastructureUserService: infrastructure.userService,
     domainUserService,
+    participantTransformationService,
   };
 
   // Create enhanced reaction service dependencies with both user services
