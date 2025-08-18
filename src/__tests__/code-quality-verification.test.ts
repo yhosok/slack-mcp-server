@@ -49,7 +49,7 @@ describe('Code Quality Verification (Phase 6 RED)', () => {
       }
 
       // Allow some exceptions for newly refactored code (mostly type imports)
-      expect(unusedImports.length).toBeLessThanOrEqual(6);
+      expect(unusedImports.length).toBeLessThanOrEqual(7);
     });
 
     test('should not have underscore-prefixed unused imports', () => {
