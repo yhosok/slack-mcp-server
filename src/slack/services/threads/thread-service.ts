@@ -57,6 +57,7 @@ import {
   processConcurrentlyInBatches,
   createSimpleCache,
   createDefaultConfigWithConcurrency,
+  type ConcurrentProcessingConfig,
 } from '../../infrastructure/concurrent-utils.js';
 import { logger } from '../../../utils/logger.js';
 import type {
@@ -83,7 +84,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const channelNameCache = createSimpleCache<string, string>(10 * 60 * 1000); // 10-minute TTL
   
   // Create default concurrent processing config using infrastructure configuration
-  const getDefaultConcurrency = () => createDefaultConfigWithConcurrency(deps.maxRequestConcurrency);
+  const getDefaultConcurrency = (): Required<ConcurrentProcessingConfig> => createDefaultConfigWithConcurrency(deps.config.maxRequestConcurrency);
   /**
    * Find all threads in a channel using TypeSafeAPI + ts-pattern patterns
    */

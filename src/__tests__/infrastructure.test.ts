@@ -44,6 +44,22 @@ describe('Infrastructure Services', () => {
       expect(services.rateLimitService).toBeDefined();
       expect(services.userService).toBeDefined();
       expect(services.requestHandler).toBeDefined();
+      
+      // NEW EXPECTED STRUCTURE: config object should exist
+      expect(services.config).toBeDefined();
+      expect(typeof services.config).toBe('object');
+    });
+
+    it('should expose config object with maxRequestConcurrency', () => {
+      const services = createInfrastructureServices(mockConfig);
+
+      // NEW EXPECTED STRUCTURE: config object with concurrency setting
+      expect(services.config).toBeDefined();
+      expect(services.config.maxRequestConcurrency).toBe(mockConfig.maxRequestConcurrency);
+      expect(services.config.maxRequestConcurrency).toBe(5);
+      
+      // OLD STRUCTURE: direct property should NOT exist anymore
+      expect('maxRequestConcurrency' in services).toBe(false);
     });
 
     it('should create client manager with correct configuration', () => {

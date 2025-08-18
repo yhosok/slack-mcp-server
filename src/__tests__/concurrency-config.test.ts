@@ -6,7 +6,6 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   processConcurrently,
   createDefaultConfigWithConcurrency,
-  ConcurrentProcessingConfig,
 } from '../slack/infrastructure/concurrent-utils.js';
 import { createInfrastructureServices } from '../slack/infrastructure/factory.js';
 import type { InfrastructureConfig } from '../slack/infrastructure/factory.js';
@@ -97,13 +96,13 @@ describe('Concurrency Configuration Integration', () => {
 
       const infrastructure = createInfrastructureServices(infrastructureConfig);
       
-      // Infrastructure now exposes the concurrency config
-      expect(infrastructure.maxRequestConcurrency).toBe(7);
+      // Infrastructure now exposes the concurrency config via config object
+      expect(infrastructure.config.maxRequestConcurrency).toBe(7);
     });
   });
 
   describe('Infrastructure Services Configuration Access', () => {
-    it('should expose maxRequestConcurrency in infrastructure services', () => {
+    it('should expose maxRequestConcurrency via config object', () => {
       const infrastructureConfig: InfrastructureConfig = {
         botToken: 'xoxb-test',
         useUserTokenForRead: false,
@@ -116,9 +115,36 @@ describe('Concurrency Configuration Integration', () => {
 
       const infrastructure = createInfrastructureServices(infrastructureConfig);
       
-      // Infrastructure now exposes the config
-      expect('maxRequestConcurrency' in infrastructure).toBe(true);
-      expect(infrastructure.maxRequestConcurrency).toBe(8);
+      // NEW EXPECTED STRUCTURE: config object should exist
+      expect('config' in infrastructure).toBe(true);
+      expect(infrastructure.config).toBeDefined();
+      expect(infrastructure.config.maxRequestConcurrency).toBe(8);
+      
+      // OLD STRUCTURE: direct property should NOT exist anymore
+      expect('maxRequestConcurrency' in infrastructure).toBe(false);
+    });
+
+    it('should provide config object with proper structure', () => {
+      const infrastructureConfig: InfrastructureConfig = {
+        botToken: 'xoxb-test',
+        useUserTokenForRead: false,
+        enableRateLimit: true,
+        rateLimitRetries: 3,
+        maxRequestConcurrency: 12,
+        rejectRateLimitedCalls: false,
+        logLevel: 'warn',
+      };
+
+      const infrastructure = createInfrastructureServices(infrastructureConfig);
+      
+      // Config object should have the expected structure
+      expect(infrastructure.config).toEqual({
+        maxRequestConcurrency: 12
+      });
+      
+      // Should be a plain object, not undefined or null
+      expect(typeof infrastructure.config).toBe('object');
+      expect(infrastructure.config).not.toBeNull();
     });
   });
 

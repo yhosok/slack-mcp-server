@@ -39,7 +39,9 @@ export interface InfrastructureServices {
   rateLimitService: RateLimitService;
   userService: UserService;
   requestHandler: RequestHandler;
-  maxRequestConcurrency: number;
+  config: {
+    maxRequestConcurrency: number;
+  };
 }
 
 /**
@@ -101,6 +103,8 @@ export const createInfrastructureServices = (
     rateLimitService,
     userService,
     requestHandler,
-    maxRequestConcurrency: config.maxRequestConcurrency,
+    config: {
+      maxRequestConcurrency: config.maxRequestConcurrency,
+    },
   };
 };

@@ -156,7 +156,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
-        maxRequestConcurrency: 3,
+        config: {
+          maxRequestConcurrency: 3,
+        },
       } as ReactionServiceDependencies;
 
       // This should now pass with the new pattern
@@ -173,7 +175,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
-        maxRequestConcurrency: 3,
+        config: {
+          maxRequestConcurrency: 3,
+        },
       } as ReactionServiceDependencies;
 
       // Mock API response for getReactions
@@ -214,7 +218,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
-        maxRequestConcurrency: 3,
+        config: {
+          maxRequestConcurrency: 3,
+        },
       } as ReactionServiceDependencies;
 
       // Mock statistics response with user activity
@@ -258,7 +264,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
-        maxRequestConcurrency: 3,
+        config: {
+          maxRequestConcurrency: 3,
+        },
       } as WorkspaceServiceDependencies;
 
       // This should now pass with the new pattern
@@ -274,7 +282,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
-        maxRequestConcurrency: 3,
+        config: {
+          maxRequestConcurrency: 3,
+        },
       } as WorkspaceServiceDependencies;
 
       // Mock team members response
@@ -311,7 +321,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
-        maxRequestConcurrency: 3,
+        config: {
+          maxRequestConcurrency: 3,
+        },
       } as WorkspaceServiceDependencies;
 
       // Mock workspace activity data

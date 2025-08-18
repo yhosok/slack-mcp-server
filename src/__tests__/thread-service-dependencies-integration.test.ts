@@ -103,7 +103,9 @@ describe('Thread Service Dependencies Integration', () => {
       infrastructureUserService: mockInfraUserService,
       domainUserService: mockDomainUserService,
       participantTransformationService: mockParticipantTransformationService,
-      maxRequestConcurrency: 3,
+      config: {
+        maxRequestConcurrency: 3,
+      },
     } as ThreadServiceDependencies;
   });
 
@@ -117,6 +119,19 @@ describe('Thread Service Dependencies Integration', () => {
       expect(deps.clientManager).toBeDefined();
       expect(deps.rateLimitService).toBeDefined();
       expect(deps.requestHandler).toBeDefined();
+    });
+
+    it('should access concurrency through config object instead of direct property', () => {
+      const deps = threadServiceDeps;
+      
+      // NEW EXPECTED STRUCTURE: config object should exist with maxRequestConcurrency
+      expect(deps.config).toBeDefined();
+      expect(deps.config.maxRequestConcurrency).toBe(3);
+      expect(typeof deps.config.maxRequestConcurrency).toBe('number');
+      
+      // OLD STRUCTURE: direct maxRequestConcurrency property should NOT exist
+      expect('maxRequestConcurrency' in deps).toBe(false);
+      expect((deps as any).maxRequestConcurrency).toBeUndefined();
     });
 
     it('should provide display name conversion functionality', async () => {
