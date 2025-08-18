@@ -79,9 +79,11 @@ const tier = rateLimitService.extractTierFromUrl('https://slack.com/api/chat.pos
 - Rate limit event handling
 - API tier categorization
 
-### 3. User Service (`user/`)
+### 3. User Service (`user/`) - Infrastructure Utility
 
-Manages user information with intelligent caching.
+**Pure utility service for user information management across Infrastructure layer components.**
+
+This service provides shared user utilities that can be used by multiple infrastructure services like thread-service, reaction-service, workspace-service, etc. It is **distinct from the Services layer UserService** which implements MCP tools.
 
 ```typescript
 import { createUserService } from './user/user-service.js';
@@ -90,22 +92,38 @@ const userService = createUserService({
   getClient: () => clientManager.getClientForOperation('read')
 });
 
-// Get single user display name
+// Get single user display name (cached)
 const displayName = await userService.getDisplayName('U1234567890');
 
-// Get multiple users efficiently
+// Get multiple users efficiently with bulk operations
 const userIds = ['U1234567890', 'U0987654321'];
 const displayNames = await userService.bulkGetDisplayNames(userIds);
 
-// Clear cache if needed
+// Get complete user information (returns plain SlackUser object)
+const userInfo = await userService.getUserInfo('U1234567890');
+
+// Cache management for testing scenarios
 userService.clearCache();
 ```
 
 **Key Features:**
-- Immutable cache management
-- Bulk user lookup optimization
-- Graceful fallbacks for failed lookups
-- Special case handling
+- **Pure Utility**: Designed for shared use across Infrastructure layer
+- **Efficient Caching**: Immutable cache management with bulk optimization
+- **Plain Objects**: Returns plain SlackUser objects (NOT ServiceResult wrappers)
+- **Used By**: thread-service, reaction-service, workspace-service, etc.
+- **Role Separation**: Infrastructure utility, NOT MCP tool implementation
+
+**Usage Pattern in Infrastructure Services:**
+```typescript
+// In thread-service.ts
+const displayName = await deps.userService.getDisplayName(userId);
+
+// In reaction-service.ts
+const userInfo = await deps.userService.getUserInfo(userId);
+
+// In workspace-service.ts
+const displayNames = await deps.userService.bulkGetDisplayNames(userIds);
+```
 
 ### 4. Request Handler (`validation/`)
 

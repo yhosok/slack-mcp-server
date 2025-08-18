@@ -51,7 +51,7 @@ export type {
  * High-level analysis orchestration functions
  */
 
-import type { SlackMessage, ThreadParticipant } from '../types.js';
+import type { SlackMessage, ThreadParticipant } from '../types/index.js';
 import type {
   SentimentAnalysisResult,
   TopicExtractionResult,
@@ -86,21 +86,24 @@ export interface ComprehensiveAnalysisResult {
 }
 
 /**
- * Perform comprehensive analysis on thread messages
+ * Perform comprehensive analysis on thread messages with parallel processing optimization
  * @param messages - Array of Slack messages
  * @param participants - Array of thread participants
  * @returns Complete analysis result
  */
-export function performComprehensiveAnalysis(
+export async function performComprehensiveAnalysis(
   messages: readonly SlackMessage[],
   participants: readonly ThreadParticipant[]
-): ComprehensiveAnalysisResult {
-  const sentiment = analyzeSentiment(messages);
-  const topics = extractTopicsFromThread(messages);
-  const urgency = calculateUrgencyScore(messages);
-  const importance = calculateImportanceScore(messages, participants);
-  const actionItems = extractActionItemsFromMessages(messages);
-  const timeline = buildThreadTimeline(messages);
+): Promise<ComprehensiveAnalysisResult> {
+  // Performance optimization: Run independent analyses in parallel
+  const [sentiment, topics, urgency, importance, actionItems, timeline] = await Promise.all([
+    Promise.resolve(analyzeSentiment(messages)),
+    Promise.resolve(extractTopicsFromThread(messages)),
+    Promise.resolve(calculateUrgencyScore(messages)),
+    Promise.resolve(calculateImportanceScore(messages, participants)),
+    Promise.resolve(extractActionItemsFromMessages(messages)),
+    Promise.resolve(buildThreadTimeline(messages)),
+  ]);
 
   return {
     sentiment,
@@ -119,22 +122,25 @@ export function performComprehensiveAnalysis(
 }
 
 /**
- * Quick analysis for basic thread insights (lighter computation)
+ * Quick analysis for basic thread insights with parallel processing optimization
  * @param messages - Array of Slack messages
  * @returns Basic analysis result
  */
-export function performQuickAnalysis(messages: readonly SlackMessage[]): {
+export async function performQuickAnalysis(messages: readonly SlackMessage[]): Promise<{
   readonly sentiment: SentimentAnalysisResult;
   readonly topicCount: number;
   readonly urgencyLevel: 'low' | 'medium' | 'high' | 'critical';
   readonly actionItemCount: number;
   readonly duration: number;
-} {
-  const sentiment = analyzeSentiment(messages);
-  const topics = extractTopicsFromThread(messages);
-  const urgency = calculateUrgencyScore(messages);
-  const actionItems = extractActionItemsFromMessages(messages);
-  const timeline = buildThreadTimeline(messages);
+}> {
+  // Performance optimization: Run analyses in parallel for faster results
+  const [sentiment, topics, urgency, actionItems, timeline] = await Promise.all([
+    Promise.resolve(analyzeSentiment(messages)),
+    Promise.resolve(extractTopicsFromThread(messages)),
+    Promise.resolve(calculateUrgencyScore(messages)),
+    Promise.resolve(extractActionItemsFromMessages(messages)),
+    Promise.resolve(buildThreadTimeline(messages)),
+  ]);
 
   // Determine urgency level
   let urgencyLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';

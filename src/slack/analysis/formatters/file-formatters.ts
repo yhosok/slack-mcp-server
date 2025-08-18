@@ -3,7 +3,7 @@
  * No side effects, fully testable and functional
  */
 
-import type { FileAnalysis } from '../../types.js';
+import type { FileAnalysis } from '../../types/index.js';
 import type { FormattedResult, FileAnalysisFormatterOptions } from './types.js';
 import { DEFAULT_FORMATTER_CONFIG } from './types.js';
 import {

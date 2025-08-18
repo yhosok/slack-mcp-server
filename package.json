@@ -30,6 +30,8 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@slack/web-api": "^7.0.0",
     "dotenv": "^16.4.0",
+    "p-limit": "^3.1.0",
+    "ts-pattern": "^5.8.0",
     "typescript": "^5.3.0",
     "zod": "^3.22.0",
     "zod-to-json-schema": "^3.24.6"

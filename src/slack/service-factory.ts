@@ -1,11 +1,40 @@
+/**
+ * Service Factory - Three-Layer Architecture Implementation
+ * 
+ * This factory implements the three-layer architecture that balances type safety with MCP protocol compliance:
+ * 
+ * ## Architecture Layers:
+ * 1. **TypeSafeAPI Services** (internal) - Enhanced type safety with ServiceResult<T> discriminated unions
+ * 2. **MCP Adapters** (bridge) - Convert ServiceResult<T> to MCPToolResult for protocol compliance
+ * 3. **MCP Protocol** (external) - MCPToolResult format required by Model Context Protocol
+ * 
+ * ## Factory Responsibilities:
+ * - Creates infrastructure services with dependency injection
+ * - Instantiates TypeSafeAPI services for type safety
+ * - Creates MCP adapters that bridge internal types to protocol format
+ * - Provides method registry for SlackService facade consumption
+ * 
+ * ## Why This Architecture:
+ * - MCPToolResult is required by MCP protocol specification (not legacy)
+ * - TypeSafeAPI provides enhanced type safety with discriminated unions
+ * - Adapter pattern enables clean separation of concerns
+ * - Supports both internal type safety and external protocol compliance
+ */
+
 import { CONFIG } from '../config/index.js';
 import type { MCPToolResult } from '../mcp/types.js';
 import { createInfrastructureServices } from './infrastructure/factory.js';
-import { createMessageService } from './services/messages/message-service.js';
-import { createThreadService } from './services/threads/thread-service.js';
-import { createFileService } from './services/files/file-service.js';
-import { createReactionService } from './services/reactions/reaction-service.js';
-import { createWorkspaceService } from './services/workspace/workspace-service.js';
+import { createMessageServiceMCPAdapter } from './services/messages/message-service-mcp-adapter.js';
+import { createThreadServiceMCPAdapter } from './services/threads/thread-service-mcp-adapter.js';
+import { createFileServiceMCPAdapter } from './services/files/file-service-mcp-adapter.js';
+import { createReactionServiceMCPAdapter } from './services/reactions/reaction-service-mcp-adapter.js';
+import { createWorkspaceServiceMCPAdapter } from './services/workspace/workspace-service-mcp-adapter.js';
+import { createUserServiceMCPAdapter } from './services/users/user-service-mcp-adapter.js';
+import { createUserService } from './services/users/user-service.js';
+import { createParticipantTransformationService } from './services/threads/participant-transformation-service.js';
+import type { ThreadServiceDependencies } from './services/threads/types.js';
+import type { ReactionServiceDependencies } from './services/reactions/types.js';
+import type { WorkspaceServiceDependencies } from './services/workspace/types.js';
 
 /**
  * Method registry mapping method names to service implementations
@@ -84,19 +113,55 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
   // Create infrastructure services
   const infrastructure = createInfrastructureServices(infrastructureConfig);
 
+  // Create domain user service for complete TypeSafeAPI operations
+  const domainUserService = createUserService({
+    client: infrastructure.clientManager.getClientForOperation('read'),
+  });
+
+  // Create participant transformation service for optimized participant building
+  const participantTransformationService = createParticipantTransformationService({
+    domainUserService,
+    infrastructureUserService: infrastructure.userService,
+  });
+
+  // Create enhanced thread service dependencies with both user services and participant transformation
+  const threadServiceDeps: ThreadServiceDependencies = {
+    ...infrastructure,
+    infrastructureUserService: infrastructure.userService,
+    domainUserService,
+    participantTransformationService,
+  };
+
+  // Create enhanced reaction service dependencies with both user services
+  const reactionServiceDeps: ReactionServiceDependencies = {
+    ...infrastructure,
+    infrastructureUserService: infrastructure.userService,
+    domainUserService,
+  };
+
+  // Create enhanced workspace service dependencies with both user services
+  const workspaceServiceDeps: WorkspaceServiceDependencies = {
+    ...infrastructure,
+    infrastructureUserService: infrastructure.userService,
+    domainUserService,
+  };
+
   // Create domain services
-  const messageService = createMessageService(infrastructure);
-  const threadService = createThreadService(infrastructure);
-  const fileService = createFileService(infrastructure);
-  const reactionService = createReactionService(infrastructure);
-  const workspaceService = createWorkspaceService(infrastructure);
+  const messageService = createMessageServiceMCPAdapter(infrastructure);
+  const threadService = createThreadServiceMCPAdapter(threadServiceDeps);
+  const fileService = createFileServiceMCPAdapter(infrastructure);
+  const reactionService = createReactionServiceMCPAdapter(reactionServiceDeps);
+  const workspaceService = createWorkspaceServiceMCPAdapter(workspaceServiceDeps);
+  const userService = createUserServiceMCPAdapter(
+    infrastructure.clientManager.getClientForOperation('read')
+  );
 
   const methods: ServiceMethodRegistry = {
     // Message operations
     sendMessage: messageService.sendMessage,
     listChannels: messageService.listChannels,
     getChannelHistory: messageService.getChannelHistory,
-    getUserInfo: messageService.getUserInfo,
+    getUserInfo: userService.getUserInfo,
     searchMessages: messageService.searchMessages,
     getChannelInfo: messageService.getChannelInfo,
 

@@ -3,53 +3,101 @@
  * No side effects, fully testable and functional
  */
 
-import type { SlackMessage, ActionItem } from '../../types.js';
+import type { SlackMessage, ActionItem } from '../../types/index.js';
 import type {
   ActionItemExtractionResult,
   PriorityAnalysisResult,
   StatusAnalysisResult,
   ActionItemConfig,
+  BulletPointConfig,
+  BulletPointInfo,
+  RequestPatternInfo,
+  LineScoreInfo,
 } from './types.js';
+import { normalizeConjugation } from './topic-extraction.js';
+
+/**
+ * Default bullet point configuration
+ */
+export const DEFAULT_BULLET_POINT_CONFIG: BulletPointConfig = {
+  japaneseBullets: ['・', '‐', '－', '●', '○', '□', '■'] as const,
+  westernBullets: ['-', '*', '+', '>'] as const,
+  numberedPatterns: [
+    /^\d+[.)]/,     // 1. or 1)
+    /^[①②③④⑤⑥⑦⑧⑨⑩]/,  // Japanese numbers
+  ] as const,
+  bulletPointWeight: 2.0,
+} as const;
+
+/**
+ * Enhanced action indicators including Japanese request patterns
+ */
+export const ENHANCED_ACTION_INDICATORS = [
+  // Original English indicators
+  'todo',
+  'action item',
+  'need to',
+  'should',
+  'will',
+  'task',
+  'follow up',
+  'next step',
+  'assign',
+  'assigned',
+  'do',
+  'implement',
+  'fix',
+  'update',
+  'create',
+  'add',
+  'remove',
+  'delete',
+  'check',
+  'verify',
+  'test',
+  'review',
+  
+  // Basic Japanese action words
+  'やる',
+  'する',
+  'しなければ',
+  'タスク',
+  'やること',
+  '対応',
+  '作業',
+  '実装',
+  '修正',
+  '確認',
+  'レビュー',
+  
+  // Enhanced Japanese request patterns
+  'お願いします',
+  'ください',
+  'していただけますか',
+  'お願いいたします',
+  '対応お願いします',
+  '確認ください',
+  'レビューお願いします',
+  'チェックお願いします',
+  '修正お願いします',
+  'テストお願いします',
+  '実装お願いします',
+  '更新お願いします',
+  '削除お願いします',
+  '追加お願いします',
+  '作成お願いします',
+  'を担当してください',
+  'の件でお願いします',
+  'をお願いできますか',
+  'していただきたく',
+  'をしていただけると',
+] as const;
 
 /**
  * Default action item extraction configuration
  */
 export const DEFAULT_ACTION_ITEM_CONFIG: ActionItemConfig = {
-  actionIndicators: [
-    'todo',
-    'action item',
-    'need to',
-    'should',
-    'will',
-    'task',
-    'follow up',
-    'next step',
-    'assign',
-    'assigned',
-    'do',
-    'implement',
-    'fix',
-    'update',
-    'create',
-    'add',
-    'remove',
-    'delete',
-    'check',
-    'verify',
-    'test',
-    'review',
-    'やる',
-    'する',
-    'しなければ',
-    'タスク',
-    'やること',
-    '対応',
-    '作業',
-    '実装',
-    '修正',
-    '確認',
-    'レビュー',
-  ] as const,
+  actionIndicators: ENHANCED_ACTION_INDICATORS,
   priorityKeywords: {
     high: [
       'urgent',
@@ -116,7 +164,184 @@ export const DEFAULT_ACTION_ITEM_CONFIG: ActionItemConfig = {
       '開発中',
     ] as const,
   },
+  bulletPointConfig: DEFAULT_BULLET_POINT_CONFIG,
+  enableLineScoring: true,
+  enableConjugationNormalization: true,
 } as const;
+
+/**
+ * Detect bullet points in a line of text
+ * @param line - Text line to analyze
+ * @param config - Bullet point configuration
+ * @returns Bullet point detection information
+ */
+export function detectBulletPoint(line: string, config: BulletPointConfig): BulletPointInfo {
+  const trimmedLine = line.trim();
+  
+  // Check Japanese bullet points
+  for (const bullet of config.japaneseBullets) {
+    if (trimmedLine.startsWith(bullet)) {
+      return {
+        hasBulletPoint: true,
+        bulletType: `japanese:${bullet}`,
+        weight: config.bulletPointWeight,
+      };
+    }
+  }
+  
+  // Check Western bullet points
+  for (const bullet of config.westernBullets) {
+    if (trimmedLine.startsWith(bullet + ' ')) {
+      return {
+        hasBulletPoint: true,
+        bulletType: `western:${bullet}`,
+        weight: config.bulletPointWeight,
+      };
+    }
+  }
+  
+  // Check numbered patterns
+  for (const pattern of config.numberedPatterns) {
+    if (pattern.test(trimmedLine)) {
+      return {
+        hasBulletPoint: true,
+        bulletType: 'numbered',
+        weight: config.bulletPointWeight,
+      };
+    }
+  }
+  
+  return {
+    hasBulletPoint: false,
+    bulletType: '',
+    weight: 0,
+  };
+}
+
+/**
+ * Detect Japanese request patterns in text
+ * @param line - Text line to analyze
+ * @returns Request pattern detection information
+ */
+export function detectJapaneseRequests(line: string): RequestPatternInfo {
+  const lowerLine = line.toLowerCase();
+  const foundPatterns: string[] = [];
+  
+  // Define Japanese request patterns with weights
+  const requestPatterns = [
+    // Polite requests
+    { pattern: 'お願いします', weight: 1.5 },
+    { pattern: 'ください', weight: 1.5 },
+    { pattern: 'していただけますか', weight: 1.5 },
+    { pattern: 'お願いいたします', weight: 1.5 },
+    { pattern: 'していただきたく', weight: 1.5 },
+    { pattern: 'をしていただけると', weight: 1.5 },
+    { pattern: 'をお願いできますか', weight: 1.5 },
+    
+    // Specific action requests
+    { pattern: '対応お願いします', weight: 1.8 },
+    { pattern: '確認ください', weight: 1.8 },
+    { pattern: 'レビューお願いします', weight: 1.8 },
+    { pattern: 'チェックお願いします', weight: 1.8 },
+    { pattern: '修正お願いします', weight: 1.8 },
+    { pattern: 'テストお願いします', weight: 1.8 },
+    { pattern: '実装お願いします', weight: 1.8 },
+    { pattern: '更新お願いします', weight: 1.8 },
+    { pattern: '削除お願いします', weight: 1.8 },
+    { pattern: '追加お願いします', weight: 1.8 },
+    { pattern: '作成お願いします', weight: 1.8 },
+    
+    // Task assignments
+    { pattern: 'を担当してください', weight: 1.8 },
+    { pattern: 'の件でお願いします', weight: 1.8 },
+  ];
+  
+  let maxWeight = 0;
+  for (const { pattern, weight } of requestPatterns) {
+    if (lowerLine.includes(pattern.toLowerCase())) {
+      foundPatterns.push(pattern);
+      maxWeight = Math.max(maxWeight, weight);
+    }
+  }
+  
+  return {
+    hasRequestPattern: foundPatterns.length > 0,
+    patterns: foundPatterns,
+    weight: maxWeight,
+  };
+}
+
+/**
+ * Score a line for action item likelihood using multiple factors
+ * @param line - Text line to score
+ * @param config - Action item configuration
+ * @returns Line scoring information
+ */
+export function scoreActionLine(line: string, config: ActionItemConfig): LineScoreInfo {
+  let score = 1.0; // Base score
+  
+  // Bullet point detection
+  const bulletPointInfo = config.bulletPointConfig 
+    ? detectBulletPoint(line, config.bulletPointConfig)
+    : { hasBulletPoint: false, bulletType: '', weight: 0 };
+    
+  if (bulletPointInfo.hasBulletPoint) {
+    score += bulletPointInfo.weight;
+  }
+  
+  // Japanese request pattern detection
+  const requestPatternInfo = detectJapaneseRequests(line);
+  if (requestPatternInfo.hasRequestPattern) {
+    score += requestPatternInfo.weight;
+  }
+  
+  // User mention detection
+  const mentions = extractMentions(line);
+  const hasMentions = mentions.length > 0;
+  if (hasMentions) {
+    score += 1.2;
+  }
+  
+  // Urgency keyword detection
+  const urgencyKeywords = findActionIndicators(line, config.priorityKeywords.high);
+  const hasUrgencyKeywords = urgencyKeywords.length > 0;
+  if (hasUrgencyKeywords) {
+    score += 1.8;
+  }
+  
+  return {
+    score,
+    bulletPointInfo,
+    requestPatternInfo,
+    hasMentions,
+    hasUrgencyKeywords,
+    urgencyKeywords,
+  };
+}
+
+/**
+ * Apply conjugation normalization to action indicators if enabled
+ * @param text - Text to normalize
+ * @param config - Action item configuration
+ * @returns Normalized text
+ */
+export function normalizeActionText(text: string, config: ActionItemConfig): string {
+  if (!config.enableConjugationNormalization) {
+    return text;
+  }
+  
+  // Split into words and normalize Japanese words
+  const words = text.split(/\s+/);
+  const normalizedWords = words.map(word => {
+    // Only normalize Japanese words
+    if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(word)) {
+      return normalizeConjugation(word);
+    }
+    return word;
+  });
+  
+  return normalizedWords.join(' ');
+}
 
 /**
  * Extract mentions from text (Slack user mentions)
@@ -138,21 +363,30 @@ export function extractMentions(text: string): string[] {
 }
 
 /**
- * Check if line contains action indicators
+ * Check if line contains action indicators with optional conjugation normalization
  * @param line - Text line to check
  * @param indicators - Array of action indicators
+ * @param enableNormalization - Whether to apply conjugation normalization
  * @returns True if line contains action indicators
  */
-export function containsActionIndicators(line: string, indicators: readonly string[]): boolean {
+export function containsActionIndicators(
+  line: string, 
+  indicators: readonly string[], 
+  enableNormalization: boolean = false
+): boolean {
   const lowerLine = line.toLowerCase();
+  const normalizedLine = enableNormalization ? normalizeConjugation(lowerLine) : lowerLine;
+  
   return indicators.some((indicator) => {
     const lowerIndicator = indicator.toLowerCase();
+    const normalizedIndicator = enableNormalization ? normalizeConjugation(lowerIndicator) : lowerIndicator;
 
     // For Japanese, use simple includes; for English, prefer word boundaries
     const isJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(indicator);
 
     if (isJapanese) {
-      return lowerLine.includes(lowerIndicator);
+      // Check both original and normalized forms
+      return normalizedLine.includes(normalizedIndicator) || lowerLine.includes(lowerIndicator);
     } else {
       // Try word boundary first, fallback to includes for compound terms
       const wordBoundaryMatch = new RegExp(`\\b${lowerIndicator}\\b`).test(lowerLine);
@@ -162,21 +396,29 @@ export function containsActionIndicators(line: string, indicators: readonly stri
 }
 
 /**
- * Find action indicators present in text
+ * Find action indicators present in text with optional conjugation normalization
  * @param text - Text to analyze
  * @param indicators - Array of action indicators
+ * @param enableNormalization - Whether to apply conjugation normalization
  * @returns Array of indicators found in text
  */
-export function findActionIndicators(text: string, indicators: readonly string[]): string[] {
+export function findActionIndicators(
+  text: string, 
+  indicators: readonly string[], 
+  enableNormalization: boolean = false
+): string[] {
   const lowerText = text.toLowerCase();
+  const normalizedText = enableNormalization ? normalizeConjugation(lowerText) : lowerText;
   const found: string[] = [];
 
   for (const indicator of indicators) {
     const lowerIndicator = indicator.toLowerCase();
+    const normalizedIndicator = enableNormalization ? normalizeConjugation(lowerIndicator) : lowerIndicator;
     const isJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(indicator);
 
     if (isJapanese) {
-      if (lowerText.includes(lowerIndicator)) {
+      // Check both original and normalized forms
+      if (normalizedText.includes(normalizedIndicator) || lowerText.includes(lowerIndicator)) {
         found.push(indicator);
       }
     } else {
@@ -194,14 +436,16 @@ export function findActionIndicators(text: string, indicators: readonly string[]
  * Determine priority level from text content
  * @param text - Text to analyze for priority keywords
  * @param config - Configuration for priority keywords
+ * @param enableNormalization - Whether to apply conjugation normalization
  * @returns Priority analysis result
  */
 export function analyzePriority(
   text: string,
-  config: ActionItemConfig['priorityKeywords']
+  config: ActionItemConfig['priorityKeywords'],
+  enableNormalization: boolean = false
 ): PriorityAnalysisResult {
-  const highKeywords = findActionIndicators(text, config.high);
-  const mediumKeywords = findActionIndicators(text, config.medium);
+  const highKeywords = findActionIndicators(text, config.high, enableNormalization);
+  const mediumKeywords = findActionIndicators(text, config.medium, enableNormalization);
 
   let priority: 'low' | 'medium' | 'high' = 'low';
   let priorityLevel = 0;
@@ -231,14 +475,16 @@ export function analyzePriority(
  * Determine status from text content
  * @param text - Text to analyze for status keywords
  * @param config - Configuration for status keywords
+ * @param enableNormalization - Whether to apply conjugation normalization
  * @returns Status analysis result
  */
 export function analyzeStatus(
   text: string,
-  config: ActionItemConfig['statusKeywords']
+  config: ActionItemConfig['statusKeywords'],
+  enableNormalization: boolean = false
 ): StatusAnalysisResult {
-  const completedKeywords = findActionIndicators(text, config.completed);
-  const inProgressKeywords = findActionIndicators(text, config.inProgress);
+  const completedKeywords = findActionIndicators(text, config.completed, enableNormalization);
+  const inProgressKeywords = findActionIndicators(text, config.inProgress, enableNormalization);
 
   let status: 'open' | 'in_progress' | 'completed' = 'open';
   let confidence = 0.5; // Default confidence for open status
@@ -276,7 +522,7 @@ export function cleanActionItemText(text: string): string {
 }
 
 /**
- * Extract action items from a single message
+ * Extract action items from a single message with enhanced capabilities
  * @param message - Slack message to analyze
  * @param config - Configuration for action item extraction
  * @returns Array of action items found in the message
@@ -292,13 +538,36 @@ export function extractActionItemsFromMessage(
     .map((line) => line.trim())
     .filter((line) => line);
   const actionItems: ActionItem[] = [];
+  const enableNormalization = config.enableConjugationNormalization !== false;
 
-  for (const line of lines) {
-    if (containsActionIndicators(line, config.actionIndicators)) {
+  // Process lines with scoring if enabled
+  const lineScores: Array<{ line: string; scoreInfo: LineScoreInfo }> = [];
+  
+  if (config.enableLineScoring) {
+    for (const line of lines) {
+      const scoreInfo = scoreActionLine(line, config);
+      lineScores.push({ line, scoreInfo });
+    }
+    
+    // Sort by score in descending order to prioritize high-scoring lines
+    lineScores.sort((a, b) => b.scoreInfo.score - a.scoreInfo.score);
+  }
+
+  // Process lines in score order if scoring is enabled, otherwise process in original order
+  const processOrder = config.enableLineScoring ? lineScores.map(ls => ls.line) : lines;
+
+  for (const line of processOrder) {
+    // Enhanced action indicator detection with normalization
+    if (containsActionIndicators(line, config.actionIndicators, enableNormalization)) {
       const mentions = extractMentions(line);
-      const priorityAnalysis = analyzePriority(line, config.priorityKeywords);
-      const statusAnalysis = analyzeStatus(line, config.statusKeywords);
-      const cleanedText = cleanActionItemText(line);
+      const priorityAnalysis = analyzePriority(line, config.priorityKeywords, enableNormalization);
+      const statusAnalysis = analyzeStatus(line, config.statusKeywords, enableNormalization);
+      
+      // Apply conjugation normalization to the cleaned text if enabled
+      let cleanedText = cleanActionItemText(line);
+      if (enableNormalization) {
+        cleanedText = normalizeActionText(cleanedText, config);
+      }
 
       if (cleanedText.length > 5) {
         // Minimum meaningful length
@@ -335,7 +604,8 @@ export function extractActionItemsFromMessages(
 
     // Track which indicators were found
     if (message.text) {
-      const foundInMessage = findActionIndicators(message.text, config.actionIndicators);
+      const enableNormalization = config.enableConjugationNormalization !== false;
+      const foundInMessage = findActionIndicators(message.text, config.actionIndicators, enableNormalization);
       foundInMessage.forEach((indicator) => indicatorsFound.add(indicator));
     }
   }

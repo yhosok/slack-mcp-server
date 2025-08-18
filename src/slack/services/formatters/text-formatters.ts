@@ -5,6 +5,38 @@
 
 import type { MCPToolResult } from '../../../mcp/types.js';
 
+// Type for message in responses
+type FormattedMessage = {
+  user?: string;
+  text?: string;
+  timestamp?: string;
+  ts?: string;
+  thread_ts?: string;
+  reply_count?: number;
+  reactions?: Array<{ name: string; count: number; users?: string[] }>;
+  edited?: { ts?: string; user?: string };
+};
+
+// Type for thread results
+type ThreadResult = {
+  threadTs?: string;
+  parentMessage?: FormattedMessage;
+  replyCount?: number;
+  lastReply?: string;
+  participants?: string[];
+};
+
+// Type for search match results
+type SearchMatch = {
+  type?: string;
+  user?: string;
+  text?: string;
+  ts?: string;
+  thread_ts?: string;
+  channel?: { id?: string; name?: string };
+  permalink?: string;
+};
+
 /**
  * Format sendMessage response for consistent text output
  */
@@ -12,7 +44,7 @@ export const formatSendMessageResponse = (result: {
   success: boolean;
   timestamp?: string;
   channel?: string;
-  message?: any;
+  message?: FormattedMessage;
 }): MCPToolResult => ({
   content: [
     {
@@ -27,7 +59,7 @@ export const formatSendMessageResponse = (result: {
  */
 export const formatChannelHistoryResponse = async (
   result: {
-    messages: any[];
+    messages: FormattedMessage[];
     hasMore?: boolean;
     cursor?: string;
     pageCount?: number;
@@ -36,7 +68,7 @@ export const formatChannelHistoryResponse = async (
   getUserDisplayName: (userId: string) => Promise<string>
 ): Promise<MCPToolResult> => {
   const formattedMessages = await Promise.all(
-    result.messages.map(async (msg: any) => {
+    result.messages.map(async (msg: FormattedMessage) => {
       const displayName = await getUserDisplayName(msg.user || 'unknown');
       return {
         user: displayName,
@@ -46,11 +78,12 @@ export const formatChannelHistoryResponse = async (
     })
   );
 
-  const paginationInfo = result.pageCount !== undefined 
-    ? `\n\nPagination: Fetched ${result.pageCount} pages, total ${result.totalMessages || result.messages.length} messages`
-    : result.hasMore 
-      ? `\n\nMore messages available. Next cursor: ${result.cursor || 'N/A'}`
-      : '';
+  const paginationInfo =
+    result.pageCount !== undefined
+      ? `\n\nPagination: Fetched ${result.pageCount} pages, total ${result.totalMessages || result.messages.length} messages`
+      : result.hasMore
+        ? `\n\nMore messages available. Next cursor: ${result.cursor || 'N/A'}`
+        : '';
 
   return {
     content: [
@@ -69,7 +102,7 @@ export const formatChannelHistoryResponse = async (
  */
 export const formatFindThreadsResponse = async (
   result: {
-    threads: any[];
+    threads: ThreadResult[];
     total: number;
     hasMore?: boolean;
   },
@@ -126,13 +159,14 @@ ${threadsText}`,
 export const formatCreateThreadResponse = (result: {
   success: boolean;
   threadTs?: string;
-  parentMessage?: any;
-  reply?: any;
+  channel?: string;
+  parentMessage?: FormattedMessage;
+  reply?: FormattedMessage;
 }): MCPToolResult => ({
   content: [
     {
       type: 'text',
-      text: `Thread created successfully!\nParent message: ${result.threadTs}\nChannel: ${result.parentMessage?.channel}`,
+      text: `Thread created successfully!\nParent message: ${result.threadTs}\nChannel: ${result.channel || 'Unknown'}`,
     },
   ],
 });
@@ -161,7 +195,7 @@ export const formatAddReactionResponse = (result: {
  */
 export const formatSearchMessagesResponse = async (
   result: {
-    results: any[];
+    results: SearchMatch[];
     total: number;
     query: string;
     page?: number;
@@ -170,13 +204,13 @@ export const formatSearchMessagesResponse = async (
   getUserDisplayName: (userId: string) => Promise<string>
 ): Promise<MCPToolResult> => {
   const formattedMatches = await Promise.all(
-    result.results.map(async (match: any) => {
+    result.results.map(async (match: SearchMatch) => {
       const displayName = await getUserDisplayName(match.user || '');
       return {
         user: displayName,
         text: match.text || '',
         timestamp: match.ts || '',
-        channel: match.channel,
+        channel: match.channel?.id || match.channel?.name || '',
         permalink: match.permalink || '',
       };
     })
@@ -206,7 +240,7 @@ export const formatSearchMessagesResponse = async (
  */
 export const formatThreadRepliesResponse = async (
   result: {
-    messages: any[];
+    messages: FormattedMessage[];
     hasMore?: boolean;
     cursor?: string;
     pageCount?: number;
@@ -215,7 +249,7 @@ export const formatThreadRepliesResponse = async (
   getUserDisplayName: (userId: string) => Promise<string>
 ): Promise<MCPToolResult> => {
   const formattedMessages = await Promise.all(
-    result.messages.map(async (msg: any) => {
+    result.messages.map(async (msg: FormattedMessage) => {
       const displayName = await getUserDisplayName(msg.user || 'unknown');
       return {
         user: displayName,
@@ -229,11 +263,12 @@ export const formatThreadRepliesResponse = async (
     })
   );
 
-  const paginationInfo = result.pageCount !== undefined 
-    ? `\n\nPagination: Fetched ${result.pageCount} pages, total ${result.totalMessages || result.messages.length} messages`
-    : result.hasMore 
-      ? `\n\nMore messages available. Next cursor: ${result.cursor || 'N/A'}`
-      : '';
+  const paginationInfo =
+    result.pageCount !== undefined
+      ? `\n\nPagination: Fetched ${result.pageCount} pages, total ${result.totalMessages || result.messages.length} messages`
+      : result.hasMore
+        ? `\n\nMore messages available. Next cursor: ${result.cursor || 'N/A'}`
+        : '';
 
   return {
     content: [

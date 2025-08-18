@@ -16,7 +16,7 @@ import {
   formatThreadAnalysis,
 } from '../slack/analysis/index.js';
 
-import type { SlackMessage, ThreadParticipant } from '../slack/types.js';
+import type { SlackMessage, ThreadParticipant } from '../slack/types/index.js';
 
 // Mock messages for testing
 const mockMessages: SlackMessage[] = [
@@ -191,8 +191,8 @@ describe('Analysis Layer Functions', () => {
   });
 
   describe('Comprehensive Analysis', () => {
-    test('should perform comprehensive analysis', () => {
-      const result = performComprehensiveAnalysis(mockMessages, mockParticipants);
+    test('should perform comprehensive analysis', async () => {
+      const result = await performComprehensiveAnalysis(mockMessages, mockParticipants);
 
       expect(result.sentiment).toBeDefined();
       expect(result.topics).toBeDefined();
@@ -204,8 +204,8 @@ describe('Analysis Layer Functions', () => {
       expect(result.metadata.participantCount).toBe(mockParticipants.length);
     });
 
-    test('should perform quick analysis', () => {
-      const result = performQuickAnalysis(mockMessages);
+    test('should perform quick analysis', async () => {
+      const result = await performQuickAnalysis(mockMessages);
 
       expect(result.sentiment).toBeDefined();
       expect(result.topicCount).toBeGreaterThanOrEqual(0);
@@ -228,8 +228,8 @@ describe('Analysis Layer Functions', () => {
       expect(formatDuration(1440)).toMatch(/1\.0 day/);
     });
 
-    test('should format thread analysis', () => {
-      const comprehensiveResult = performComprehensiveAnalysis(mockMessages, mockParticipants);
+    test('should format thread analysis', async () => {
+      const comprehensiveResult = await performComprehensiveAnalysis(mockMessages, mockParticipants);
 
       // Create mock ThreadAnalysis object
       const mockAnalysis = {

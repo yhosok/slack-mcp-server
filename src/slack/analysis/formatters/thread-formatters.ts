@@ -3,7 +3,7 @@
  * No side effects, fully testable and functional
  */
 
-import type { ThreadAnalysis, ThreadSummary, ThreadMetrics } from '../../types.js';
+import type { ThreadAnalysis, ThreadSummary, ThreadMetrics } from '../../types/index.js';
 import type {
   FormattedResult,
   ThreadAnalysisFormatterOptions,
