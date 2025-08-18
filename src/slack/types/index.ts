@@ -30,8 +30,7 @@ export type {
   SlackAttachmentField,
 } from './core/messages.js';
 
-// Channel types (depends on SlackMessage)
-export type { SlackChannel } from './core/channels.js';
+// Channel types removed - TypeSafeAPI pattern uses Slack Web API types directly
 
 // File types
 export type { SlackFile, SlackFileShare, SlackFileComment, FileAnalysis } from './core/files.js';
