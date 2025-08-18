@@ -48,6 +48,20 @@ const DEFAULT_CONFIG: Required<ConcurrentProcessingConfig> = {
 };
 
 /**
+ * Create default configuration with configurable concurrency
+ * @param configuredConcurrency - Concurrency from infrastructure configuration
+ * @returns Configuration with configured concurrency
+ */
+export function createDefaultConfigWithConcurrency(
+  configuredConcurrency: number
+): Required<ConcurrentProcessingConfig> {
+  return {
+    ...DEFAULT_CONFIG,
+    concurrency: configuredConcurrency,
+  };
+}
+
+/**
  * Process an array of items concurrently with rate limiting and error handling.
  * 
  * @template T - Input item type
