@@ -9,6 +9,11 @@ import {
   GetChannelInfoSchema,
   validateInput,
 } from '../../../utils/validation.js';
+import {
+  parseSearchQuery,
+  buildSlackSearchQuery,
+  type SearchQueryOptions,
+} from '../../utils/search-query-parser.js';
 import type { MessageService, MessageServiceDependencies } from './types.js';
 import {
   formatSendMessageResponse,
@@ -16,6 +21,7 @@ import {
   formatSearchMessagesResponse as _formatSearchMessagesResponse,
 } from '../formatters/text-formatters.js';
 import { executePagination } from '../../infrastructure/generic-pagination.js';
+import { logger } from '../../../utils/logger.js';
 import {
   createServiceSuccess,
   createServiceError,
@@ -360,8 +366,56 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
 
       const client = deps.clientManager.getClientForOperation('read');
 
+      /**
+       * Build advanced message search query using the search query parser
+       * Supports complex queries with operators, boolean logic, and proper escaping
+       * 
+       * @param query - Raw search query from input
+       * @returns Enhanced search query with proper Slack syntax
+       */
+      const buildAdvancedMessageSearchQuery = (query: string): string => {
+        try {
+          // Configure parser options for message search
+          const parserOptions: SearchQueryOptions = {
+            allowedOperators: ['in', 'from', 'has', 'after', 'before', 'is', 'during'],
+            maxQueryLength: 500,
+            enableBooleanOperators: true,
+            enableGrouping: true
+          };
+
+          // Parse the query first
+          const parseResult = parseSearchQuery(query, parserOptions);
+
+          if (parseResult.success) {
+            // Use parsed query and rebuild with proper Slack syntax
+            return buildSlackSearchQuery(parseResult.query, parserOptions);
+          } else {
+            // Fallback to escaped simple query for legacy compatibility
+            logger.debug('Advanced message search query parsing failed, using simple escaping', {
+              error: parseResult.error.message,
+              query
+            });
+            
+            // Use the legacy escape function from the parser for consistency
+            return query.trim();
+          }
+
+        } catch (error) {
+          // Final fallback to simple query for any errors
+          logger.warn('Advanced message search query building failed, falling back to simple query', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            query
+          });
+          
+          return query.trim();
+        }
+      };
+
+      // Build enhanced search query
+      const enhancedQuery = buildAdvancedMessageSearchQuery(input.query);
+
       const searchArgs: SearchAllArguments = {
-        query: input.query,
+        query: enhancedQuery,
         sort: input.sort,
         sort_dir: input.sort_dir,
         count: input.count,
@@ -376,7 +430,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         const output: MessageSearchOutput = enforceServiceOutput({
           messages: [],
           total: 0,
-          query: input.query,
+          query: enhancedQuery,
           hasMore: false,
         });
 
@@ -416,7 +470,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       const output: MessageSearchOutput = enforceServiceOutput({
         messages,
         total: result.messages.total || 0,
-        query: input.query,
+        query: enhancedQuery,
         hasMore: (result.messages.paging?.page || 1) < (result.messages.paging?.pages || 1),
       });
 

@@ -19,6 +19,12 @@ import {
   GetThreadsByParticipantsSchema,
   validateInput,
 } from '../../../utils/validation.js';
+import {
+  parseSearchQuery,
+  buildSlackSearchQuery,
+  escapeSearchQuery,
+  type SearchQueryOptions,
+} from '../../utils/search-query-parser.js';
 import type { ThreadService, ThreadServiceDependencies } from './types.js';
 import {
   formatFindThreadsResponse as _formatFindThreadsResponse,
@@ -383,27 +389,108 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
     }
   };
 
+
   /**
-   * Escape special characters in search query terms
-   * Prevents query injection and handles edge cases
+   * Build search query with enhanced parsing and proper syntax
+   * Phase 1 Integration: Conservative approach with fallback for complex queries
+   * Maintains backward compatibility with existing function signature
    */
-  const escapeSearchQuery = (query: string): string => {
-    if (!query || typeof query !== 'string') {
-      return '';
+  const buildSearchQuery = async (options: {
+    baseQuery: string;
+    channel?: string;
+    user?: string;
+    after?: string;
+    before?: string;
+    additionalFilters?: string[];
+  }): Promise<string> => {
+    try {
+      // Phase 1: Conservative approach - detect complex queries and use legacy mode
+      const hasComplexOperators = options.baseQuery.includes(' OR ') || 
+                                  options.baseQuery.includes(' AND ') || 
+                                  options.baseQuery.includes(' NOT ');
+      
+      // Also check for quotes which might be handled differently by new parser
+      const hasQuotes = options.baseQuery.includes('"');
+      
+      if (hasComplexOperators || hasQuotes) {
+        // Use legacy mode for complex queries or queries with quotes to maintain compatibility
+        return buildLegacySearchQuery(options);
+      }
+
+      // Parse simple queries using the advanced parser
+      const parseResult = parseSearchQuery(options.baseQuery);
+      
+      if (!parseResult.success) {
+        // Fallback to legacy escaping if parsing fails
+        logger.debug(`Query parsing failed for '${options.baseQuery}': ${parseResult.error.message}. Using legacy mode.`);
+        return buildLegacySearchQuery(options);
+      }
+
+      const parsedQuery = parseResult.query;
+
+      // Add operators from function parameters
+      if (options.channel) {
+        const channelName = await resolveChannelName(options.channel);
+        parsedQuery.operators.push({
+          type: 'in',
+          value: `#${channelName}`,
+          field: 'channel'
+        });
+      }
+
+      if (options.user) {
+        parsedQuery.operators.push({
+          type: 'from',
+          value: `<@${options.user}>`,
+          field: 'user'
+        });
+      }
+
+      if (options.after) {
+        parsedQuery.operators.push({
+          type: 'after',
+          value: options.after,
+          field: 'date'
+        });
+      }
+
+      if (options.before) {
+        parsedQuery.operators.push({
+          type: 'before',
+          value: options.before,
+          field: 'date'
+        });
+      }
+
+      // Add additional filters as raw terms (maintaining backward compatibility)
+      if (options.additionalFilters) {
+        for (const filter of options.additionalFilters) {
+          // For Phase 1, treat additional filters as simple terms to avoid complexity
+          parsedQuery.terms.push(filter);
+        }
+      }
+
+      // Build the final query using the enhanced builder
+      const searchQueryOptions: SearchQueryOptions = {
+        channelNameMap: new Map() // Empty map, channel resolution is done above
+      };
+
+      const builtQuery = buildSlackSearchQuery(parsedQuery, searchQueryOptions);
+      
+      // Enhanced escaping using the new parser's escapeSlackSearchText function
+      return builtQuery;
+    } catch (error) {
+      // Fallback to legacy implementation on any error
+      logger.debug(`Search query building failed: ${error instanceof Error ? error.message : 'Unknown error'}. Using legacy mode.`);
+      return buildLegacySearchQuery(options);
     }
-    // Remove or escape potentially problematic characters
-    // Keep basic search operators but escape quotes and other special chars
-    return query
-      .replace(/["]/g, '\\"') // Escape quotes
-      .replace(/[\r\n]/g, ' ') // Replace newlines with spaces
-      .trim();
   };
 
   /**
-   * Build search query with proper syntax and escaping
-   * Centralizes query construction logic for consistency
+   * Legacy search query builder for fallback compatibility
+   * Maintains exact behavior of previous implementation
    */
-  const buildSearchQuery = async (options: {
+  const buildLegacySearchQuery = async (options: {
     baseQuery: string;
     channel?: string;
     user?: string;
