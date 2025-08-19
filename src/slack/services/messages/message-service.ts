@@ -172,32 +172,66 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
 
       const client = deps.clientManager.getClientForOperation('read');
 
-      const result = await client.conversations.list({
-        types: input.types,
-        exclude_archived: input.exclude_archived,
-        limit: 1000,
+      // Use unified pagination implementation
+      const paginationResult = await executePagination(input, {
+        fetchPage: async (cursor?: string) => {
+          const result = await client.conversations.list({
+            types: input.types,
+            exclude_archived: input.exclude_archived,
+            limit: input.limit,
+            cursor,
+          });
+
+          if (!result.channels) {
+            throw new SlackAPIError(
+              `Failed to retrieve channels${cursor ? ` (page with cursor: ${cursor.substring(0, 10)}...)` : ''}`
+            );
+          }
+
+          return result;
+        },
+
+        getCursor: (response) => response.response_metadata?.next_cursor,
+
+        getItems: (response) => response.channels || [],
+
+        formatResponse: async (data) => {
+          let channels = data.items.map((channel) => ({
+            id: channel.id || '',
+            name: channel.name || '',
+            isPrivate: channel.is_private || false,
+            isMember: channel.is_member || false,
+            isArchived: channel.is_archived || false,
+            memberCount: channel.num_members,
+            topic: channel.topic?.value,
+            purpose: channel.purpose?.value,
+          }));
+
+          // Apply name filter if specified (client-side filtering)
+          if (input.name_filter) {
+            const filterLower = input.name_filter.toLowerCase();
+            channels = channels.filter((channel) =>
+              channel.name.toLowerCase().includes(filterLower)
+            );
+          }
+
+          // Create TypeSafeAPI-compliant output
+          const output: ListChannelsOutput = enforceServiceOutput({
+            channels,
+            total: channels.length,
+            hasMore: data.hasMore,
+            responseMetadata: data.cursor ? { nextCursor: data.cursor } : undefined,
+            filteredBy: input.name_filter ? `name contains "${input.name_filter}"` : undefined,
+          });
+
+          return output;
+        },
       });
 
-      if (!result.channels) {
-        return createServiceError('Failed to retrieve channels', 'Channel list is unavailable');
-      }
-
-      // Create TypeSafeAPI-compliant output
-      const output: ListChannelsOutput = enforceServiceOutput({
-        channels: result.channels.map((channel) => ({
-          id: channel.id || '',
-          name: channel.name || '',
-          isPrivate: channel.is_private || false,
-          isMember: channel.is_member || false,
-          isArchived: channel.is_archived || false,
-          memberCount: channel.num_members,
-          topic: channel.topic?.value,
-          purpose: channel.purpose?.value,
-        })),
-        total: result.channels.length,
-      });
-
-      return createServiceSuccess(output, 'Channels retrieved successfully');
+      return createServiceSuccess(
+        paginationResult as ListChannelsOutput,
+        'Channels retrieved successfully'
+      );
     } catch (error) {
       if (error instanceof SlackAPIError) {
         return createServiceError(error.message, 'Failed to retrieve channels');

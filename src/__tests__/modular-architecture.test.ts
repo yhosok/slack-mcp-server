@@ -104,7 +104,8 @@ describe('SlackService Functionality Tests', () => {
       expect(mockWebClientInstance.conversations.list).toHaveBeenCalledWith({
         exclude_archived: true,
         types: 'public_channel,private_channel',
-        limit: 1000,
+        limit: 100,
+        cursor: undefined,
       });
     });
 

@@ -56,6 +56,11 @@ export interface ListChannelsOutput extends ServiceOutput {
     purpose?: string;
   }>;
   total: number;
+  hasMore: boolean;
+  responseMetadata?: {
+    nextCursor?: string;
+  };
+  filteredBy?: string;
   [key: string]: unknown;
 }
 

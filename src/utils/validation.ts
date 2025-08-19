@@ -45,6 +45,35 @@ export const ListChannelsSchema = z
       .optional()
       .default(true)
       .describe('Whether to exclude archived channels'),
+    limit: z
+      .number()
+      .min(1)
+      .max(200)
+      .optional()
+      .default(100)
+      .describe('Number of channels to retrieve per page (1-200)'),
+    cursor: z.string().optional().describe('Cursor for pagination (optional)'),
+    name_filter: z
+      .string()
+      .optional()
+      .describe('Filter channels by name (case-insensitive substring match)'),
+    fetch_all_pages: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Whether to fetch all pages at once instead of single page'),
+    max_pages: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_PAGES_LIMIT)
+      .optional()
+      .describe('Maximum number of pages to fetch when fetch_all_pages is true'),
+    max_items: z
+      .number()
+      .min(1)
+      .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
+      .optional()
+      .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
   .describe('List all channels in the Slack workspace');
 
