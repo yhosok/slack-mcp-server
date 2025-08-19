@@ -385,12 +385,32 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
 
       // Process search results and create TypeSafeAPI-compliant output
       const searchResults = result.messages.matches || [];
+      
+      // Extract unique user IDs from search results
+      const uniqueUserIds = [
+        ...new Set(
+          searchResults
+            .map((match: SearchMessageElement) => match.user)
+            .filter((user): user is string => Boolean(user))
+        ),
+      ];
+
+      // Use Phase 3 pattern: bulkGetDisplayNames for efficient display name conversion
+      const displayNameMap =
+        uniqueUserIds.length > 0
+          ? await deps.userService.bulkGetDisplayNames(uniqueUserIds)
+          : new Map<string, string>();
+
       const messages = searchResults.map((match: SearchMessageElement) => ({
         text: match.text || '',
         user: match.user || '',
         ts: match.ts || '',
         channel: match.channel?.id || '',
         permalink: match.permalink || '',
+        // Phase 5: Add user-friendly display name with graceful fallback
+        userDisplayName: match.user
+          ? displayNameMap.get(match.user) || match.user
+          : undefined,
       }));
 
       const output: MessageSearchOutput = enforceServiceOutput({

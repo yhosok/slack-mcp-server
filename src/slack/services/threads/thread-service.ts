@@ -581,18 +581,57 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         .filter((thread) => thread !== null)
         .slice(0, input.limit || 20);
 
+      // Extract unique user IDs from thread results for display name conversion
+      const uniqueUserIds = [
+        ...new Set([
+          ...validThreads
+            .map((thread) => thread?.user)
+            .filter((user): user is string => Boolean(user)),
+          ...validThreads
+            .map((thread) => thread?.parentMessage?.user)
+            .filter((user): user is string => Boolean(user)),
+        ]),
+      ];
+
+      // Use Phase 3 pattern: bulkGetDisplayNames for efficient display name conversion
+      const displayNameMap =
+        uniqueUserIds.length > 0
+          ? await deps.userService.bulkGetDisplayNames(uniqueUserIds)
+          : new Map<string, string>();
+
+      // Add userDisplayName to thread results
+      const threadsWithDisplayNames = validThreads.map((thread) => {
+        if (!thread) return thread;
+        
+        return {
+          ...thread,
+          // Phase 5: Add user-friendly display name with graceful fallback
+          userDisplayName: thread.user
+            ? displayNameMap.get(thread.user) || thread.user
+            : undefined,
+          parentMessage: thread.parentMessage
+            ? {
+                ...thread.parentMessage,
+                userDisplayName: thread.parentMessage.user
+                  ? displayNameMap.get(thread.parentMessage.user) || thread.parentMessage.user
+                  : undefined,
+              }
+            : undefined,
+        };
+      });
+
       const output = enforceServiceOutput({
-        results: validThreads,
-        total: validThreads.length,
+        results: threadsWithDisplayNames,
+        total: threadsWithDisplayNames.length,
         query: searchQuery,
-        hasMore: threadCandidates.size > validThreads.length,
+        hasMore: threadCandidates.size > threadsWithDisplayNames.length,
         threadsValidated: threadValidationResult.successCount,
         threadCandidatesFound: threadCandidates.size,
       });
 
       return createServiceSuccess(
         output, 
-        `Found ${validThreads.length} valid threads from ${threadCandidates.size} candidates`
+        `Found ${threadsWithDisplayNames.length} valid threads from ${threadCandidates.size} candidates`
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

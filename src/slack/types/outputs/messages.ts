@@ -20,6 +20,7 @@ export interface MessageSearchOutput extends ServiceOutput {
     ts: string;
     channel: string;
     permalink: string;
+    userDisplayName?: string;
   }>;
   total: number;
   query: string;
@@ -35,6 +36,7 @@ export interface ChannelHistoryOutput extends ServiceOutput {
     ts: string;
     thread_ts?: string;
     reply_count?: number;
+    userDisplayName?: string;
   }>;
   hasMore: boolean;
   responseMetadata?: {
