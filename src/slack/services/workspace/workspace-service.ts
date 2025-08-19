@@ -24,6 +24,10 @@ import type {
   ServerHealthOutput,
 } from '../../types/outputs/workspace.js';
 import type { SlackUser } from '../../types/core/users.js';
+import {
+  CacheIntegrationHelper as _CacheIntegrationHelper,
+  createCacheIntegrationHelper,
+} from '../../infrastructure/cache/cache-integration-helpers.js';
 
 // Export types for external use
 export type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
@@ -99,6 +103,9 @@ interface SlackMember {
  * ```
  */
 export const createWorkspaceService = (deps: WorkspaceServiceDependencies): WorkspaceService => {
+  // Initialize cache integration helper for workspace service operations
+  const cacheHelper = createCacheIntegrationHelper(deps.cacheService);
+
   /**
    * Get workspace/team information and settings with TypeSafeAPI + ts-pattern type safety
    *
@@ -745,6 +752,14 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         rateLimiting: {
           enabled: true,
           metrics: rateLimitMetrics,
+        },
+        caching: {
+          enabled: cacheHelper.isCacheAvailable(),
+          metrics: cacheHelper.getCacheMetrics() || { status: 'disabled' },
+          performance: {
+            memoryOptimization: cacheHelper.isCacheAvailable() ? 'active' : 'inactive',
+            apiCallReduction: cacheHelper.isCacheAvailable() ? 'enabled' : 'disabled',
+          },
         },
         memory: {
           usage: process.memoryUsage(),

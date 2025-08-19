@@ -187,6 +187,15 @@ describe('Advanced Thread Features', () => {
       maxRequestConcurrency: 3,
       rejectRateLimitedCalls: false,
       logLevel: 'info',
+      cacheEnabled: false,
+      cacheConfig: {
+        channels: { max: 100, ttl: 300000, updateAgeOnGet: true },
+        users: { max: 100, ttl: 300000, updateAgeOnGet: true },
+        search: { maxQueries: 10, maxResults: 10, queryTTL: 300000, resultTTL: 300000, adaptiveTTL: false, enablePatternInvalidation: false },
+        files: { max: 50, ttl: 300000 },
+        threads: { max: 50, ttl: 300000, updateAgeOnGet: true },
+        enableMetrics: false,
+      },
     });
 
     // Create domain user service for complete TypeSafeAPI operations

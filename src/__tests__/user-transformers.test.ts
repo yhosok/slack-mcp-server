@@ -8,7 +8,7 @@ import {
   extractUserCapabilities,
   extractUserProfile,
 } from '../slack/services/users/user-transformers.js';
-import type { SlackUser } from '../slack/types/core/users.js';
+import { SlackUser } from '../slack/types/core/users.js';
 
 describe('User Transformers', () => {
   const mockSlackUser: SlackUser = {

@@ -98,6 +98,52 @@ export interface SlackServiceRegistry {
  * Create complete service registry with real implementations
  */
 export function createSlackServiceRegistry(): SlackServiceRegistry {
+  // Create cache configuration from environment variables
+  const cacheConfig = {
+    channels: {
+      max: CONFIG.CACHE_CHANNELS_MAX,
+      ttl: CONFIG.CACHE_CHANNELS_TTL * 1000, // Convert seconds to milliseconds
+      updateAgeOnGet: true,
+    },
+    users: {
+      max: CONFIG.CACHE_USERS_MAX,
+      ttl: CONFIG.CACHE_USERS_TTL * 1000, // Convert seconds to milliseconds
+      updateAgeOnGet: true,
+    },
+    search: {
+      maxQueries: CONFIG.CACHE_SEARCH_MAX_QUERIES,
+      maxResults: CONFIG.CACHE_SEARCH_MAX_RESULTS,
+      queryTTL: CONFIG.CACHE_SEARCH_QUERY_TTL * 1000, // Convert seconds to milliseconds
+      resultTTL: CONFIG.CACHE_SEARCH_RESULT_TTL * 1000, // Convert seconds to milliseconds
+      adaptiveTTL: true,
+      enablePatternInvalidation: true,
+    },
+    files: {
+      max: CONFIG.CACHE_FILES_MAX,
+      ttl: CONFIG.CACHE_FILES_TTL * 1000, // Convert seconds to milliseconds
+      updateAgeOnGet: true,
+    },
+    threads: {
+      max: CONFIG.CACHE_THREADS_MAX,
+      ttl: CONFIG.CACHE_THREADS_TTL * 1000, // Convert seconds to milliseconds
+      updateAgeOnGet: true,
+    },
+    performance: {
+      metricsEnabled: CONFIG.LOG_LEVEL === 'debug', // Enable detailed metrics in debug mode
+      healthCheckInterval: 300000, // 5 minutes
+    },
+    enableMetrics: CONFIG.LOG_LEVEL === 'debug', // Enable metrics collection in debug mode
+  };
+
+  // Add missing properties to match CacheServiceConfig interface
+  const completeCacheConfig = {
+    ...cacheConfig,
+    files: {
+      ...cacheConfig.files,
+      updateAgeOnGet: true, // Add missing property
+    },
+  };
+
   // Create infrastructure configuration from global CONFIG
   const infrastructureConfig = {
     botToken: CONFIG.SLACK_BOT_TOKEN,
@@ -108,6 +154,8 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
     maxRequestConcurrency: CONFIG.SLACK_MAX_REQUEST_CONCURRENCY,
     rejectRateLimitedCalls: CONFIG.SLACK_REJECT_RATE_LIMITED_CALLS,
     logLevel: CONFIG.LOG_LEVEL,
+    cacheEnabled: CONFIG.CACHE_ENABLED,
+    cacheConfig: completeCacheConfig,
   };
 
   // Create infrastructure services

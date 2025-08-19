@@ -156,8 +156,10 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
+        cacheService: null,
         config: {
           maxRequestConcurrency: 3,
+          cacheEnabled: false,
         },
       } as ReactionServiceDependencies;
 
@@ -175,8 +177,10 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
+        cacheService: null,
         config: {
           maxRequestConcurrency: 3,
+          cacheEnabled: false,
         },
       } as ReactionServiceDependencies;
 
@@ -218,8 +222,10 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
+        cacheService: null,
         config: {
           maxRequestConcurrency: 3,
+          cacheEnabled: false,
         },
       } as ReactionServiceDependencies;
 
@@ -264,8 +270,10 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
+        cacheService: null,
         config: {
           maxRequestConcurrency: 3,
+          cacheEnabled: false,
         },
       } as WorkspaceServiceDependencies;
 
@@ -282,8 +290,10 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
+        cacheService: null,
         config: {
           maxRequestConcurrency: 3,
+          cacheEnabled: false,
         },
       } as WorkspaceServiceDependencies;
 
@@ -321,8 +331,10 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
+        cacheService: null,
         config: {
           maxRequestConcurrency: 3,
+          cacheEnabled: false,
         },
       } as WorkspaceServiceDependencies;
 

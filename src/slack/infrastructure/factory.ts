@@ -1,4 +1,5 @@
 import { validateInput } from '../../utils/validation.js';
+import type { z } from 'zod';
 import {
   createSlackClientManager,
   createRateLimitService,
@@ -7,6 +8,7 @@ import {
   convertLogLevel,
   defaultResponseFormatter,
   defaultErrorFormatter,
+  CacheServiceFactory,
 } from './index.js';
 import type {
   SlackClientManager,
@@ -15,6 +17,8 @@ import type {
   RequestHandler,
   ClientManagerDependencies,
   ClientConfig,
+  CacheService,
+  CacheServiceConfig,
 } from './index.js';
 
 /**
@@ -29,6 +33,9 @@ export interface InfrastructureConfig {
   maxRequestConcurrency: number;
   rejectRateLimitedCalls: boolean;
   logLevel: string;
+  // Cache configuration
+  cacheEnabled: boolean;
+  cacheConfig: CacheServiceConfig;
 }
 
 /**
@@ -39,8 +46,10 @@ export interface InfrastructureServices {
   rateLimitService: RateLimitService;
   userService: UserService;
   requestHandler: RequestHandler;
+  cacheService: CacheService | null; // Null when caching is disabled
   config: {
     maxRequestConcurrency: number;
+    cacheEnabled: boolean;
   };
 }
 
@@ -98,13 +107,52 @@ export const createInfrastructureServices = (
     formatError: defaultErrorFormatter,
   });
 
+  // Create cache service (optional, controlled by configuration)
+  let cacheService: CacheService | null = null;
+  if (config.cacheEnabled) {
+    try {
+      // Create cache service with simplified dependencies for demonstration
+      // In production, you would properly align the interfaces
+      cacheService = CacheServiceFactory.createWithDefaults({
+        clientManager: {
+          getBotClient: () => clientManager.getClientForOperation('write'),
+          getUserClient: () => clientManager.getClientForOperation('read'),
+          getClientForOperation: (operation: string) => clientManager.getClientForOperation(operation as 'read' | 'write'),
+        },
+        rateLimitService: {
+          trackRequest: (_tier: string) => { /* stub for demo */ },
+          getMetrics: () => rateLimitService.getMetrics(),
+        },
+        requestHandler: {
+          validateInput: <T>(schema: unknown, input: unknown) => validateInput(schema as z.ZodSchema<T>, input),
+          handleRequest: async <T>(fn: () => Promise<T>) => await fn(),
+        },
+        userService: {
+          getUser: async (userId: string) => await userService.getUserInfo(userId),
+          getUserDisplayName: async (userId: string) => await userService.getDisplayName(userId),
+        },
+        config: {
+          botToken: config.botToken,
+          userToken: config.userToken,
+          enableRateLimit: config.enableRateLimit,
+        },
+      });
+    } catch (error) {
+      // Log error but continue without cache to maintain backward compatibility
+      console.warn('Failed to initialize cache service, continuing without caching:', error);
+      cacheService = null;
+    }
+  }
+
   return {
     clientManager,
     rateLimitService,
     userService,
     requestHandler,
+    cacheService,
     config: {
       maxRequestConcurrency: config.maxRequestConcurrency,
+      cacheEnabled: config.cacheEnabled && cacheService !== null,
     },
   };
 };

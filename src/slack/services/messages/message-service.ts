@@ -29,6 +29,12 @@ import {
   type ServiceErrorType as _ServiceErrorType,
   createTypedServiceError as _createTypedServiceError,
 } from '../../types/typesafe-api-patterns.js';
+import {
+  CacheIntegrationHelper as _CacheIntegrationHelper,
+  CacheKeyBuilder as _CacheKeyBuilder,
+  createCacheIntegrationHelper,
+  type CacheOrFetchOptions as _CacheOrFetchOptions,
+} from '../../infrastructure/cache/cache-integration-helpers.js';
 import type {
   SendMessageResult,
   MessageSearchResult,
@@ -83,6 +89,9 @@ import { SlackAPIError } from '../../../utils/errors.js';
  * ```
  */
 export const createMessageService = (deps: MessageServiceDependencies): MessageService => {
+  // Initialize cache integration helper for all message service operations
+  const _cacheHelper = createCacheIntegrationHelper(deps.cacheService);
+
   /**
    * Send a message to a channel or user with TypeSafeAPI + ts-pattern type safety
    *

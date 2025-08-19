@@ -7,8 +7,7 @@ import {
   processConcurrently,
   createDefaultConfigWithConcurrency,
 } from '../slack/infrastructure/concurrent-utils.js';
-import { createInfrastructureServices } from '../slack/infrastructure/factory.js';
-import type { InfrastructureConfig } from '../slack/infrastructure/factory.js';
+import { createInfrastructureServices, InfrastructureConfig } from '../slack/infrastructure/factory.js';
 
 // Mock configuration to avoid environment dependencies
 jest.mock('../config/index.js', () => ({
@@ -92,6 +91,15 @@ describe('Concurrency Configuration Integration', () => {
         maxRequestConcurrency: 7, // Custom concurrency
         rejectRateLimitedCalls: false,
         logLevel: 'warn',
+        cacheEnabled: false,
+        cacheConfig: {
+          channels: { max: 100, ttl: 300000, updateAgeOnGet: true },
+          users: { max: 100, ttl: 300000, updateAgeOnGet: true },
+          search: { maxQueries: 10, maxResults: 10, queryTTL: 300000, resultTTL: 300000, adaptiveTTL: false, enablePatternInvalidation: false },
+          files: { max: 50, ttl: 300000 },
+          threads: { max: 50, ttl: 300000, updateAgeOnGet: true },
+          enableMetrics: false,
+        },
       };
 
       const infrastructure = createInfrastructureServices(infrastructureConfig);
@@ -111,6 +119,15 @@ describe('Concurrency Configuration Integration', () => {
         maxRequestConcurrency: 8,
         rejectRateLimitedCalls: false,
         logLevel: 'info',
+        cacheEnabled: false,
+        cacheConfig: {
+          channels: { max: 100, ttl: 300000, updateAgeOnGet: true },
+          users: { max: 100, ttl: 300000, updateAgeOnGet: true },
+          search: { maxQueries: 10, maxResults: 10, queryTTL: 300000, resultTTL: 300000, adaptiveTTL: false, enablePatternInvalidation: false },
+          files: { max: 50, ttl: 300000 },
+          threads: { max: 50, ttl: 300000, updateAgeOnGet: true },
+          enableMetrics: false,
+        },
       };
 
       const infrastructure = createInfrastructureServices(infrastructureConfig);
@@ -133,13 +150,23 @@ describe('Concurrency Configuration Integration', () => {
         maxRequestConcurrency: 12,
         rejectRateLimitedCalls: false,
         logLevel: 'warn',
+        cacheEnabled: false,
+        cacheConfig: {
+          channels: { max: 100, ttl: 300000, updateAgeOnGet: true },
+          users: { max: 100, ttl: 300000, updateAgeOnGet: true },
+          search: { maxQueries: 10, maxResults: 10, queryTTL: 300000, resultTTL: 300000, adaptiveTTL: false, enablePatternInvalidation: false },
+          files: { max: 50, ttl: 300000 },
+          threads: { max: 50, ttl: 300000, updateAgeOnGet: true },
+          enableMetrics: false,
+        },
       };
 
       const infrastructure = createInfrastructureServices(infrastructureConfig);
       
       // Config object should have the expected structure
       expect(infrastructure.config).toEqual({
-        maxRequestConcurrency: 12
+        maxRequestConcurrency: 12,
+        cacheEnabled: false
       });
       
       // Should be a plain object, not undefined or null
