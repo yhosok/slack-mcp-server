@@ -864,6 +864,11 @@ export const ListTeamMembersSchema = z
       .default(false)
       .describe('Include deleted users in results'),
     include_bots: z.boolean().optional().default(true).describe('Include bot users in results'),
+    include_profile_details: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe('Include detailed profile information. When false, returns only core fields and single image for optimized response size'),
     cursor: z.string().optional().describe('Pagination cursor'),
     limit: z
       .number()
