@@ -26,6 +26,29 @@ export type {
   ErrorFormatter,
 } from './validation/types.js';
 
+// Cache Management
+export {
+  CacheService,
+  CacheServiceFactory,
+  CachePerformanceMonitor,
+  LRUCacheWrapper,
+  SearchCache,
+  CacheIntegrationHelper,
+  CacheKeyBuilder,
+  createCacheIntegrationHelper,
+} from './cache/index.js';
+export type {
+  CacheServiceConfig,
+  CacheServiceDependencies,
+  CacheServiceMetrics,
+  CacheInstance,
+  CacheHealthStatus,
+  LRUCacheConfig,
+  SearchCacheConfig,
+  CacheOrFetchOptions,
+  CacheInvalidationOptions,
+} from './cache/index.js';
+
 // Infrastructure Factory
-export { createInfrastructureServices } from './factory.js';
+export { createInfrastructureServices, createRelevanceScorerConfig } from './factory.js';
 export type { InfrastructureConfig, InfrastructureServices } from './factory.js';

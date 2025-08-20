@@ -12,7 +12,7 @@
  */
 
 import { jest } from '@jest/globals';
-import type { SearchAllResponse } from '@slack/web-api';
+import { SearchAllResponse } from '@slack/web-api';
 
 // Mock the logger
 jest.mock('../utils/logger', () => ({
@@ -113,6 +113,19 @@ describe('Comprehensive Search Query Construction Fixes', () => {
       maxRequestConcurrency: 3,
       rejectRateLimitedCalls: false,
       logLevel: 'info',
+      cacheEnabled: false,
+      cacheConfig: {
+        channels: { max: 100, ttl: 300000, updateAgeOnGet: true },
+        users: { max: 100, ttl: 300000, updateAgeOnGet: true },
+        search: { maxQueries: 10, maxResults: 10, queryTTL: 300000, resultTTL: 300000, adaptiveTTL: false, enablePatternInvalidation: false },
+        files: { max: 50, ttl: 300000 },
+        threads: { max: 50, ttl: 300000, updateAgeOnGet: true },
+        enableMetrics: false,
+      },
+      searchRankingEnabled: false,
+      searchIndexTTL: 900,
+      searchTimeDecayRate: 0.01,
+      searchMaxIndexSize: 1000,
     });
 
     // Create services with MCP adapter

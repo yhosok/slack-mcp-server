@@ -19,6 +19,13 @@ import {
   GetThreadsByParticipantsSchema,
   validateInput,
 } from '../../../utils/validation.js';
+import {
+  parseSearchQuery,
+  buildSlackSearchQuery,
+  escapeSearchQuery,
+  type SearchQueryOptions,
+} from '../../utils/search-query-parser.js';
+import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
 import type { ThreadService, ThreadServiceDependencies } from './types.js';
 import {
   formatFindThreadsResponse as _formatFindThreadsResponse,
@@ -73,6 +80,8 @@ import {
   type ThreadSummaryFormatterOptions as _ThreadSummaryFormatterOptions,
 } from '../../analysis/index.js';
 import { countWordsInMessages } from '../../analysis/thread/sentiment-analysis.js';
+import { DecisionExtractor } from '../../analysis/thread/decision-extractor.js';
+import { RelevanceScorer } from '../../analysis/search/relevance-scorer.js';
 
 /**
  * Create thread service with infrastructure dependencies
@@ -383,27 +392,108 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
     }
   };
 
+
   /**
-   * Escape special characters in search query terms
-   * Prevents query injection and handles edge cases
+   * Build search query with enhanced parsing and proper syntax
+   * Phase 1 Integration: Conservative approach with fallback for complex queries
+   * Maintains backward compatibility with existing function signature
    */
-  const escapeSearchQuery = (query: string): string => {
-    if (!query || typeof query !== 'string') {
-      return '';
+  const buildSearchQuery = async (options: {
+    baseQuery: string;
+    channel?: string;
+    user?: string;
+    after?: string;
+    before?: string;
+    additionalFilters?: string[];
+  }): Promise<string> => {
+    try {
+      // Phase 1: Conservative approach - detect complex queries and use legacy mode
+      const hasComplexOperators = options.baseQuery.includes(' OR ') || 
+                                  options.baseQuery.includes(' AND ') || 
+                                  options.baseQuery.includes(' NOT ');
+      
+      // Also check for quotes which might be handled differently by new parser
+      const hasQuotes = options.baseQuery.includes('"');
+      
+      if (hasComplexOperators || hasQuotes) {
+        // Use legacy mode for complex queries or queries with quotes to maintain compatibility
+        return buildLegacySearchQuery(options);
+      }
+
+      // Parse simple queries using the advanced parser
+      const parseResult = parseSearchQuery(options.baseQuery);
+      
+      if (!parseResult.success) {
+        // Fallback to legacy escaping if parsing fails
+        logger.debug(`Query parsing failed for '${options.baseQuery}': ${parseResult.error.message}. Using legacy mode.`);
+        return buildLegacySearchQuery(options);
+      }
+
+      const parsedQuery = parseResult.query;
+
+      // Add operators from function parameters
+      if (options.channel) {
+        const channelName = await resolveChannelName(options.channel);
+        parsedQuery.operators.push({
+          type: 'in',
+          value: `#${channelName}`,
+          field: 'channel'
+        });
+      }
+
+      if (options.user) {
+        parsedQuery.operators.push({
+          type: 'from',
+          value: `<@${options.user}>`,
+          field: 'user'
+        });
+      }
+
+      if (options.after) {
+        parsedQuery.operators.push({
+          type: 'after',
+          value: options.after,
+          field: 'date'
+        });
+      }
+
+      if (options.before) {
+        parsedQuery.operators.push({
+          type: 'before',
+          value: options.before,
+          field: 'date'
+        });
+      }
+
+      // Add additional filters as raw terms (maintaining backward compatibility)
+      if (options.additionalFilters) {
+        for (const filter of options.additionalFilters) {
+          // For Phase 1, treat additional filters as simple terms to avoid complexity
+          parsedQuery.terms.push(filter);
+        }
+      }
+
+      // Build the final query using the enhanced builder
+      const searchQueryOptions: SearchQueryOptions = {
+        channelNameMap: new Map() // Empty map, channel resolution is done above
+      };
+
+      const builtQuery = buildSlackSearchQuery(parsedQuery, searchQueryOptions);
+      
+      // Enhanced escaping using the new parser's escapeSlackSearchText function
+      return builtQuery;
+    } catch (error) {
+      // Fallback to legacy implementation on any error
+      logger.debug(`Search query building failed: ${error instanceof Error ? error.message : 'Unknown error'}. Using legacy mode.`);
+      return buildLegacySearchQuery(options);
     }
-    // Remove or escape potentially problematic characters
-    // Keep basic search operators but escape quotes and other special chars
-    return query
-      .replace(/["]/g, '\\"') // Escape quotes
-      .replace(/[\r\n]/g, ' ') // Replace newlines with spaces
-      .trim();
   };
 
   /**
-   * Build search query with proper syntax and escaping
-   * Centralizes query construction logic for consistency
+   * Legacy search query builder for fallback compatibility
+   * Maintains exact behavior of previous implementation
    */
-  const buildSearchQuery = async (options: {
+  const buildLegacySearchQuery = async (options: {
     baseQuery: string;
     channel?: string;
     user?: string;
@@ -581,18 +671,75 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         .filter((thread) => thread !== null)
         .slice(0, input.limit || 20);
 
+      // Extract unique user IDs from thread results for display name conversion
+      const uniqueUserIds = [
+        ...new Set([
+          ...validThreads
+            .map((thread) => thread?.user)
+            .filter((user): user is string => Boolean(user)),
+          ...validThreads
+            .map((thread) => thread?.parentMessage?.user)
+            .filter((user): user is string => Boolean(user)),
+        ]),
+      ];
+
+      // Use Phase 3 pattern: bulkGetDisplayNames for efficient display name conversion
+      const displayNameMap =
+        uniqueUserIds.length > 0
+          ? await deps.userService.bulkGetDisplayNames(uniqueUserIds)
+          : new Map<string, string>();
+
+      // Add userDisplayName to thread results
+      const threadsWithDisplayNames = validThreads.map((thread) => {
+        if (!thread) return thread;
+        
+        return {
+          ...thread,
+          // Phase 5: Add user-friendly display name with graceful fallback
+          userDisplayName: thread.user
+            ? displayNameMap.get(thread.user) || thread.user
+            : undefined,
+          parentMessage: thread.parentMessage
+            ? {
+                ...thread.parentMessage,
+                userDisplayName: thread.parentMessage.user
+                  ? displayNameMap.get(thread.parentMessage.user) || thread.parentMessage.user
+                  : undefined,
+              }
+            : undefined,
+        };
+      });
+
+      // Phase 2: Apply relevance scoring to thread search results when enabled
+      const normalizedThreads = normalizeSearchResults(threadsWithDisplayNames, {
+        textField: 'text',
+        timestampField: 'ts',
+        userField: 'user',
+      });
+
+      const relevanceResult = await applyRelevanceScoring(
+        normalizedThreads,
+        input.query, // Use original query for relevance scoring
+        deps.relevanceScorer, // null when search ranking disabled
+        {
+          context: 'searchThreads',
+          performanceThreshold: 100,
+          enableLogging: true,
+        }
+      );
+
       const output = enforceServiceOutput({
-        results: validThreads,
-        total: validThreads.length,
+        results: relevanceResult.results,
+        total: relevanceResult.results.length,
         query: searchQuery,
-        hasMore: threadCandidates.size > validThreads.length,
+        hasMore: threadCandidates.size > relevanceResult.results.length,
         threadsValidated: threadValidationResult.successCount,
         threadCandidatesFound: threadCandidates.size,
       });
 
       return createServiceSuccess(
         output, 
-        `Found ${validThreads.length} valid threads from ${threadCandidates.size} candidates`
+        `Found ${threadsWithDisplayNames.length} valid threads from ${threadCandidates.size} candidates`
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -710,6 +857,23 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         const participants = participantsResult.data.participants;
         const fullAnalysis = await performComprehensiveAnalysis(messages, participants);
 
+        // Extract decisions if requested
+        let decisionsMade: Array<{ decision: string; timestamp: string; user: string }> = [];
+        if (input.include_decisions) {
+          const decisionExtractor = new DecisionExtractor();
+          const decisionsResult = await decisionExtractor.extractDecisionsForThread({
+            channel: input.channel,
+            threadTs: input.thread_ts,
+            messages
+          });
+          // Transform to match expected type format
+          decisionsMade = decisionsResult.decisionsMade.map(decision => ({
+            decision: decision.decision,
+            timestamp: decision.timestamp,
+            user: decision.participant || 'unknown'
+          }));
+        }
+
         const output = enforceServiceOutput({
           threadInfo: {
             channel: input.channel,
@@ -725,7 +889,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
             actionItemCount: fullAnalysis.actionItems.actionItems.length,
           },
           keyPoints: fullAnalysis.topics.topics.slice(0, 5),
-          decisionsMade: [], // TODO: Extract from analysis
+          decisionsMade,
           actionItems: [...fullAnalysis.actionItems.actionItems],
           sentiment: analysis.sentiment,
           language: input.language || 'en',
@@ -1076,6 +1240,42 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
               0
             );
             importanceScore += Math.min(mentionCount / 5, 1) * 0.1;
+          }
+
+          // Enhanced relevance scoring for new criteria (opt-in)
+          if (criteria.includes('tf_idf_relevance') || criteria.includes('time_decay') || criteria.includes('engagement_metrics')) {
+            try {
+              const relevanceScorer = new RelevanceScorer();
+              
+              // Use thread parent text as search context for relevance scoring
+              const searchContext = parent.text || '';
+              
+              if (criteria.includes('tf_idf_relevance') && searchContext.trim()) {
+                // Calculate TF-IDF relevance score
+                const relevanceResult = await relevanceScorer.calculateRelevance(messages, searchContext);
+                const avgRelevanceScore = relevanceResult.scores.reduce((sum, score) => sum + score.tfidfScore, 0) / relevanceResult.scores.length;
+                importanceScore += avgRelevanceScore * 0.2; // 20% weight for TF-IDF relevance
+              }
+              
+              if (criteria.includes('time_decay')) {
+                // Calculate average time decay score
+                const avgTimeDecay = messages.reduce((sum, msg) => {
+                  return sum + relevanceScorer.calculateTimeDecay(msg.ts);
+                }, 0) / messages.length;
+                importanceScore += avgTimeDecay * 0.15; // 15% weight for time decay
+              }
+              
+              if (criteria.includes('engagement_metrics')) {
+                // Calculate average engagement score
+                const avgEngagement = messages.reduce((sum, msg) => {
+                  return sum + relevanceScorer.calculateEngagementScore(msg);
+                }, 0) / messages.length;
+                importanceScore += avgEngagement * 0.25; // 25% weight for engagement
+              }
+            } catch {
+              // Graceful fallback: continue without relevance scoring if it fails
+              // This ensures backward compatibility and prevents breaking existing functionality
+            }
           }
 
           // Only return if above threshold

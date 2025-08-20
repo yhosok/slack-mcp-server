@@ -232,7 +232,8 @@ describe('SlackService', () => {
       expect(mockWebClientInstance.conversations.list).toHaveBeenCalledWith({
         types: 'public_channel,private_channel',
         exclude_archived: true,
-        limit: 1000,
+        limit: 100,
+        cursor: undefined,
       });
 
       // Response format has changed to JSON data
@@ -241,6 +242,98 @@ describe('SlackService', () => {
       expect(content).toContain('2');
       expect(content).toContain('general');
       expect(content).toContain('C1234567890');
+    });
+
+    it('should handle pagination parameters correctly', async () => {
+      // Arrange
+      const mockChannels = [
+        {
+          id: 'C1234567890',
+          name: 'general',
+          is_channel: true,
+          is_group: false,
+          is_im: false,
+          is_private: false,
+          num_members: 10,
+        },
+      ];
+      const mockResult = {
+        ok: true,
+        channels: mockChannels,
+        response_metadata: {
+          next_cursor: 'next_cursor_value',
+        },
+      };
+      mockWebClientInstance.conversations.list.mockResolvedValue(mockResult);
+      const args = {
+        limit: 50,
+        cursor: 'test_cursor',
+      };
+
+      // Act
+      const result = await slackService.listChannels(args);
+
+      // Assert
+      expect(mockWebClientInstance.conversations.list).toHaveBeenCalledWith({
+        types: 'public_channel,private_channel',
+        exclude_archived: true,
+        limit: 50,
+        cursor: 'test_cursor',
+      });
+      const content = extractTextContent(result.content?.[0]);
+      expect(content).toContain('channels');
+      expect(content).toContain('next_cursor_value');
+    });
+
+    it('should handle name_filter parameter correctly', async () => {
+      // Arrange
+      const mockChannels = [
+        {
+          id: 'C1234567890',
+          name: 'general',
+          is_channel: true,
+          is_group: false,
+          is_im: false,
+          is_private: false,
+          num_members: 10,
+        },
+        {
+          id: 'C0987654321',
+          name: 'random',
+          is_channel: true,
+          is_group: false,
+          is_im: false,
+          is_private: false,
+          num_members: 5,
+        },
+        {
+          id: 'C1111111111',
+          name: 'development',
+          is_channel: true,
+          is_group: false,
+          is_im: false,
+          is_private: false,
+          num_members: 8,
+        },
+      ];
+      const mockResult = {
+        ok: true,
+        channels: mockChannels,
+      };
+      mockWebClientInstance.conversations.list.mockResolvedValue(mockResult);
+      const args = {
+        name_filter: 'dev',
+      };
+
+      // Act
+      const result = await slackService.listChannels(args);
+
+      // Assert
+      const content = extractTextContent(result.content?.[0]);
+      expect(content).toContain('development');
+      expect(content).not.toContain('general');
+      expect(content).not.toContain('random');
+      expect(content).toContain('filteredBy');
     });
   });
 

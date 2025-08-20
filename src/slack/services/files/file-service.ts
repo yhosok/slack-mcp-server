@@ -14,6 +14,13 @@ import {
   SearchFilesSchema,
   validateInput,
 } from '../../../utils/validation.js';
+import {
+  parseSearchQuery,
+  buildSlackSearchQuery,
+  type SearchQueryOptions,
+  type ParsedSearchQuery,
+} from '../../utils/search-query-parser.js';
+import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
 import type { FileService, FileServiceDependencies } from './types.js';
 import {
   createServiceSuccess,
@@ -1127,23 +1134,13 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       };
 
       /**
-       * Escape special characters in search query terms for file search
+       * Build advanced file search query using the search query parser
+       * Supports complex queries with operators, boolean logic, and proper escaping
+       * 
+       * @param options - Query building options with base query and filters
+       * @returns Enhanced search query with proper Slack syntax
        */
-      const escapeSearchQuery = (query: string): string => {
-        if (!query || typeof query !== 'string') {
-          return '';
-        }
-        // Remove or escape potentially problematic characters
-        return query
-          .replace(/["]/g, '\\"') // Escape quotes
-          .replace(/[\r\n]/g, ' ') // Replace newlines with spaces
-          .trim();
-      };
-
-      /**
-       * Build file search query with proper syntax and escaping
-       */
-      const buildFileSearchQuery = async (options: {
+      const buildAdvancedFileSearchQuery = async (options: {
         baseQuery: string;
         types?: string;
         channel?: string;
@@ -1151,41 +1148,137 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         after?: string;
         before?: string;
       }): Promise<string> => {
-        let searchQuery = escapeSearchQuery(options.baseQuery);
+        try {
+          // Channel name resolution for queries
+          let channelNameMap: Map<string, string> | undefined;
+          if (options.channel) {
+            channelNameMap = new Map();
+            const resolvedName = await resolveChannelName(options.channel);
+            channelNameMap.set(options.channel, resolvedName);
+          }
 
-        // Add file type filter if specified
-        if (options.types) {
-          const types = options.types
-            .split(',')
-            .map((t) => `filetype:${t.trim()}`)
-            .join(' OR ');
-          searchQuery += ` (${types})`;
-        }
+          // Configure parser options for file search
+          const parserOptions: SearchQueryOptions = {
+            allowedOperators: ['in', 'from', 'after', 'before', 'filetype', 'has'],
+            maxQueryLength: 500,
+            enableBooleanOperators: true,
+            enableGrouping: true,
+            channelNameMap
+          };
 
-        // Add channel filter if specified - FIXED: Use proper channel name syntax
-        if (options.channel) {
-          const channelName = await resolveChannelName(options.channel);
-          searchQuery += ` in:#${channelName}`;
-        }
+          // Parse the base query first
+          const parseResult = parseSearchQuery(options.baseQuery, parserOptions);
 
-        // Add user filter if specified
-        if (options.user) {
-          searchQuery += ` from:<@${options.user}>`;
-        }
+          let finalQuery: ParsedSearchQuery;
+          
+          if (parseResult.success) {
+            // Use parsed query as base
+            finalQuery = parseResult.query;
+          } else {
+            // Fallback to simple query structure for legacy compatibility
+            finalQuery = {
+              terms: options.baseQuery.trim().split(/\s+/).filter(t => t.length > 0),
+              phrases: [],
+              operators: [],
+              booleanOperators: [],
+              groups: [],
+              raw: options.baseQuery
+            };
+          }
 
-        // Add date filters if specified
-        if (options.after) {
-          searchQuery += ` after:${options.after}`;
-        }
-        if (options.before) {
-          searchQuery += ` before:${options.before}`;
-        }
+          // Add additional operators from options if not already present in parsed query
+          const existingOperators = new Set(finalQuery.operators.map(op => op.type));
 
-        return searchQuery.trim();
+          // Add file type operator - maintain legacy OR logic for multiple types
+          if (options.types && !existingOperators.has('filetype')) {
+            const types = options.types.split(',').map(t => t.trim()).filter(t => t.length > 0);
+            if (types.length === 1) {
+              finalQuery.operators.push({
+                type: 'filetype',
+                value: types[0] || '',
+                field: 'file_type'
+              });
+            } else if (types.length > 1) {
+              // For multiple file types, add as a single grouped term to maintain OR logic
+              const typeQuery = types.map(t => `filetype:${t}`).join(' OR ');
+              finalQuery.terms.push(`(${typeQuery})`);
+            }
+          }
+
+          // Add channel filter
+          if (options.channel && !existingOperators.has('in')) {
+            const resolvedName = channelNameMap?.get(options.channel) || options.channel;
+            finalQuery.operators.push({
+              type: 'in',
+              value: `#${resolvedName}`,
+              field: 'channel'
+            });
+          }
+
+          // Add user filter
+          if (options.user && !existingOperators.has('from')) {
+            finalQuery.operators.push({
+              type: 'from',
+              value: `<@${options.user}>`,
+              field: 'user'
+            });
+          }
+
+          // Add date filters
+          if (options.after && !existingOperators.has('after')) {
+            finalQuery.operators.push({
+              type: 'after',
+              value: options.after,
+              field: 'date'
+            });
+          }
+
+          if (options.before && !existingOperators.has('before')) {
+            finalQuery.operators.push({
+              type: 'before',
+              value: options.before,
+              field: 'date'
+            });
+          }
+
+          // Build the final query
+          return buildSlackSearchQuery(finalQuery, parserOptions);
+
+        } catch (error) {
+          // Fallback to simple query building for any errors
+          logger.warn('Advanced file search query building failed, falling back to simple query', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            baseQuery: options.baseQuery
+          });
+
+          // Simple fallback implementation
+          const parts: string[] = [];
+          if (options.baseQuery?.trim()) {
+            parts.push(options.baseQuery.trim());
+          }
+          if (options.types) {
+            const types = options.types.split(',').map(t => `filetype:${t.trim()}`).join(' OR ');
+            parts.push(`(${types})`);
+          }
+          if (options.channel) {
+            const resolvedName = await resolveChannelName(options.channel);
+            parts.push(`in:#${resolvedName}`);
+          }
+          if (options.user) {
+            parts.push(`from:<@${options.user}>`);
+          }
+          if (options.after) {
+            parts.push(`after:${options.after}`);
+          }
+          if (options.before) {
+            parts.push(`before:${options.before}`);
+          }
+          return parts.join(' ').trim();
+        }
       };
 
-      // Build search query with proper escaping and channel resolution
-      const searchQuery = await buildFileSearchQuery({
+      // Build advanced search query with parser integration
+      const searchQuery = await buildAdvancedFileSearchQuery({
         baseQuery: input.query,
         types: input.types,
         channel: input.channel,
@@ -1213,19 +1306,42 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         return createServiceSuccess(output, 'File search completed (no results found)');
       }
 
+      // Map search results to standardized format
+      const files = searchResult.files.matches.map((file) => ({
+        id: file.id || '',
+        name: file.name || '',
+        title: file.title || '',
+        filetype: file.filetype || '',
+        size: file.size || 0,
+        url: file.url_private || '',
+        user: file.user || '',
+        timestamp: file.timestamp?.toString() || '',
+        channel: file.channels?.[0] || '',
+        // Use title + name as text for relevance scoring
+        text: `${file.title || ''} ${file.name || ''}`.trim(),
+      }));
+
+      // Phase 2: Apply relevance scoring to file search results when enabled
+      const normalizedFiles = normalizeSearchResults(files, {
+        textField: 'text', // Combined title + name for better relevance
+        timestampField: 'timestamp',
+        userField: 'user',
+      });
+
+      const relevanceResult = await applyRelevanceScoring(
+        normalizedFiles,
+        input.query, // Use original query for relevance scoring
+        deps.relevanceScorer, // null when search ranking disabled
+        {
+          context: 'searchFiles',
+          performanceThreshold: 100,
+          enableLogging: true,
+        }
+      );
+
       // Create TypeSafeAPI-compliant output
       const output: SearchFilesOutput = enforceServiceOutput({
-        results: searchResult.files.matches.map((file) => ({
-          id: file.id || '',
-          name: file.name || '',
-          title: file.title || '',
-          filetype: file.filetype || '',
-          size: file.size || 0,
-          url: file.url_private || '',
-          user: file.user || '',
-          timestamp: file.timestamp?.toString() || '',
-          channel: file.channels?.[0] || '',
-        })),
+        results: relevanceResult.results.map(({ text: _text, ...file }) => file), // Remove the text field used for scoring
         total: searchResult.files.total || 0,
         query: searchQuery,
         pagination: searchResult.files.paging

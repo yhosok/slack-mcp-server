@@ -88,6 +88,7 @@ jest.mock('@slack/web-api', () => ({
 // Import after mocks are set up
 import { createThreadServiceMCPAdapter } from '../slack/services/threads/thread-service-mcp-adapter.js';
 import { createInfrastructureServices } from '../slack/infrastructure/index.js';
+import { createTestInfrastructureConfig } from '../test-helpers/infrastructure-config.js';
 import { createUserService } from '../slack/services/users/user-service.js';
 import { createParticipantTransformationService } from '../slack/services/threads/participant-transformation-service.js';
 import {
@@ -178,16 +179,12 @@ describe('Advanced Thread Features', () => {
     mockWebClientInstance = createMockWebClient();
 
     // Create infrastructure services
-    mockInfrastructure = createInfrastructureServices({
-      botToken: 'xoxb-test-bot-token',
-      userToken: 'xoxp-test-user-token',
-      useUserTokenForRead: true,
-      enableRateLimit: false,
-      rateLimitRetries: 3,
-      maxRequestConcurrency: 3,
-      rejectRateLimitedCalls: false,
-      logLevel: 'info',
-    });
+    mockInfrastructure = createInfrastructureServices(
+      createTestInfrastructureConfig({
+        userToken: 'xoxp-test-user-token',
+        useUserTokenForRead: true,
+      })
+    );
 
     // Create domain user service for complete TypeSafeAPI operations
     const domainUserService = createUserService({
