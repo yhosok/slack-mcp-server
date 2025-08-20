@@ -32,6 +32,7 @@ import {
   ShareFileSchema,
   AnalyzeFilesSchema,
   SearchFilesSchema,
+  GetMessageImagesSchema,
   AddReactionSchema,
   RemoveReactionSchema,
   GetReactionsSchema,
@@ -213,6 +214,12 @@ export const SEARCH_FILES_TOOL: MCPTool = defineSlackTool(
   SearchFilesSchema
 );
 
+export const GET_MESSAGE_IMAGES_TOOL: MCPTool = defineSlackTool(
+  'get_message_images',
+  'Get all images from a specific message',
+  GetMessageImagesSchema
+);
+
 // ================================
 // REACTION MANAGEMENT TOOLS
 // ================================
@@ -315,6 +322,7 @@ export const ALL_TOOLS: MCPTool[] = [
   SHARE_FILE_TOOL,
   ANALYZE_FILES_TOOL,
   SEARCH_FILES_TOOL,
+  GET_MESSAGE_IMAGES_TOOL,
 
   // Reaction management tools
   ADD_REACTION_TOOL,

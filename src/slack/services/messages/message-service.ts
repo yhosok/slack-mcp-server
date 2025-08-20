@@ -7,6 +7,7 @@ import {
   GetChannelHistorySchema,
   SearchMessagesSchema,
   GetChannelInfoSchema,
+  GetMessageImagesSchema,
   validateInput,
 } from '../../../utils/validation.js';
 import {
@@ -41,13 +42,16 @@ import type {
   ChannelHistoryResult,
   ListChannelsResult,
   ChannelInfoResult,
+  MessageImagesResult,
   SendMessageOutput,
   MessageSearchOutput,
   ChannelHistoryOutput,
   ListChannelsOutput,
   ChannelInfoOutput,
+  MessageImagesOutput,
 } from '../../types/outputs/messages.js';
 import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
+import { CONFIG } from '../../../config/index.js';
 
 // Export types for external use
 export type { MessageService, MessageServiceDependencies } from './types.js';
@@ -320,7 +324,15 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
             reply_count: message.reply_count,
             reactions: message.reactions,
             edited: message.edited,
-            files: message.files,
+            // Filter files to include only image types (jpeg, png, gif)
+            files: message.files
+              ? message.files.filter(file => 
+                  // Check mimetype for image types
+                  (file.mimetype && ['image/jpeg', 'image/png', 'image/gif'].includes(file.mimetype)) ||
+                  // Check filetype for image extensions
+                  (file.filetype && ['jpg', 'jpeg', 'png', 'gif'].includes(file.filetype))
+                )
+              : undefined,
             // Phase 5: Add user-friendly display name with graceful fallback
             userDisplayName: message.user
               ? displayNameMap.get(message.user) || message.user
@@ -562,11 +574,177 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
     }
   };
 
+  /**
+   * Get all images from a specific message with TypeSafeAPI + ts-pattern type safety
+   *
+   * Retrieves all image files attached to a specific message in a channel.
+   * Filters files to only return image types (PNG, JPG, JPEG, GIF, WEBP, etc).
+   * Optionally includes Base64-encoded image data for immediate use.
+   *
+   * Features:
+   * - Image type filtering (mimetype-based detection)
+   * - Optional Base64 image data inclusion
+   * - Comprehensive error handling for invalid channels/messages
+   * - Type-safe input validation and output structure
+   *
+   * @param args - Arguments containing channel, message_ts, and include_image_data
+   * @returns Promise<MessageImagesResult> - Discriminated union result with image data
+   *
+   * @example Basic Usage
+   * ```typescript
+   * const result = await messageService.getMessageImages({
+   *   channel: 'C1234567890',
+   *   message_ts: '1234567890.123456',
+   *   include_image_data: false
+   * });
+   *
+   * match(result)
+   *   .with({ success: true }, (success) => {
+   *     console.log(`Found ${success.data.total_images} images`);
+   *     success.data.images.forEach(img => console.log(img.name));
+   *   })
+   *   .with({ success: false }, (error) => {
+   *     console.error('Failed to get images:', error.error);
+   *   })
+   *   .exhaustive();
+   * ```
+   */
+  const getMessageImages = async (args: unknown): Promise<MessageImagesResult> => {
+    try {
+      // Validate input using TypeSafeAPI validation pattern
+      const input = validateInput(GetMessageImagesSchema, args);
+
+      const client = deps.clientManager.getClientForOperation('read');
+
+      // Get the specific message using conversations.history with timestamp filters
+      const result = await client.conversations.history({
+        channel: input.channel,
+        latest: input.message_ts,
+        oldest: input.message_ts,
+        inclusive: true,
+        limit: 1,
+      });
+
+      if (!result.messages || result.messages.length === 0) {
+        return createServiceError('Message not found', 'Requested message does not exist or is not accessible');
+      }
+
+      const message = result.messages[0];
+      if (!message) {
+        return createServiceError('Message not found', 'Requested message does not exist or is not accessible');
+      }
+
+      // Check if message has any files
+      if (!message.files || message.files.length === 0) {
+        // Return empty result for messages with no files
+        const output: MessageImagesOutput = enforceServiceOutput({
+          channel: input.channel,
+          message_ts: input.message_ts,
+          images: [],
+          total_images: 0,
+        });
+
+        return createServiceSuccess(output, 'No images found in the message');
+      }
+
+      // Filter files to only include image types
+      const imageFiles = message.files.filter(file => {
+        // Check mimetype for image types
+        if (file.mimetype && file.mimetype.startsWith('image/')) {
+          return true;
+        }
+        
+        // Fallback: check file extension for common image types
+        if (file.filetype) {
+          const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'tiff', 'ico'];
+          return imageExtensions.includes(file.filetype.toLowerCase());
+        }
+        
+        return false;
+      });
+
+      // Process each image file
+      const images = await Promise.all(
+        imageFiles.map(async (file) => {
+          const imageData: MessageImagesOutput['images'][0] = {
+            id: file.id || '',
+            name: file.name || '',
+            url_private: file.url_private || '',
+            url_private_download: file.url_private_download || '',
+            mimetype: file.mimetype || '',
+            filetype: file.filetype || '',
+            size: file.size || 0,
+          };
+
+          // Add thumbnail URLs if available
+          if (file.thumb_360) imageData.thumb_360 = file.thumb_360;
+          if (file.thumb_480) imageData.thumb_480 = file.thumb_480;
+          if (file.thumb_720) imageData.thumb_720 = file.thumb_720;
+          if (file.thumb_1024) imageData.thumb_1024 = file.thumb_1024;
+
+          // Include Base64 image data if requested
+          if (input.include_image_data && file.url_private) {
+            try {
+              // Download image data from Slack's private URL
+              const response = await fetch(file.url_private, {
+                headers: {
+                  'Authorization': `Bearer ${CONFIG.SLACK_BOT_TOKEN}`,
+                },
+              });
+
+              if (response.ok) {
+                const arrayBuffer = await response.arrayBuffer();
+                const base64Data = Buffer.from(arrayBuffer).toString('base64');
+                imageData.image_data = base64Data;
+              } else {
+                logger.warn('Failed to download image data', {
+                  fileId: file.id,
+                  status: response.status,
+                  statusText: response.statusText,
+                });
+              }
+            } catch (error) {
+              logger.warn('Error downloading image data', {
+                fileId: file.id,
+                error: error instanceof Error ? error.message : 'Unknown error',
+              });
+            }
+          }
+
+          return imageData;
+        })
+      );
+
+      // Create TypeSafeAPI-compliant output
+      const output: MessageImagesOutput = enforceServiceOutput({
+        channel: input.channel,
+        message_ts: input.message_ts,
+        images,
+        total_images: images.length,
+      });
+
+      return createServiceSuccess(
+        output, 
+        `Retrieved ${images.length} image${images.length === 1 ? '' : 's'} from message`
+      );
+    } catch (error) {
+      if (error instanceof SlackAPIError) {
+        return createServiceError(error.message, 'Failed to retrieve message images');
+      }
+
+      return createServiceError(
+        `Failed to get message images: ${error}`,
+        'Unexpected error during message image retrieval'
+      );
+    }
+  };
+
   return {
     sendMessage,
     listChannels,
     getChannelHistory,
     searchMessages,
     getChannelInfo,
+    getMessageImages,
   };
 };

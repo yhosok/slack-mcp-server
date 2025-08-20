@@ -59,6 +59,11 @@ export const createMessageServiceMCPAdapter = (
       const result = await typeSafeApiService.getChannelInfo(args);
       return convertToMCPResult(result);
     },
+
+    async getMessageImages(args: unknown): Promise<MCPToolResult> {
+      const result = await typeSafeApiService.getMessageImages(args);
+      return convertToMCPResult(result);
+    },
   };
 };
 

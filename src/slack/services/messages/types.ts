@@ -6,6 +6,7 @@ import type {
   ChannelHistoryResult,
   ListChannelsResult,
   ChannelInfoResult,
+  MessageImagesResult,
 } from '../../types/outputs/messages.js';
 /**
  * Dependencies for message service operations
@@ -31,6 +32,7 @@ export interface MessageService {
   getChannelHistory(args: unknown): Promise<ChannelHistoryResult>;
   searchMessages(args: unknown): Promise<MessageSearchResult>;
   getChannelInfo(args: unknown): Promise<ChannelInfoResult>;
+  getMessageImages(args: unknown): Promise<MessageImagesResult>;
 }
 
 /**
@@ -47,4 +49,5 @@ export interface MessageServiceMCPCompat {
   getChannelHistory(args: unknown): Promise<MCPToolResult>;
   searchMessages(args: unknown): Promise<MCPToolResult>;
   getChannelInfo(args: unknown): Promise<MCPToolResult>;
+  getMessageImages(args: unknown): Promise<MCPToolResult>;
 }
