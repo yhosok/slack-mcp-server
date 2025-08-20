@@ -132,6 +132,10 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
         threads: { max: 50, ttl: 300000, updateAgeOnGet: true },
         enableMetrics: false,
       },
+      searchRankingEnabled: false,
+      searchIndexTTL: 900,
+      searchTimeDecayRate: 0.01,
+      searchMaxIndexSize: 1000,
     });
 
     // Create thread service with MCP adapter

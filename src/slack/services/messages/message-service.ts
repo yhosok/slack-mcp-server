@@ -47,6 +47,7 @@ import type {
   ListChannelsOutput,
   ChannelInfoOutput,
 } from '../../types/outputs/messages.js';
+import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
 
 // Export types for external use
 export type { MessageService, MessageServiceDependencies } from './types.js';
@@ -476,8 +477,26 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
           : undefined,
       }));
 
+      // Phase 2: Apply relevance scoring to search results when enabled
+      const normalizedMessages = normalizeSearchResults(messages, {
+        textField: 'text',
+        timestampField: 'ts',
+        userField: 'user',
+      });
+
+      const relevanceResult = await applyRelevanceScoring(
+        normalizedMessages,
+        input.query, // Use original query for relevance scoring
+        deps.relevanceScorer, // null when search ranking disabled
+        {
+          context: 'searchMessages',
+          performanceThreshold: 100,
+          enableLogging: true,
+        }
+      );
+
       const output: MessageSearchOutput = enforceServiceOutput({
-        messages,
+        messages: relevanceResult.results,
         total: result.messages.total || 0,
         query: enhancedQuery,
         hasMore: (result.messages.paging?.page || 1) < (result.messages.paging?.pages || 1),

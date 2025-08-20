@@ -25,6 +25,7 @@ import {
   escapeSearchQuery,
   type SearchQueryOptions,
 } from '../../utils/search-query-parser.js';
+import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
 import type { ThreadService, ThreadServiceDependencies } from './types.js';
 import {
   formatFindThreadsResponse as _formatFindThreadsResponse,
@@ -709,11 +710,29 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         };
       });
 
+      // Phase 2: Apply relevance scoring to thread search results when enabled
+      const normalizedThreads = normalizeSearchResults(threadsWithDisplayNames, {
+        textField: 'text',
+        timestampField: 'ts',
+        userField: 'user',
+      });
+
+      const relevanceResult = await applyRelevanceScoring(
+        normalizedThreads,
+        input.query, // Use original query for relevance scoring
+        deps.relevanceScorer, // null when search ranking disabled
+        {
+          context: 'searchThreads',
+          performanceThreshold: 100,
+          enableLogging: true,
+        }
+      );
+
       const output = enforceServiceOutput({
-        results: threadsWithDisplayNames,
-        total: threadsWithDisplayNames.length,
+        results: relevanceResult.results,
+        total: relevanceResult.results.length,
         query: searchQuery,
-        hasMore: threadCandidates.size > threadsWithDisplayNames.length,
+        hasMore: threadCandidates.size > relevanceResult.results.length,
         threadsValidated: threadValidationResult.successCount,
         threadCandidatesFound: threadCandidates.size,
       });

@@ -157,6 +157,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
         cacheService: null,
+        relevanceScorer: null,
         config: {
           maxRequestConcurrency: 3,
           cacheEnabled: false,
@@ -178,6 +179,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
         cacheService: null,
+        relevanceScorer: null,
         config: {
           maxRequestConcurrency: 3,
           cacheEnabled: false,
@@ -223,6 +225,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
         cacheService: null,
+        relevanceScorer: null,
         config: {
           maxRequestConcurrency: 3,
           cacheEnabled: false,
@@ -271,6 +274,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
         cacheService: null,
+        relevanceScorer: null,
         config: {
           maxRequestConcurrency: 3,
           cacheEnabled: false,
@@ -291,6 +295,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
         cacheService: null,
+        relevanceScorer: null,
         config: {
           maxRequestConcurrency: 3,
           cacheEnabled: false,
@@ -332,6 +337,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
         cacheService: null,
+        relevanceScorer: null,
         config: {
           maxRequestConcurrency: 3,
           cacheEnabled: false,

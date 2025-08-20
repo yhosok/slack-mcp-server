@@ -67,6 +67,11 @@ describe('Infrastructure Services', () => {
       enableMetrics: false,
       globalMemoryLimit: 1024 * 1024 * 10, // 10MB
     },
+    // Search ranking configuration for tests
+    searchRankingEnabled: false,
+    searchIndexTTL: 900,
+    searchTimeDecayRate: 0.01,
+    searchMaxIndexSize: 1000,
   };
 
   describe('createInfrastructureServices', () => {

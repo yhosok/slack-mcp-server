@@ -50,5 +50,5 @@ export type {
 } from './cache/index.js';
 
 // Infrastructure Factory
-export { createInfrastructureServices } from './factory.js';
+export { createInfrastructureServices, createRelevanceScorerConfig } from './factory.js';
 export type { InfrastructureConfig, InfrastructureServices } from './factory.js';

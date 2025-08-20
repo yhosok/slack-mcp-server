@@ -156,6 +156,11 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
     logLevel: CONFIG.LOG_LEVEL,
     cacheEnabled: CONFIG.CACHE_ENABLED,
     cacheConfig: completeCacheConfig,
+    // Search ranking configuration - Advanced relevance scoring with TF-IDF, time decay, and engagement metrics
+    searchRankingEnabled: CONFIG.SEARCH_RANKING_ENABLED,
+    searchIndexTTL: CONFIG.SEARCH_INDEX_TTL,
+    searchTimeDecayRate: CONFIG.SEARCH_TIME_DECAY_RATE,
+    searchMaxIndexSize: CONFIG.SEARCH_MAX_INDEX_SIZE,
   };
 
   // Create infrastructure services

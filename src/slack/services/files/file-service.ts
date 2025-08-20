@@ -20,6 +20,7 @@ import {
   type SearchQueryOptions,
   type ParsedSearchQuery,
 } from '../../utils/search-query-parser.js';
+import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
 import type { FileService, FileServiceDependencies } from './types.js';
 import {
   createServiceSuccess,
@@ -1305,19 +1306,42 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
         return createServiceSuccess(output, 'File search completed (no results found)');
       }
 
+      // Map search results to standardized format
+      const files = searchResult.files.matches.map((file) => ({
+        id: file.id || '',
+        name: file.name || '',
+        title: file.title || '',
+        filetype: file.filetype || '',
+        size: file.size || 0,
+        url: file.url_private || '',
+        user: file.user || '',
+        timestamp: file.timestamp?.toString() || '',
+        channel: file.channels?.[0] || '',
+        // Use title + name as text for relevance scoring
+        text: `${file.title || ''} ${file.name || ''}`.trim(),
+      }));
+
+      // Phase 2: Apply relevance scoring to file search results when enabled
+      const normalizedFiles = normalizeSearchResults(files, {
+        textField: 'text', // Combined title + name for better relevance
+        timestampField: 'timestamp',
+        userField: 'user',
+      });
+
+      const relevanceResult = await applyRelevanceScoring(
+        normalizedFiles,
+        input.query, // Use original query for relevance scoring
+        deps.relevanceScorer, // null when search ranking disabled
+        {
+          context: 'searchFiles',
+          performanceThreshold: 100,
+          enableLogging: true,
+        }
+      );
+
       // Create TypeSafeAPI-compliant output
       const output: SearchFilesOutput = enforceServiceOutput({
-        results: searchResult.files.matches.map((file) => ({
-          id: file.id || '',
-          name: file.name || '',
-          title: file.title || '',
-          filetype: file.filetype || '',
-          size: file.size || 0,
-          url: file.url_private || '',
-          user: file.user || '',
-          timestamp: file.timestamp?.toString() || '',
-          channel: file.channels?.[0] || '',
-        })),
+        results: relevanceResult.results.map(({ text: _text, ...file }) => file), // Remove the text field used for scoring
         total: searchResult.files.total || 0,
         query: searchQuery,
         pagination: searchResult.files.paging

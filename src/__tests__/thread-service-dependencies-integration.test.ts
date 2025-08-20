@@ -104,6 +104,7 @@ describe('Thread Service Dependencies Integration', () => {
       domainUserService: mockDomainUserService,
       participantTransformationService: mockParticipantTransformationService,
       cacheService: null,
+      relevanceScorer: null,
       config: {
         maxRequestConcurrency: 3,
         cacheEnabled: false,
