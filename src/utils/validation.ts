@@ -748,6 +748,24 @@ export const SearchFilesSchema = z
   })
   .describe('Search for files by name, type, or content');
 
+export const GetMessageImagesSchema = z
+  .object({
+    channel: z
+      .string()
+      .min(1, 'Channel ID is required')
+      .describe('Channel ID where the message is located (e.g., C1234567890)'),
+    message_ts: z
+      .string()
+      .min(1, 'Message timestamp is required')
+      .describe('Timestamp of the message to retrieve images from'),
+    include_image_data: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Whether to include Base64-encoded image data in the response'),
+  })
+  .describe('Get all images from a specific message');
+
 /**
  * Reaction management validation schemas
  */
@@ -1026,6 +1044,7 @@ export type DeleteFileInput = z.infer<typeof DeleteFileSchema>;
 export type ShareFileInput = z.infer<typeof ShareFileSchema>;
 export type AnalyzeFilesInput = z.infer<typeof AnalyzeFilesSchema>;
 export type SearchFilesInput = z.infer<typeof SearchFilesSchema>;
+export type GetMessageImagesInput = z.infer<typeof GetMessageImagesSchema>;
 
 // Reaction management input types
 export type AddReactionInput = z.infer<typeof AddReactionSchema>;

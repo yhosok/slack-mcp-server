@@ -47,6 +47,7 @@ export interface ServiceMethodRegistry {
   getUserInfo: (args: unknown) => Promise<MCPToolResult>;
   searchMessages: (args: unknown) => Promise<MCPToolResult>;
   getChannelInfo: (args: unknown) => Promise<MCPToolResult>;
+  getMessageImages: (args: unknown) => Promise<MCPToolResult>;
 
   // Thread operations
   findThreadsInChannel: (args: unknown) => Promise<MCPToolResult>;
@@ -217,6 +218,7 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
     getUserInfo: userService.getUserInfo,
     searchMessages: messageService.searchMessages,
     getChannelInfo: messageService.getChannelInfo,
+    getMessageImages: messageService.getMessageImages,
 
     // Thread operations
     findThreadsInChannel: threadService.findThreadsInChannel,

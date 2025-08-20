@@ -179,6 +179,8 @@ class SlackMCPServer {
         return await this.slackService.searchMessages(args);
       case 'get_channel_info':
         return await this.slackService.getChannelInfo(args);
+      case 'get_message_images':
+        return await this.slackService.getMessageImages(args);
 
       default:
         throw new Error(`Unknown tool: ${name}`);

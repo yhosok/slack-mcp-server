@@ -82,6 +82,27 @@ export interface ChannelInfoOutput extends ServiceOutput {
   [key: string]: unknown;
 }
 
+export interface MessageImagesOutput extends ServiceOutput {
+  channel: string;
+  message_ts: string;
+  images: Array<{
+    id: string;
+    name: string;
+    url_private: string;
+    url_private_download: string;
+    mimetype: string;
+    filetype: string;
+    size: number;
+    thumb_360?: string;
+    thumb_480?: string;
+    thumb_720?: string;
+    thumb_1024?: string;
+    image_data?: string; // Base64 encoded image data when include_image_data: true
+  }>;
+  total_images: number;
+  [key: string]: unknown;
+}
+
 /**
  * TypeSafeAPI + ts-pattern discriminated union types for type-safe service results
  */
@@ -90,3 +111,4 @@ export type MessageSearchResult = ServiceResult<MessageSearchOutput>;
 export type ChannelHistoryResult = ServiceResult<ChannelHistoryOutput>;
 export type ListChannelsResult = ServiceResult<ListChannelsOutput>;
 export type ChannelInfoResult = ServiceResult<ChannelInfoOutput>;
+export type MessageImagesResult = ServiceResult<MessageImagesOutput>;

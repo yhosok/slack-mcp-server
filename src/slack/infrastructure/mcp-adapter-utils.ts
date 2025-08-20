@@ -36,6 +36,7 @@ export const convertToMCPResult = <T extends ServiceOutput>(
           ),
         },
       ],
+      isError: false,
     }))
     .with({ success: false }, (_errorResult) => ({
       content: [

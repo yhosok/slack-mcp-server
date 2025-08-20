@@ -502,7 +502,7 @@ describe('SlackService - File Operations', () => {
 
       // Assert - Should succeed without ID field (normal behavior)
       expect(mockWebClientInstance.filesUploadV2).toHaveBeenCalled();
-      expect(result.isError).toBeUndefined(); // Successful operations don't have isError property
+      expect(result.isError).toBe(false); // Successful operations have isError: false
       expect(result.content).toBeDefined();
 
       // Verify the response contains success but no ID field (since Slack didn't provide one)
@@ -563,7 +563,7 @@ describe('SlackService - File Operations', () => {
         })
       );
 
-      expect(result.isError).toBeUndefined();
+      expect(result.isError).toBe(false);
 
       // Verify structured warning was logged about multiple channels limitation
       const { logger } = await import('../utils/logger');

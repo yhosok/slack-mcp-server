@@ -340,6 +340,15 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
                 count: r.count || 0,
                 users: r.users || [],
               })),
+              // Phase 2: Add image file filtering to thread messages
+              files: msg.files
+                ? msg.files.filter(file => 
+                    // Check mimetype for image types
+                    (file.mimetype && ['image/jpeg', 'image/png', 'image/gif'].includes(file.mimetype)) ||
+                    // Check filetype for image extensions
+                    (file.filetype && ['jpg', 'jpeg', 'png', 'gif'].includes(file.filetype))
+                  )
+                : undefined,
             })),
             hasMore: data.hasMore,
             cursor: data.cursor,

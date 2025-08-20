@@ -54,6 +54,13 @@ export class SlackService {
   }
 
   /**
+   * Get all images from a specific message
+   */
+  async getMessageImages(args: unknown): Promise<MCPToolResult> {
+    return this.getServiceRegistry().methods.getMessageImages(args);
+  }
+
+  /**
    * Get information about a user
    */
   async getUserInfo(args: unknown): Promise<MCPToolResult> {
