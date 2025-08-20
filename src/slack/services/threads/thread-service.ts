@@ -79,6 +79,8 @@ import {
   type ThreadSummaryFormatterOptions as _ThreadSummaryFormatterOptions,
 } from '../../analysis/index.js';
 import { countWordsInMessages } from '../../analysis/thread/sentiment-analysis.js';
+import { DecisionExtractor } from '../../analysis/thread/decision-extractor.js';
+import { RelevanceScorer } from '../../analysis/search/relevance-scorer.js';
 
 /**
  * Create thread service with infrastructure dependencies
@@ -836,6 +838,23 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         const participants = participantsResult.data.participants;
         const fullAnalysis = await performComprehensiveAnalysis(messages, participants);
 
+        // Extract decisions if requested
+        let decisionsMade: Array<{ decision: string; timestamp: string; user: string }> = [];
+        if (input.include_decisions) {
+          const decisionExtractor = new DecisionExtractor();
+          const decisionsResult = await decisionExtractor.extractDecisionsForThread({
+            channel: input.channel,
+            threadTs: input.thread_ts,
+            messages
+          });
+          // Transform to match expected type format
+          decisionsMade = decisionsResult.decisionsMade.map(decision => ({
+            decision: decision.decision,
+            timestamp: decision.timestamp,
+            user: decision.participant || 'unknown'
+          }));
+        }
+
         const output = enforceServiceOutput({
           threadInfo: {
             channel: input.channel,
@@ -851,7 +870,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
             actionItemCount: fullAnalysis.actionItems.actionItems.length,
           },
           keyPoints: fullAnalysis.topics.topics.slice(0, 5),
-          decisionsMade: [], // TODO: Extract from analysis
+          decisionsMade,
           actionItems: [...fullAnalysis.actionItems.actionItems],
           sentiment: analysis.sentiment,
           language: input.language || 'en',
@@ -1202,6 +1221,42 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
               0
             );
             importanceScore += Math.min(mentionCount / 5, 1) * 0.1;
+          }
+
+          // Enhanced relevance scoring for new criteria (opt-in)
+          if (criteria.includes('tf_idf_relevance') || criteria.includes('time_decay') || criteria.includes('engagement_metrics')) {
+            try {
+              const relevanceScorer = new RelevanceScorer();
+              
+              // Use thread parent text as search context for relevance scoring
+              const searchContext = parent.text || '';
+              
+              if (criteria.includes('tf_idf_relevance') && searchContext.trim()) {
+                // Calculate TF-IDF relevance score
+                const relevanceResult = await relevanceScorer.calculateRelevance(messages, searchContext);
+                const avgRelevanceScore = relevanceResult.scores.reduce((sum, score) => sum + score.tfidfScore, 0) / relevanceResult.scores.length;
+                importanceScore += avgRelevanceScore * 0.2; // 20% weight for TF-IDF relevance
+              }
+              
+              if (criteria.includes('time_decay')) {
+                // Calculate average time decay score
+                const avgTimeDecay = messages.reduce((sum, msg) => {
+                  return sum + relevanceScorer.calculateTimeDecay(msg.ts);
+                }, 0) / messages.length;
+                importanceScore += avgTimeDecay * 0.15; // 15% weight for time decay
+              }
+              
+              if (criteria.includes('engagement_metrics')) {
+                // Calculate average engagement score
+                const avgEngagement = messages.reduce((sum, msg) => {
+                  return sum + relevanceScorer.calculateEngagementScore(msg);
+                }, 0) / messages.length;
+                importanceScore += avgEngagement * 0.25; // 25% weight for engagement
+              }
+            } catch {
+              // Graceful fallback: continue without relevance scoring if it fails
+              // This ensures backward compatibility and prevents breaking existing functionality
+            }
           }
 
           // Only return if above threshold

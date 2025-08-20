@@ -45,6 +45,16 @@ export type {
   ThreadMetrics,
 } from './core/threads.js';
 
+// Search and relevance scoring types
+export type {
+  RelevanceScore,
+  RelevanceScorerConfig,
+  EnhancedRelevanceScore,
+  TFIDFResult,
+  RelevanceResult,
+  DecisionExtractionResult,
+} from './core/search.js';
+
 // ===================================================================
 // SERVICE OUTPUT TYPES (TypeSafeAPI Pattern)
 // ===================================================================

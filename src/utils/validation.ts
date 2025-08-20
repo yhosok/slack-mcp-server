@@ -566,6 +566,9 @@ export const IdentifyImportantThreadsSchema = z
           'urgency_keywords',
           'executive_involvement',
           'mention_frequency',
+          'tf_idf_relevance',
+          'time_decay',
+          'engagement_metrics',
         ])
       )
       .optional()
