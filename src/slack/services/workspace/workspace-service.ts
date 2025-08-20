@@ -24,6 +24,10 @@ import type {
   ServerHealthOutput,
 } from '../../types/outputs/workspace.js';
 import type { SlackUser } from '../../types/core/users.js';
+import {
+  CacheIntegrationHelper as _CacheIntegrationHelper,
+  createCacheIntegrationHelper,
+} from '../../infrastructure/cache/cache-integration-helpers.js';
 
 // Export types for external use
 export type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
@@ -99,6 +103,9 @@ interface SlackMember {
  * ```
  */
 export const createWorkspaceService = (deps: WorkspaceServiceDependencies): WorkspaceService => {
+  // Initialize cache integration helper for workspace service operations
+  const cacheHelper = createCacheIntegrationHelper(deps.cacheService);
+
   /**
    * Get workspace/team information and settings with TypeSafeAPI + ts-pattern type safety
    *
@@ -281,39 +288,58 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
             (member: SlackMember) => member.id && member.name
           );
 
-          const processedMembers = filteredMembers.map((member: SlackMember) => ({
-            id: member.id!,
-            name: member.name!,
-            realName: member.real_name,
-            displayName: member.profile?.display_name || member.real_name || member.name!,
-            email: member.profile?.email,
-            title: member.profile?.title,
-            isAdmin: member.is_admin || false,
-            isOwner: member.is_owner || false,
-            isPrimaryOwner: member.is_primary_owner || false,
-            isRestricted: member.is_restricted || false,
-            isUltraRestricted: member.is_ultra_restricted || false,
-            isBot: member.is_bot || false,
-            deleted: member.deleted || false,
-            hasFiles: false, // Property not available in API
-            timezone: member.tz,
-            timezoneLabel: member.tz_label,
-            timezoneOffset: member.tz_offset,
-            profile: {
-              image24: member.profile?.image_24,
-              image32: member.profile?.image_32,
-              image48: member.profile?.image_48,
-              image72: member.profile?.image_72,
-              image192: member.profile?.image_192,
-              image512: member.profile?.image_512,
-              statusText: member.profile?.status_text,
-              statusEmoji: member.profile?.status_emoji,
-              statusExpiration: member.profile?.status_expiration,
-              phone: member.profile?.phone,
-              skype: member.profile?.skype,
-            },
-            updated: member.updated,
-          }));
+          const processedMembers = filteredMembers.map((member: SlackMember) => {
+            // Base member object with core fields always included
+            const baseMember = {
+              id: member.id!,
+              name: member.name!,
+              realName: member.real_name,
+              displayName: member.profile?.display_name || member.real_name || member.name!,
+              isAdmin: member.is_admin || false,
+              isOwner: member.is_owner || false,
+              isPrimaryOwner: member.is_primary_owner || false,
+              isRestricted: member.is_restricted || false,
+              isUltraRestricted: member.is_ultra_restricted || false,
+              isBot: member.is_bot || false,
+              deleted: member.deleted || false,
+              hasFiles: false, // Property not available in API
+            };
+
+            // Conditional profile details based on include_profile_details parameter
+            if (input.include_profile_details !== false) {
+              // Full profile mode: include all fields
+              return {
+                ...baseMember,
+                email: member.profile?.email,
+                title: member.profile?.title,
+                timezone: member.tz,
+                timezoneLabel: member.tz_label,
+                timezoneOffset: member.tz_offset,
+                profile: {
+                  image24: member.profile?.image_24,
+                  image32: member.profile?.image_32,
+                  image48: member.profile?.image_48,
+                  image72: member.profile?.image_72,
+                  image192: member.profile?.image_192,
+                  image512: member.profile?.image_512,
+                  statusText: member.profile?.status_text,
+                  statusEmoji: member.profile?.status_emoji,
+                  statusExpiration: member.profile?.status_expiration,
+                  phone: member.profile?.phone,
+                  skype: member.profile?.skype,
+                },
+                updated: member.updated,
+              };
+            } else {
+              // Lightweight mode: only core fields + essential image
+              return {
+                ...baseMember,
+                profile: {
+                  image24: member.profile?.image_24,
+                },
+              };
+            }
+          });
 
           // Create TypeSafeAPI-compliant output
           const output: TeamMembersOutput = enforceServiceOutput({
@@ -745,6 +771,14 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
         rateLimiting: {
           enabled: true,
           metrics: rateLimitMetrics,
+        },
+        caching: {
+          enabled: cacheHelper.isCacheAvailable(),
+          metrics: cacheHelper.getCacheMetrics() || { status: 'disabled' },
+          performance: {
+            memoryOptimization: cacheHelper.isCacheAvailable() ? 'active' : 'inactive',
+            apiCallReduction: cacheHelper.isCacheAvailable() ? 'enabled' : 'disabled',
+          },
         },
         memory: {
           usage: process.memoryUsage(),

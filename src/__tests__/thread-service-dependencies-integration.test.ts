@@ -103,8 +103,11 @@ describe('Thread Service Dependencies Integration', () => {
       infrastructureUserService: mockInfraUserService,
       domainUserService: mockDomainUserService,
       participantTransformationService: mockParticipantTransformationService,
+      cacheService: null,
+      relevanceScorer: null,
       config: {
         maxRequestConcurrency: 3,
+        cacheEnabled: false,
       },
     } as ThreadServiceDependencies;
   });

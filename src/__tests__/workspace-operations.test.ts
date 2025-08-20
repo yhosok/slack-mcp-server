@@ -590,4 +590,497 @@ describe('Workspace Management Operations', () => {
       expect(mockWebClientInstance.conversations.list).toHaveBeenCalled();
     });
   });
+
+  describe('TDD Red Phase: listTeamMembers Response Size Optimization', () => {
+    describe('New Parameter Validation - include_profile_details', () => {
+      it('should accept include_profile_details as boolean parameter', async () => {
+        // This test will FAIL until the parameter is added to the schema
+        const result = await service.listTeamMembers({
+          include_profile_details: true,
+          limit: 10
+        });
+
+        expect(result).toBeDefined();
+        expect('isError' in result ? result.isError : false).toBe(false);
+      });
+
+      it('should default include_profile_details to true for backward compatibility', async () => {
+        // This test will FAIL until the parameter is added with proper default
+        const result = await service.listTeamMembers({
+          limit: 10
+        });
+
+        expect(result).toBeDefined();
+        if (!('isError' in result && result.isError)) {
+          const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+          expect(apiResponse.statusCode).toBe('10000');
+
+          const membersData = apiResponse.data;
+          // Should include full profile data by default (backward compatibility)
+          if (membersData.members && membersData.members.length > 0) {
+            const firstMember = membersData.members[0];
+            expect(firstMember.profile).toBeDefined();
+            expect(firstMember.profile.image24).toBeDefined();
+            expect(firstMember.profile.statusText).toBeDefined();
+            expect(firstMember.title).toBeDefined();
+            expect(firstMember.email).toBeDefined();
+          }
+        }
+      });
+
+      it('should reject non-boolean values for include_profile_details', async () => {
+        // This test will FAIL until proper validation is implemented
+        const result = await service.listTeamMembers({
+          include_profile_details: 'invalid',
+          limit: 10
+        });
+
+        expect(result).toBeDefined();
+        expect('isError' in result ? result.isError : false).toBe(true);
+
+        const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+        expect(apiResponse.statusCode).toBe('10001');
+        expect(apiResponse.error).toContain('include_profile_details');
+      });
+
+      it('should reject numeric values for include_profile_details', async () => {
+        // This test will FAIL until proper validation is implemented
+        const result = await service.listTeamMembers({
+          include_profile_details: 1,
+          limit: 10
+        });
+
+        expect(result).toBeDefined();
+        expect('isError' in result ? result.isError : false).toBe(true);
+
+        const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+        expect(apiResponse.statusCode).toBe('10001');
+      });
+    });
+
+    describe('Response Structure Tests', () => {
+      beforeEach(() => {
+        // Mock a more comprehensive user response for testing
+        mockWebClientInstance.users.list.mockResolvedValue({
+          ok: true,
+          members: [
+            {
+              id: 'U123456789',
+              name: 'admin',
+              real_name: 'Admin User',
+              deleted: false,
+              is_bot: false,
+              is_admin: true,
+              is_owner: true,
+              is_primary_owner: false,
+              is_restricted: false,
+              is_ultra_restricted: false,
+              profile: {
+                display_name: 'Admin',
+                email: 'admin@example.com',
+                title: 'Administrator',
+                image_24: 'https://example.com/admin24.png',
+                image_32: 'https://example.com/admin32.png',
+                image_48: 'https://example.com/admin48.png',
+                image_72: 'https://example.com/admin72.png',
+                image_192: 'https://example.com/admin192.png',
+                image_512: 'https://example.com/admin512.png',
+                status_text: 'Working',
+                status_emoji: ':computer:',
+                status_expiration: 1234567890,
+                phone: '+1-555-0123',
+                skype: 'admin.skype',
+              },
+              tz: 'America/New_York',
+              tz_label: 'Eastern Standard Time',
+              tz_offset: -18000,
+              updated: 1234567890,
+            },
+            {
+              id: 'U987654321',
+              name: 'regular',
+              real_name: 'Regular User',
+              deleted: false,
+              is_bot: false,
+              is_admin: false,
+              is_owner: false,
+              is_primary_owner: false,
+              is_restricted: false,
+              is_ultra_restricted: false,
+              profile: {
+                display_name: 'Regular',
+                email: 'regular@example.com',
+                title: 'Developer',
+                image_24: 'https://example.com/regular24.png',
+                image_32: 'https://example.com/regular32.png',
+                image_48: 'https://example.com/regular48.png',
+                image_72: 'https://example.com/regular72.png',
+                image_192: 'https://example.com/regular192.png',
+                image_512: 'https://example.com/regular512.png',
+                status_text: 'Available',
+                status_emoji: ':green_heart:',
+                phone: '+1-555-0456',
+                skype: 'regular.skype',
+              },
+              tz: 'America/Los_Angeles',
+              tz_label: 'Pacific Standard Time',
+              tz_offset: -28800,
+              updated: 1234567891,
+            },
+          ],
+        });
+      });
+
+      it('should return full response when include_profile_details is true', async () => {
+        // This test will FAIL until the feature is implemented
+        const result = await service.listTeamMembers({
+          include_profile_details: true,
+          limit: 10
+        });
+
+        expect(result).toBeDefined();
+        if (!('isError' in result && result.isError)) {
+          const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+          expect(apiResponse.statusCode).toBe('10000');
+
+          const membersData = apiResponse.data;
+          expect(membersData.members).toHaveLength(2);
+
+          const firstMember = membersData.members[0];
+          
+          // Core fields should always be present
+          expect(firstMember.id).toBe('U123456789');
+          expect(firstMember.name).toBe('admin');
+          expect(firstMember.displayName).toBe('Admin');
+          expect(firstMember.isAdmin).toBe(true);
+          expect(firstMember.isOwner).toBe(true);
+          expect(firstMember.isBot).toBe(false);
+          
+          // Full profile details should be included
+          expect(firstMember.profile).toBeDefined();
+          expect(firstMember.profile.image24).toBe('https://example.com/admin24.png');
+          expect(firstMember.profile.image32).toBe('https://example.com/admin32.png');
+          expect(firstMember.profile.image48).toBe('https://example.com/admin48.png');
+          expect(firstMember.profile.image72).toBe('https://example.com/admin72.png');
+          expect(firstMember.profile.image192).toBe('https://example.com/admin192.png');
+          expect(firstMember.profile.image512).toBe('https://example.com/admin512.png');
+          expect(firstMember.profile.statusText).toBe('Working');
+          expect(firstMember.profile.statusEmoji).toBe(':computer:');
+          expect(firstMember.profile.statusExpiration).toBe(1234567890);
+          expect(firstMember.profile.phone).toBe('+1-555-0123');
+          expect(firstMember.profile.skype).toBe('admin.skype');
+
+          // Extended fields should be included
+          expect(firstMember.email).toBe('admin@example.com');
+          expect(firstMember.title).toBe('Administrator');
+          expect(firstMember.timezone).toBe('America/New_York');
+          expect(firstMember.timezoneLabel).toBe('Eastern Standard Time');
+          expect(firstMember.timezoneOffset).toBe(-18000);
+          expect(firstMember.updated).toBe(1234567890);
+        }
+      });
+
+      it('should return lightweight response when include_profile_details is false', async () => {
+        // This test will FAIL until the feature is implemented
+        const result = await service.listTeamMembers({
+          include_profile_details: false,
+          limit: 10
+        });
+
+        expect(result).toBeDefined();
+        if (!('isError' in result && result.isError)) {
+          const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+          expect(apiResponse.statusCode).toBe('10000');
+
+          const membersData = apiResponse.data;
+          expect(membersData.members).toHaveLength(2);
+
+          const firstMember = membersData.members[0];
+          
+          // Core fields should always be present
+          expect(firstMember.id).toBe('U123456789');
+          expect(firstMember.name).toBe('admin');
+          expect(firstMember.displayName).toBe('Admin');
+          expect(firstMember.isAdmin).toBe(true);
+          expect(firstMember.isOwner).toBe(true);
+          expect(firstMember.isBot).toBe(false);
+          expect(firstMember.deleted).toBe(false);
+          
+          // Lightweight mode: profile should contain only essential image
+          expect(firstMember.profile).toBeDefined();
+          expect(firstMember.profile.image24).toBe('https://example.com/admin24.png');
+          
+          // Lightweight mode: extended profile details should be excluded
+          expect(firstMember.profile.image32).toBeUndefined();
+          expect(firstMember.profile.image48).toBeUndefined();
+          expect(firstMember.profile.image72).toBeUndefined();
+          expect(firstMember.profile.image192).toBeUndefined();
+          expect(firstMember.profile.image512).toBeUndefined();
+          expect(firstMember.profile.statusText).toBeUndefined();
+          expect(firstMember.profile.statusEmoji).toBeUndefined();
+          expect(firstMember.profile.statusExpiration).toBeUndefined();
+          expect(firstMember.profile.phone).toBeUndefined();
+          expect(firstMember.profile.skype).toBeUndefined();
+
+          // Lightweight mode: extended user fields should be excluded
+          expect(firstMember.email).toBeUndefined();
+          expect(firstMember.title).toBeUndefined();
+          expect(firstMember.timezone).toBeUndefined();
+          expect(firstMember.timezoneLabel).toBeUndefined();
+          expect(firstMember.timezoneOffset).toBeUndefined();
+          expect(firstMember.updated).toBeUndefined();
+        }
+      });
+
+      it('should maintain all core fields in both response modes', async () => {
+        // This test will FAIL until the feature ensures core fields consistency
+        const fullResult = await service.listTeamMembers({
+          include_profile_details: true,
+          limit: 10
+        });
+
+        const lightResult = await service.listTeamMembers({
+          include_profile_details: false,
+          limit: 10
+        });
+
+        expect(fullResult).toBeDefined();
+        expect(lightResult).toBeDefined();
+
+        if (!('isError' in fullResult && fullResult.isError) && 
+            !('isError' in lightResult && lightResult.isError)) {
+          
+          const fullResponse = JSON.parse(extractTextContent(fullResult.content?.[0]) || '{}');
+          const lightResponse = JSON.parse(extractTextContent(lightResult.content?.[0]) || '{}');
+          
+          expect(fullResponse.statusCode).toBe('10000');
+          expect(lightResponse.statusCode).toBe('10000');
+
+          const fullMember = fullResponse.data.members[0];
+          const lightMember = lightResponse.data.members[0];
+
+          // Core fields must be identical in both modes
+          const coreFields = ['id', 'name', 'displayName', 'isAdmin', 'isOwner', 'isBot', 'deleted', 'isPrimaryOwner', 'isRestricted', 'isUltraRestricted', 'hasFiles'];
+          
+          coreFields.forEach(field => {
+            expect(fullMember[field]).toBe(lightMember[field]);
+          });
+
+          // Profile.image24 should be present in both modes
+          expect(fullMember.profile.image24).toBe(lightMember.profile.image24);
+        }
+      });
+    });
+
+    describe('Backward Compatibility Tests', () => {
+      it('should maintain existing response structure when parameter not provided', async () => {
+        // This test will FAIL if backward compatibility is broken
+        const result = await service.listTeamMembers({
+          limit: 10,
+          include_bots: true
+        });
+
+        expect(result).toBeDefined();
+        if (!('isError' in result && result.isError)) {
+          const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+          expect(apiResponse.statusCode).toBe('10000');
+
+          const membersData = apiResponse.data;
+          
+          // Should match current full response structure
+          if (membersData.members && membersData.members.length > 0) {
+            const member = membersData.members[0];
+            
+            // All current fields should be present (backward compatibility)
+            expect(member.id).toBeDefined();
+            expect(member.name).toBeDefined();
+            expect(member.displayName).toBeDefined();
+            expect(member.profile).toBeDefined();
+            expect(member.profile.image24).toBeDefined();
+          }
+        }
+      });
+
+      it('should handle existing API calls without parameter changes', async () => {
+        // This test will FAIL if existing call signatures are broken
+        const legacyCalls = [
+          {},
+          { limit: 50 },
+          { include_bots: false },
+          { include_deleted: true },
+          { cursor: 'test-cursor' },
+          { fetch_all_pages: true },
+          { fetch_all_pages: true, max_pages: 5, max_items: 100 }
+        ];
+
+        for (const args of legacyCalls) {
+          const result = await service.listTeamMembers(args);
+          expect(result).toBeDefined();
+          
+          // All existing calls should continue to work
+          if (!('isError' in result && result.isError)) {
+            const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+            expect(apiResponse.statusCode).toBe('10000');
+            expect(apiResponse.data).toHaveProperty('members');
+            expect(apiResponse.data).toHaveProperty('total');
+            expect(apiResponse.data).toHaveProperty('hasMore');
+          }
+        }
+      });
+    });
+
+    describe('Response Size Validation Tests', () => {
+      it('should produce measurably smaller response in lightweight mode', async () => {
+        // This test will FAIL until response size optimization is implemented
+        const fullResult = await service.listTeamMembers({
+          include_profile_details: true,
+          limit: 10
+        });
+
+        const lightResult = await service.listTeamMembers({
+          include_profile_details: false,
+          limit: 10
+        });
+
+        expect(fullResult).toBeDefined();
+        expect(lightResult).toBeDefined();
+
+        if (!('isError' in fullResult && fullResult.isError) && 
+            !('isError' in lightResult && lightResult.isError)) {
+          
+          const fullContent = extractTextContent(fullResult.content?.[0]) || '';
+          const lightContent = extractTextContent(lightResult.content?.[0]) || '';
+          
+          const fullSize = new Blob([fullContent]).size;
+          const lightSize = new Blob([lightContent]).size;
+          
+          // Lightweight response should be at least 20% smaller
+          const compressionRatio = (fullSize - lightSize) / fullSize;
+          expect(compressionRatio).toBeGreaterThan(0.2);
+          
+          // Both should be valid JSON
+          expect(() => JSON.parse(fullContent)).not.toThrow();
+          expect(() => JSON.parse(lightContent)).not.toThrow();
+        }
+      });
+
+      it('should preserve essential data integrity in lightweight mode', async () => {
+        // This test will FAIL if essential data is lost in optimization
+        const result = await service.listTeamMembers({
+          include_profile_details: false,
+          limit: 10
+        });
+
+        expect(result).toBeDefined();
+        if (!('isError' in result && result.isError)) {
+          const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+          expect(apiResponse.statusCode).toBe('10000');
+
+          const membersData = apiResponse.data;
+          
+          // Essential pagination metadata must be preserved
+          expect(membersData.total).toBeGreaterThanOrEqual(0);
+          expect(membersData.hasMore).toBeDefined();
+          expect(Array.isArray(membersData.members)).toBe(true);
+          
+          // Each member must have core identification fields
+          membersData.members.forEach((member: any) => {
+            expect(member.id).toBeDefined();
+            expect(member.name).toBeDefined();
+            expect(member.displayName).toBeDefined();
+            expect(typeof member.isBot).toBe('boolean');
+            expect(typeof member.deleted).toBe('boolean');
+            expect(typeof member.isAdmin).toBe('boolean');
+          });
+        }
+      });
+
+      it('should maintain consistent pagination metadata regardless of profile detail level', async () => {
+        // This test will FAIL if pagination metadata is affected by the optimization
+        const fullResult = await service.listTeamMembers({
+          include_profile_details: true,
+          limit: 5
+        });
+
+        const lightResult = await service.listTeamMembers({
+          include_profile_details: false,
+          limit: 5
+        });
+
+        expect(fullResult).toBeDefined();
+        expect(lightResult).toBeDefined();
+
+        if (!('isError' in fullResult && fullResult.isError) && 
+            !('isError' in lightResult && lightResult.isError)) {
+          
+          const fullResponse = JSON.parse(extractTextContent(fullResult.content?.[0]) || '{}');
+          const lightResponse = JSON.parse(extractTextContent(lightResult.content?.[0]) || '{}');
+          
+          // Pagination metadata should be identical
+          expect(fullResponse.data.total).toBe(lightResponse.data.total);
+          expect(fullResponse.data.hasMore).toBe(lightResponse.data.hasMore);
+          expect(fullResponse.data.members.length).toBe(lightResponse.data.members.length);
+          
+          // Cursor information should match
+          if (fullResponse.data.cursor || lightResponse.data.cursor) {
+            expect(fullResponse.data.cursor).toBe(lightResponse.data.cursor);
+          }
+        }
+      });
+    });
+
+    describe('TypeSafeAPI Response Validation', () => {
+      it('should return valid ServiceResult structure for both response modes', async () => {
+        // This test will FAIL if TypeSafeAPI patterns are broken
+        const testCases = [
+          { include_profile_details: true },
+          { include_profile_details: false },
+          {} // default case
+        ];
+
+        for (const testCase of testCases) {
+          const result = await service.listTeamMembers(testCase);
+          expect(result).toBeDefined();
+          
+          if (!('isError' in result && result.isError)) {
+            const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+            
+            // Valid TypeSafeAPI success response structure
+            expect(apiResponse).toHaveProperty('statusCode');
+            expect(apiResponse).toHaveProperty('message');
+            expect(apiResponse).toHaveProperty('data');
+            expect(apiResponse.statusCode).toBe('10000');
+            
+            // Valid TeamMembersOutput structure
+            const data = apiResponse.data;
+            expect(data).toHaveProperty('members');
+            expect(data).toHaveProperty('total');
+            expect(data).toHaveProperty('hasMore');
+            expect(Array.isArray(data.members)).toBe(true);
+            expect(typeof data.total).toBe('number');
+            expect(typeof data.hasMore).toBe('boolean');
+          }
+        }
+      });
+
+      it('should maintain TypeSafeAPI error response structure for validation failures', async () => {
+        // This test will FAIL if error handling is inconsistent
+        const result = await service.listTeamMembers({
+          include_profile_details: 'invalid_value'
+        });
+
+        expect(result).toBeDefined();
+        expect('isError' in result ? result.isError : false).toBe(true);
+
+        const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
+        
+        // Valid TypeSafeAPI error response structure
+        expect(apiResponse).toHaveProperty('statusCode');
+        expect(apiResponse).toHaveProperty('message');
+        expect(apiResponse).toHaveProperty('error');
+        expect(apiResponse.statusCode).toBe('10001');
+        expect(apiResponse.error).toContain('include_profile_details');
+      });
+    });
+  });
 });

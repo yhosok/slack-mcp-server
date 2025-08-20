@@ -66,6 +66,13 @@ export interface ThreadSearchOutput extends ServiceOutput {
     thread_ts?: string;
     reply_count?: number;
     permalink?: string;
+    userDisplayName?: string;
+    parentMessage?: {
+      text?: string;
+      user?: string;
+      timestamp?: string;
+      userDisplayName?: string;
+    };
   }>;
   total: number;
   query: string;

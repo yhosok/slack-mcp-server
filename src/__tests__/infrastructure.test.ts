@@ -33,6 +33,45 @@ describe('Infrastructure Services', () => {
     maxRequestConcurrency: 5,
     rejectRateLimitedCalls: false,
     logLevel: 'info',
+    // Cache configuration - disabled by default for tests
+    cacheEnabled: false,
+    cacheConfig: {
+      channels: {
+        max: 100,
+        ttl: 300000, // 5 minutes
+        updateAgeOnGet: true,
+      },
+      users: {
+        max: 500,
+        ttl: 600000, // 10 minutes
+        updateAgeOnGet: true,
+      },
+      search: {
+        maxQueries: 50,
+        maxResults: 200,
+        queryTTL: 300000, // 5 minutes
+        resultTTL: 600000, // 10 minutes
+        adaptiveTTL: false,
+        enablePatternInvalidation: false,
+      },
+      files: {
+        max: 100,
+        ttl: 300000, // 5 minutes
+        maxSize: 1024 * 1024, // 1MB
+      },
+      threads: {
+        max: 200,
+        ttl: 300000, // 5 minutes
+        updateAgeOnGet: true,
+      },
+      enableMetrics: false,
+      globalMemoryLimit: 1024 * 1024 * 10, // 10MB
+    },
+    // Search ranking configuration for tests
+    searchRankingEnabled: false,
+    searchIndexTTL: 900,
+    searchTimeDecayRate: 0.01,
+    searchMaxIndexSize: 1000,
   };
 
   describe('createInfrastructureServices', () => {
@@ -44,19 +83,24 @@ describe('Infrastructure Services', () => {
       expect(services.rateLimitService).toBeDefined();
       expect(services.userService).toBeDefined();
       expect(services.requestHandler).toBeDefined();
+      expect(services.cacheService).toBeDefined(); // Should be null when cacheEnabled: false
       
       // NEW EXPECTED STRUCTURE: config object should exist
       expect(services.config).toBeDefined();
       expect(typeof services.config).toBe('object');
     });
 
-    it('should expose config object with maxRequestConcurrency', () => {
+    it('should expose config object with maxRequestConcurrency and cache settings', () => {
       const services = createInfrastructureServices(mockConfig);
 
       // NEW EXPECTED STRUCTURE: config object with concurrency setting
       expect(services.config).toBeDefined();
       expect(services.config.maxRequestConcurrency).toBe(mockConfig.maxRequestConcurrency);
       expect(services.config.maxRequestConcurrency).toBe(5);
+      
+      // Cache configuration should reflect actual cache service state
+      expect(services.config.cacheEnabled).toBe(false); // Cache is disabled in mockConfig
+      expect(services.cacheService).toBeNull(); // Cache service should be null when disabled
       
       // OLD STRUCTURE: direct property should NOT exist anymore
       expect('maxRequestConcurrency' in services).toBe(false);
@@ -93,6 +137,45 @@ describe('Infrastructure Services', () => {
 
       // Test cache clearing
       expect(() => services.userService.clearCache()).not.toThrow();
+    });
+
+    it('should create cache service when cacheEnabled is true', () => {
+      const configWithCache: InfrastructureConfig = {
+        ...mockConfig,
+        cacheEnabled: true,
+      };
+
+      const services = createInfrastructureServices(configWithCache);
+
+      // Cache service should be created when enabled
+      expect(services.cacheService).toBeDefined();
+      expect(services.cacheService).not.toBeNull();
+      expect(services.config.cacheEnabled).toBe(true);
+    });
+
+    it('should handle cache service creation gracefully with any config', () => {
+      const configWithCache: InfrastructureConfig = {
+        ...mockConfig,
+        cacheEnabled: true,
+        // Test with different cache config values
+        cacheConfig: {
+          ...mockConfig.cacheConfig,
+          channels: {
+            max: -1, // Potentially invalid value
+            ttl: -1, // Potentially invalid value
+            updateAgeOnGet: true,
+          },
+        },
+      };
+
+      // Should not throw regardless of cache config values
+      expect(() => {
+        const services = createInfrastructureServices(configWithCache);
+        // Cache service creation is resilient and should succeed
+        expect(services.cacheService).toBeDefined();
+        // The result should reflect whether cache was actually enabled
+        expect(typeof services.config.cacheEnabled).toBe('boolean');
+      }).not.toThrow();
     });
 
     it('should create request handler with proper formatting', async () => {

@@ -9,6 +9,11 @@ import {
   GetChannelInfoSchema,
   validateInput,
 } from '../../../utils/validation.js';
+import {
+  parseSearchQuery,
+  buildSlackSearchQuery,
+  type SearchQueryOptions,
+} from '../../utils/search-query-parser.js';
 import type { MessageService, MessageServiceDependencies } from './types.js';
 import {
   formatSendMessageResponse,
@@ -16,6 +21,7 @@ import {
   formatSearchMessagesResponse as _formatSearchMessagesResponse,
 } from '../formatters/text-formatters.js';
 import { executePagination } from '../../infrastructure/generic-pagination.js';
+import { logger } from '../../../utils/logger.js';
 import {
   createServiceSuccess,
   createServiceError,
@@ -23,6 +29,12 @@ import {
   type ServiceErrorType as _ServiceErrorType,
   createTypedServiceError as _createTypedServiceError,
 } from '../../types/typesafe-api-patterns.js';
+import {
+  CacheIntegrationHelper as _CacheIntegrationHelper,
+  CacheKeyBuilder as _CacheKeyBuilder,
+  createCacheIntegrationHelper,
+  type CacheOrFetchOptions as _CacheOrFetchOptions,
+} from '../../infrastructure/cache/cache-integration-helpers.js';
 import type {
   SendMessageResult,
   MessageSearchResult,
@@ -35,6 +47,7 @@ import type {
   ListChannelsOutput,
   ChannelInfoOutput,
 } from '../../types/outputs/messages.js';
+import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
 
 // Export types for external use
 export type { MessageService, MessageServiceDependencies } from './types.js';
@@ -77,6 +90,9 @@ import { SlackAPIError } from '../../../utils/errors.js';
  * ```
  */
 export const createMessageService = (deps: MessageServiceDependencies): MessageService => {
+  // Initialize cache integration helper for all message service operations
+  const _cacheHelper = createCacheIntegrationHelper(deps.cacheService);
+
   /**
    * Send a message to a channel or user with TypeSafeAPI + ts-pattern type safety
    *
@@ -172,32 +188,66 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
 
       const client = deps.clientManager.getClientForOperation('read');
 
-      const result = await client.conversations.list({
-        types: input.types,
-        exclude_archived: input.exclude_archived,
-        limit: 1000,
+      // Use unified pagination implementation
+      const paginationResult = await executePagination(input, {
+        fetchPage: async (cursor?: string) => {
+          const result = await client.conversations.list({
+            types: input.types,
+            exclude_archived: input.exclude_archived,
+            limit: input.limit,
+            cursor,
+          });
+
+          if (!result.channels) {
+            throw new SlackAPIError(
+              `Failed to retrieve channels${cursor ? ` (page with cursor: ${cursor.substring(0, 10)}...)` : ''}`
+            );
+          }
+
+          return result;
+        },
+
+        getCursor: (response) => response.response_metadata?.next_cursor,
+
+        getItems: (response) => response.channels || [],
+
+        formatResponse: async (data) => {
+          let channels = data.items.map((channel) => ({
+            id: channel.id || '',
+            name: channel.name || '',
+            isPrivate: channel.is_private || false,
+            isMember: channel.is_member || false,
+            isArchived: channel.is_archived || false,
+            memberCount: channel.num_members,
+            topic: channel.topic?.value,
+            purpose: channel.purpose?.value,
+          }));
+
+          // Apply name filter if specified (client-side filtering)
+          if (input.name_filter) {
+            const filterLower = input.name_filter.toLowerCase();
+            channels = channels.filter((channel) =>
+              channel.name.toLowerCase().includes(filterLower)
+            );
+          }
+
+          // Create TypeSafeAPI-compliant output
+          const output: ListChannelsOutput = enforceServiceOutput({
+            channels,
+            total: channels.length,
+            hasMore: data.hasMore,
+            responseMetadata: data.cursor ? { nextCursor: data.cursor } : undefined,
+            filteredBy: input.name_filter ? `name contains "${input.name_filter}"` : undefined,
+          });
+
+          return output;
+        },
       });
 
-      if (!result.channels) {
-        return createServiceError('Failed to retrieve channels', 'Channel list is unavailable');
-      }
-
-      // Create TypeSafeAPI-compliant output
-      const output: ListChannelsOutput = enforceServiceOutput({
-        channels: result.channels.map((channel) => ({
-          id: channel.id || '',
-          name: channel.name || '',
-          isPrivate: channel.is_private || false,
-          isMember: channel.is_member || false,
-          isArchived: channel.is_archived || false,
-          memberCount: channel.num_members,
-          topic: channel.topic?.value,
-          purpose: channel.purpose?.value,
-        })),
-        total: result.channels.length,
-      });
-
-      return createServiceSuccess(output, 'Channels retrieved successfully');
+      return createServiceSuccess(
+        paginationResult as ListChannelsOutput,
+        'Channels retrieved successfully'
+      );
     } catch (error) {
       if (error instanceof SlackAPIError) {
         return createServiceError(error.message, 'Failed to retrieve channels');
@@ -326,8 +376,56 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
 
       const client = deps.clientManager.getClientForOperation('read');
 
+      /**
+       * Build advanced message search query using the search query parser
+       * Supports complex queries with operators, boolean logic, and proper escaping
+       * 
+       * @param query - Raw search query from input
+       * @returns Enhanced search query with proper Slack syntax
+       */
+      const buildAdvancedMessageSearchQuery = (query: string): string => {
+        try {
+          // Configure parser options for message search
+          const parserOptions: SearchQueryOptions = {
+            allowedOperators: ['in', 'from', 'has', 'after', 'before', 'is', 'during'],
+            maxQueryLength: 500,
+            enableBooleanOperators: true,
+            enableGrouping: true
+          };
+
+          // Parse the query first
+          const parseResult = parseSearchQuery(query, parserOptions);
+
+          if (parseResult.success) {
+            // Use parsed query and rebuild with proper Slack syntax
+            return buildSlackSearchQuery(parseResult.query, parserOptions);
+          } else {
+            // Fallback to escaped simple query for legacy compatibility
+            logger.debug('Advanced message search query parsing failed, using simple escaping', {
+              error: parseResult.error.message,
+              query
+            });
+            
+            // Use the legacy escape function from the parser for consistency
+            return query.trim();
+          }
+
+        } catch (error) {
+          // Final fallback to simple query for any errors
+          logger.warn('Advanced message search query building failed, falling back to simple query', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            query
+          });
+          
+          return query.trim();
+        }
+      };
+
+      // Build enhanced search query
+      const enhancedQuery = buildAdvancedMessageSearchQuery(input.query);
+
       const searchArgs: SearchAllArguments = {
-        query: input.query,
+        query: enhancedQuery,
         sort: input.sort,
         sort_dir: input.sort_dir,
         count: input.count,
@@ -342,7 +440,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         const output: MessageSearchOutput = enforceServiceOutput({
           messages: [],
           total: 0,
-          query: input.query,
+          query: enhancedQuery,
           hasMore: false,
         });
 
@@ -351,18 +449,56 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
 
       // Process search results and create TypeSafeAPI-compliant output
       const searchResults = result.messages.matches || [];
+      
+      // Extract unique user IDs from search results
+      const uniqueUserIds = [
+        ...new Set(
+          searchResults
+            .map((match: SearchMessageElement) => match.user)
+            .filter((user): user is string => Boolean(user))
+        ),
+      ];
+
+      // Use Phase 3 pattern: bulkGetDisplayNames for efficient display name conversion
+      const displayNameMap =
+        uniqueUserIds.length > 0
+          ? await deps.userService.bulkGetDisplayNames(uniqueUserIds)
+          : new Map<string, string>();
+
       const messages = searchResults.map((match: SearchMessageElement) => ({
         text: match.text || '',
         user: match.user || '',
         ts: match.ts || '',
         channel: match.channel?.id || '',
         permalink: match.permalink || '',
+        // Phase 5: Add user-friendly display name with graceful fallback
+        userDisplayName: match.user
+          ? displayNameMap.get(match.user) || match.user
+          : undefined,
       }));
 
+      // Phase 2: Apply relevance scoring to search results when enabled
+      const normalizedMessages = normalizeSearchResults(messages, {
+        textField: 'text',
+        timestampField: 'ts',
+        userField: 'user',
+      });
+
+      const relevanceResult = await applyRelevanceScoring(
+        normalizedMessages,
+        input.query, // Use original query for relevance scoring
+        deps.relevanceScorer, // null when search ranking disabled
+        {
+          context: 'searchMessages',
+          performanceThreshold: 100,
+          enableLogging: true,
+        }
+      );
+
       const output: MessageSearchOutput = enforceServiceOutput({
-        messages,
+        messages: relevanceResult.results,
         total: result.messages.total || 0,
-        query: input.query,
+        query: enhancedQuery,
         hasMore: (result.messages.paging?.page || 1) < (result.messages.paging?.pages || 1),
       });
 

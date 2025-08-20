@@ -27,6 +27,7 @@ export interface SlackMessage {
   blocks?: SlackBlock[];
   attachments?: SlackAttachment[];
   reactions?: SlackReaction[];
+  reply_count?: number;
 }
 
 /**
