@@ -98,6 +98,8 @@ jest.mock('../utils/validation', () => {
 
 describe('ReactionService - Reaction Operations', () => {
   let reactionService: any;
+  let mockInfrastructure: any;
+  let mockMessageService: any;
 
   beforeEach(() => {
     // Clear all mocks before each test
@@ -182,8 +184,39 @@ describe('ReactionService - Reaction Operations', () => {
       ),
     };
 
-    // Create mock infrastructure with dual user services
-    const mockInfrastructure = {
+    // Create mock message service for delegation
+    mockMessageService = {
+      sendMessage: jest.fn(),
+      listChannels: jest.fn(),
+      getChannelHistory: jest.fn(),
+      getChannelInfo: jest.fn(),
+      getMessageImages: jest.fn(),
+      searchMessages: jest.fn(() =>
+        Promise.resolve({
+          success: true,
+          data: {
+            messages: [
+              {
+                text: 'Test message from search',
+                user: 'U1234567890',
+                ts: '1234567890.123456',
+                channel: 'C1234567890',
+                permalink: 'https://example.slack.com/archives/C1234567890/p1234567890123456',
+                userDisplayName: 'testuser',
+              },
+            ],
+            total: 1,
+            query: 'has:thumbsup',
+            hasMore: false,
+          },
+          statusCode: 200,
+          message: 'Search completed successfully',
+        })
+      ),
+    };
+
+    // Create mock infrastructure with dual user services and message service
+    mockInfrastructure = {
       clientManager: {
         getBotClient: () => mockWebClientInstance,
         getUserClient: () => mockWebClientInstance,
@@ -202,6 +235,7 @@ describe('ReactionService - Reaction Operations', () => {
       userService: mockInfraUserService, // Legacy support
       infrastructureUserService: mockInfraUserService,
       domainUserService: mockDomainUserService,
+      messageService: mockMessageService, // Add message service for delegation
       requestHandler: {
         handle: jest.fn().mockImplementation(async (schema: any, args: any, operation: any) => {
           // Don't double-wrap - the MCP adapter already handles the wrapping
@@ -792,6 +826,362 @@ describe('ReactionService - Reaction Operations', () => {
       expect(result.isError).toBe(true);
       const response = JSON.parse(result.content[0].text);
       expect(response.error).toContain('At least one reaction is required');
+    });
+  });
+
+  // ================================
+  // WORKSPACE-WIDE REACTION SEARCH TESTS (TDD RED PHASE)
+  // ================================
+  describe('findMessagesByReactions - Workspace-Wide Search (TDD Red Phase)', () => {
+    const validWorkspaceArgs = {
+      reactions: ['thumbsup', 'heart'],
+      match_type: 'any' as const,
+      min_reaction_count: 1,
+      limit: 10,
+      // NOTE: No channel parameter = workspace-wide search
+    };
+
+    beforeEach(() => {
+      // Ensure we're testing with user token available for search API
+      mockWebClientInstance.auth.test.mockResolvedValue({ ok: true, user_id: 'U123' });
+    });
+
+    it('should use messageService for workspace-wide search with single reaction (user token)', async () => {
+      // Arrange - Configure messageService mock for single reaction search
+      const singleReactionArgs = {
+        reactions: ['clap'],
+        match_type: 'any' as const,
+        limit: 5,
+        // No channel = workspace search
+      };
+
+      const expectedSearchQuery = 'has:clap';
+      const mockSearchResult = {
+        success: true,
+        data: {
+          messages: [
+            {
+              text: 'Great work everyone!',
+              user: 'U1234567890',
+              ts: '1234567890.123456',
+              channel: 'C1234567890',
+              permalink: 'https://example.slack.com/archives/C1234567890/p1234567890123456',
+              userDisplayName: 'testuser',
+            },
+          ],
+          total: 1,
+          query: expectedSearchQuery,
+          hasMore: false,
+        },
+        statusCode: 200,
+        message: 'Search completed successfully',
+      };
+
+      mockMessageService.searchMessages.mockResolvedValue(mockSearchResult);
+
+      // Act
+      const result = await reactionService.findMessagesByReactions(singleReactionArgs);
+
+      // Assert - Now delegates to messageService
+      expect(mockMessageService.searchMessages).toHaveBeenCalledWith({
+        query: expectedSearchQuery,
+        count: 5,
+      });
+
+      const response = JSON.parse(result.content[0].text);
+      expect(response.data.messages).toHaveLength(1);
+      expect(response.data.total).toBe(1);
+      expect(response.data.searchedReactions).toEqual(['clap']);
+      expect(response.data.searchMethod).toBe('workspace_search');
+    });
+
+    it('should use messageService for workspace-wide search with multiple reactions (OR logic)', async () => {
+      // Arrange
+      const multipleReactionsArgs = {
+        reactions: ['thumbsup', 'heart', 'fire'],
+        match_type: 'any' as const,
+        limit: 10,
+        // No channel = workspace search
+      };
+
+      const expectedSearchQuery = 'has:thumbsup OR has:heart OR has:fire';
+      const mockSearchResult = {
+        success: true,
+        data: {
+          messages: [
+            {
+              text: 'Message with thumbsup',
+              user: 'U1234567890',
+              ts: '1234567890.123456',
+              channel: 'C1234567890',
+              permalink: 'https://example.slack.com/archives/C1234567890/p1234567890123456',
+              userDisplayName: 'testuser',
+            },
+            {
+              text: 'Message with heart',
+              user: 'U1234567891',
+              ts: '1234567891.123456',
+              channel: 'C1234567891',
+              permalink: 'https://example.slack.com/archives/C1234567891/p1234567891123456',
+              userDisplayName: 'anotheruser',
+            },
+          ],
+          total: 2,
+          query: expectedSearchQuery,
+          hasMore: false,
+        },
+        statusCode: 200,
+        message: 'Search completed successfully',
+      };
+
+      mockMessageService.searchMessages.mockResolvedValue(mockSearchResult);
+
+      // Act
+      const result = await reactionService.findMessagesByReactions(multipleReactionsArgs);
+
+      // Assert - Now delegates to messageService
+      expect(mockMessageService.searchMessages).toHaveBeenCalledWith({
+        query: expectedSearchQuery,
+        count: 10,
+      });
+
+      const response = JSON.parse(result.content[0].text);
+      expect(response.data.messages).toHaveLength(2);
+      expect(response.data.searchMethod).toBe('workspace_search');
+      expect(response.data.matchType).toBe('any');
+    });
+
+    it('should use messageService for workspace-wide search with multiple reactions (AND logic)', async () => {
+      // Arrange
+      const multipleReactionsAllArgs = {
+        reactions: ['star', 'bookmark', 'point_up'],
+        match_type: 'all' as const,
+        limit: 5,
+        // No channel = workspace search
+      };
+
+      const expectedSearchQuery = 'has:star has:bookmark has:point_up';
+      const mockSearchResult = {
+        success: true,
+        data: {
+          messages: [
+            {
+              text: 'Highly curated content',
+              user: 'U1234567890',
+              ts: '1234567890.123456',
+              channel: 'C1234567890',
+              permalink: 'https://example.slack.com/archives/C1234567890/p1234567890123456',
+              userDisplayName: 'testuser',
+            },
+          ],
+          total: 1,
+          query: expectedSearchQuery,
+          hasMore: false,
+        },
+        statusCode: 200,
+        message: 'Search completed successfully',
+      };
+
+      mockMessageService.searchMessages.mockResolvedValue(mockSearchResult);
+
+      // Act
+      const result = await reactionService.findMessagesByReactions(multipleReactionsAllArgs);
+
+      // Assert - Now delegates to messageService
+      expect(mockMessageService.searchMessages).toHaveBeenCalledWith({
+        query: expectedSearchQuery,
+        count: 5,
+      });
+
+      const response = JSON.parse(result.content[0].text);
+      expect(response.data.messages).toHaveLength(1);
+      expect(response.data.searchMethod).toBe('workspace_search');
+      expect(response.data.matchType).toBe('all');
+    });
+
+    it('should transform messageService results to expected format', async () => {
+      // Arrange
+      const searchArgs = {
+        reactions: ['fire'],
+        match_type: 'any' as const,
+        limit: 3,
+      };
+
+      const mockSearchResult = {
+        success: true,
+        data: {
+          messages: [
+            {
+              text: 'Amazing work! 🔥',
+              user: 'U1234567890',
+              ts: '1234567890.123456',
+              channel: 'C1234567890',
+              permalink: 'https://example.slack.com/archives/C1234567890/p1234567890123456',
+              userDisplayName: 'testuser',
+            },
+          ],
+          total: 1,
+          query: 'has:fire',
+          hasMore: false,
+        },
+        statusCode: 200,
+        message: 'Search completed successfully',
+      };
+
+      mockMessageService.searchMessages.mockResolvedValue(mockSearchResult);
+
+      // Act
+      const result = await reactionService.findMessagesByReactions(searchArgs);
+
+      // Assert - messageService result transformation is implemented
+      const response = JSON.parse(result.content[0].text);
+      expect(response.data.messages[0]).toEqual({
+        channel: 'C1234567890',
+        channelName: '', // Message service doesn't provide channel names in search results
+        text: 'Amazing work! 🔥',
+        user: 'U1234567890',
+        username: 'testuser', // Uses userDisplayName from messageService
+        timestamp: '1234567890.123456',
+        permalink: 'https://example.slack.com/archives/C1234567890/p1234567890123456',
+        reactions: [], // Search API doesn't return reaction details
+        totalReactions: 0, // Would need separate API call to get reaction counts
+        searchMatch: true, // Indicates this came from search, not history
+      });
+      expect(response.data.searchMethod).toBe('workspace_search');
+    });
+
+    it('should handle bot token only mode (no user token) via messageService', async () => {
+      // Arrange - Configure messageService to return error (simulating no user token)
+      const mockErrorResult = {
+        success: false,
+        error: 'searchMessages requires a user token. Bot tokens cannot use search API. Please either:\n1. Set USE_USER_TOKEN_FOR_READ=true and provide SLACK_USER_TOKEN (xoxp-*), or\n2. Use channel-specific search instead',
+        statusCode: 401,
+        message: 'Search API requires user token with search:read scope',
+      };
+
+      mockMessageService.searchMessages.mockResolvedValue(mockErrorResult);
+      
+      // Act - Try workspace search without user token (no channel provided)
+      const result = await reactionService.findMessagesByReactions(validWorkspaceArgs);
+
+      // Assert - Should return error due to missing user token
+      expect(result.isError).toBe(true);
+      if (result.content && result.content[0] && 'text' in result.content[0]) {
+        const response = JSON.parse(result.content[0].text);
+        expect(response.error).toContain('requires a user token');
+        expect(response.message).toContain('Search API requires user token with search:read scope');
+      } else {
+        // Fallback assertion
+        expect(true).toBe(false); // Force failure to indicate this needs implementation
+      }
+    });
+
+    it('should maintain backward compatibility when channel is provided', async () => {
+      // Arrange - When channel is provided, should use existing behavior
+      const channelSpecificArgs = {
+        ...validWorkspaceArgs,
+        channel: 'C1234567890', // Channel provided = existing behavior
+      };
+
+      const mockMessages = [
+        {
+          type: 'message',
+          user: 'U1234567890',
+          text: 'Channel message with thumbsup',
+          ts: '1234567890.123456',
+          reactions: [{ name: 'thumbsup', count: 2, users: ['U1', 'U2'] }],
+        },
+      ];
+
+      mockWebClientInstance.conversations.history.mockResolvedValue({
+        ok: true,
+        messages: mockMessages,
+      });
+
+      // Act
+      const result = await reactionService.findMessagesByReactions(channelSpecificArgs);
+
+      // Assert - This should PASS (existing functionality should continue to work)
+      expect(mockWebClientInstance.conversations.history).toHaveBeenCalledWith({
+        channel: 'C1234567890',
+        limit: 1000,
+        oldest: undefined,
+        latest: undefined,
+      });
+
+      // Should NOT call messageService.searchMessages when channel is provided
+      expect(mockMessageService.searchMessages).not.toHaveBeenCalled();
+
+      const response = JSON.parse(result.content[0].text);
+      expect(response.data.messages).toHaveLength(1);
+      expect(response.data.searchMethod).toBe('channel_history'); // Existing method indicator
+    });
+
+    it('should handle messageService errors gracefully', async () => {
+      // Arrange
+      const searchArgs = {
+        reactions: ['error_test'],
+        match_type: 'any' as const,
+        limit: 5,
+      };
+
+      const mockErrorResult = {
+        success: false,
+        error: 'search_not_allowed: Search API requires user token with search:read scope',
+        statusCode: 403,
+        message: 'Search operation failed due to insufficient permissions',
+      };
+
+      mockMessageService.searchMessages.mockResolvedValue(mockErrorResult);
+
+      // Act
+      const result = await reactionService.findMessagesByReactions(searchArgs);
+
+      // Assert - Should handle messageService errors gracefully
+      expect(result.isError).toBe(true);
+      const response = JSON.parse(result.content[0].text);
+      expect(response.error).toContain('search_not_allowed');
+      expect(response.message).toContain('Search operation failed');
+    });
+
+    it('should support time-based filtering in workspace search via messageService', async () => {
+      // Arrange
+      const timeFilteredArgs = {
+        reactions: ['calendar'],
+        match_type: 'any' as const,
+        after: '2024-08-01',
+        before: '2024-08-31',
+        limit: 10,
+      };
+
+      const expectedSearchQuery = 'has:calendar';
+      const mockSearchResult = {
+        success: true,
+        data: {
+          messages: [],
+          total: 0,
+          query: expectedSearchQuery,
+          hasMore: false,
+        },
+        statusCode: 200,
+        message: 'Search completed successfully',
+      };
+
+      mockMessageService.searchMessages.mockResolvedValue(mockSearchResult);
+
+      // Act
+      const result = await reactionService.findMessagesByReactions(timeFilteredArgs);
+
+      // Assert - messageService handles time filtering automatically
+      expect(mockMessageService.searchMessages).toHaveBeenCalledWith({
+        query: expectedSearchQuery,
+        count: 10,
+        after: '2024-08-01',
+        before: '2024-08-31',
+      });
+
+      const response = JSON.parse(result.content[0].text);
+      expect(response.data.searchMethod).toBe('workspace_search');
     });
   });
 });
