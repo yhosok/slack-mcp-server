@@ -19,6 +19,7 @@ import type {
   UserService as InfraUserService,
 } from '../slack/infrastructure/index.js';
 import type { UserService as DomainUserService } from '../slack/services/users/types.js';
+import type { MessageService } from '../slack/services/messages/types.js';
 import { createServiceSuccess } from '../slack/types/typesafe-api-patterns.js';
 import type { SlackUser } from '../slack/types/core/users.js';
 
@@ -38,6 +39,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
   let mockRequestHandler: jest.Mocked<RequestHandler>;
   let mockInfraUserService: jest.Mocked<InfraUserService>;
   let mockDomainUserService: jest.Mocked<DomainUserService>;
+  let mockMessageService: jest.Mocked<MessageService>;
   let mockClient: jest.Mocked<WebClient>;
 
   beforeEach(() => {
@@ -74,6 +76,16 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
     mockDomainUserService = {
       getUserInfo: jest.fn(),
     } as unknown as jest.Mocked<DomainUserService>;
+
+    // Mock Message Service (TypeSafeAPI-compliant)
+    mockMessageService = {
+      searchMessages: jest.fn(),
+      sendMessage: jest.fn(),
+      listChannels: jest.fn(),
+      getChannelHistory: jest.fn(),
+      getChannelInfo: jest.fn(),
+      getMessageImages: jest.fn(),
+    } as unknown as jest.Mocked<MessageService>;
 
     // Mock Client Manager
     mockClientManager = {
@@ -156,6 +168,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
+        messageService: mockMessageService,
         cacheService: null,
         relevanceScorer: null,
         config: {
@@ -178,6 +191,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
+        messageService: mockMessageService,
         cacheService: null,
         relevanceScorer: null,
         config: {
@@ -224,6 +238,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         userService: mockInfraUserService, // Legacy - still included for compatibility
         infrastructureUserService: mockInfraUserService,
         domainUserService: mockDomainUserService,
+        messageService: mockMessageService,
         cacheService: null,
         relevanceScorer: null,
         config: {

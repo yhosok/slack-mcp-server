@@ -24,6 +24,7 @@
 import { CONFIG } from '../config/index.js';
 import type { MCPToolResult } from '../mcp/types.js';
 import { createInfrastructureServices } from './infrastructure/factory.js';
+import { createMessageService } from './services/messages/message-service.js';
 import { createMessageServiceMCPAdapter } from './services/messages/message-service-mcp-adapter.js';
 import { createThreadServiceMCPAdapter } from './services/threads/thread-service-mcp-adapter.js';
 import { createFileServiceMCPAdapter } from './services/files/file-service-mcp-adapter.js';
@@ -186,11 +187,15 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
     participantTransformationService,
   };
 
-  // Create enhanced reaction service dependencies with both user services
+  // Create TypeSafeAPI message service for reaction service delegation
+  const typeSafeMessageService = createMessageService(infrastructure);
+
+  // Create enhanced reaction service dependencies with both user services and message service
   const reactionServiceDeps: ReactionServiceDependencies = {
     ...infrastructure,
     infrastructureUserService: infrastructure.userService,
     domainUserService,
+    messageService: typeSafeMessageService,
   };
 
   // Create enhanced workspace service dependencies with both user services

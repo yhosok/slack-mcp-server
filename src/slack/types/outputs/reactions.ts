@@ -284,10 +284,14 @@ export interface FindMessagesByReactionsOutput extends ServiceOutput {
   messages: Array<{
     /** Channel ID containing the message */
     channel: string;
+    /** Channel name (available for workspace search results) */
+    channelName?: string;
     /** Message text content (may be truncated) */
     text?: string;
     /** User ID who posted the message */
     user?: string;
+    /** Username (available for search results) */
+    username?: string;
     /** Message timestamp */
     timestamp?: string;
     /** Reaction details for this message */
@@ -303,6 +307,8 @@ export interface FindMessagesByReactionsOutput extends ServiceOutput {
     totalReactions: number;
     /** Direct link to the message in Slack (if available) */
     permalink?: string;
+    /** Indicates if this result came from search API (workspace search) */
+    searchMatch?: boolean;
   }>;
   /** Total number of messages found */
   total: number;
@@ -312,6 +318,8 @@ export interface FindMessagesByReactionsOutput extends ServiceOutput {
   matchType: 'any' | 'all';
   /** Minimum reaction count threshold used in the search */
   minReactionCount: number;
+  /** Search method used: 'channel_history' or 'workspace_search' */
+  searchMethod?: 'channel_history' | 'workspace_search';
   /** Additional metadata for extensibility */
   [key: string]: unknown;
 }

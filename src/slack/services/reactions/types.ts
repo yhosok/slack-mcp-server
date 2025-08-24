@@ -9,6 +9,7 @@ import type {
 } from '../../types/outputs/reactions.js';
 import type { UserService as DomainUserService } from '../users/types.js';
 import type { UserService as InfraUserService } from '../../infrastructure/user/types.js';
+import type { MessageService } from '../messages/types.js';
 
 // Re-export for convenience
 export type {
@@ -35,6 +36,12 @@ export interface ReactionServiceDependencies extends InfrastructureServices {
    * Use for: Full user information when detailed data is required
    */
   domainUserService: DomainUserService;
+
+  /**
+   * Message service - for search operations and message handling
+   * Use for: Delegating workspace-wide reaction search to message service infrastructure
+   */
+  messageService: MessageService;
 }
 
 /**

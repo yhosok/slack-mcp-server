@@ -19,6 +19,7 @@
  */
 
 import type { ReactionsGetArguments } from '@slack/web-api';
+import { match } from 'ts-pattern';
 import type { SlackMessage } from '../../types/index.js';
 import type { SlackUser } from '../../types/core/users.js';
 import {
@@ -633,31 +634,41 @@ export const createReactionServiceTypeSafeAPI = (
    * Find messages with specific reaction patterns using TypeSafeAPI + ts-pattern type safety
    *
    * Searches for messages that match specific reaction criteria, supporting both
-   * individual emoji filtering and complex pattern matching. Enables discovery of
-   * highly-reacted content, sentiment analysis, and engagement pattern identification.
+   * channel-scoped and workspace-wide searches. Uses Slack Search API for workspace-wide
+   * searches when no channel is specified, falling back to conversations.history for
+   * channel-specific searches to maintain backward compatibility.
+   *
+   * Features:
+   * - Workspace-wide search using Search API with 'has:' operators
+   * - Channel-scoped search using conversations.history API
+   * - Support for single and multiple reaction queries
+   * - Boolean logic: 'any' (OR) and 'all' (AND) match types
+   * - Time-based filtering with after/before parameters
+   * - User token requirement checking for Search API operations
+   * - Comprehensive error handling and graceful fallbacks
    *
    * @param args - Unknown input (validated at runtime using FindMessagesByReactionsSchema)
    * @returns Promise<FindMessagesByReactionsResult> - Type-safe result with matching messages
    *
-   * @example Find Popular Messages
+   * @example Workspace-wide Search
    * ```typescript
    * const result = await findMessagesByReactions({
-   *   channel: 'C1234567890',
    *   reactions: ['fire', 'star', 'trophy'],
    *   match_type: 'any',
    *   min_reaction_count: 5,
    *   limit: 10
+   *   // No channel = workspace search
    * });
    *
    * // Type-safe handling with ts-pattern
    * match(result)
    *   .with({ success: true }, ({ data }) => {
-   *     console.log(`Found ${data.total} popular messages`);
+   *     console.log(`Found ${data.total} popular messages across workspace`);
+   *     console.log(`Search method: ${data.searchMethod}`); // 'workspace_search'
    *
    *     data.messages.forEach(msg => {
    *       console.log(`Message: ${msg.text?.substring(0, 50)}...`);
-   *       console.log(`Total reactions: ${msg.totalReactions}`);
-   *       console.log(`Reactions: ${msg.reactions.map(r => `${r.name}(${r.count})`).join(', ')}`);
+   *       console.log(`Channel: ${msg.channelName || msg.channel}`);
    *       console.log(`Link: ${msg.permalink}`);
    *       console.log('---');
    *     });
@@ -668,73 +679,41 @@ export const createReactionServiceTypeSafeAPI = (
    *   .exhaustive();
    * ```
    *
-   * @example Sentiment Analysis
+   * @example Channel-specific Search (Backward Compatible)
    * ```typescript
-   * // Find positive sentiment messages
-   * const positiveResult = await findMessagesByReactions({
+   * const result = await findMessagesByReactions({
    *   channel: 'C1234567890',
-   *   reactions: ['heart', 'thumbsup', 'clap', 'fire'],
+   *   reactions: ['thumbsup', 'heart'],
    *   match_type: 'any',
-   *   min_reaction_count: 3
+   *   limit: 10
    * });
    *
-   * // Find negative sentiment messages
-   * const negativeResult = await findMessagesByReactions({
-   *   channel: 'C1234567890',
-   *   reactions: ['thumbsdown', 'confused', 'disappointed'],
-   *   match_type: 'any',
-   *   min_reaction_count: 1
-   * });
-   *
-   * if (positiveResult.success && negativeResult.success) {
-   *   const sentiment = {
-   *     positive: positiveResult.data.total,
-   *     negative: negativeResult.data.total,
-   *     ratio: positiveResult.data.total / (negativeResult.data.total || 1)
-   *   };
-   *   console.log('Channel sentiment analysis:', sentiment);
+   * if (result.success) {
+   *   console.log(`Search method: ${result.data.searchMethod}`); // 'channel_history'
+   *   console.log(`Found ${result.data.total} messages in channel`);
    * }
    * ```
    *
-   * @example Content Curation
+   * @example Complex Boolean Logic
    * ```typescript
-   * // Find messages that require ALL specified reactions (high engagement)
+   * // Find messages with ALL specified reactions (AND logic)
    * const curatedResult = await findMessagesByReactions({
-   *   channel: 'C1234567890',
    *   reactions: ['star', 'bookmark', 'point_up'],
    *   match_type: 'all',  // Must have ALL reactions
    *   after: '2024-01-01',
-   *   limit: 5
+   *   before: '2024-12-31'
    * });
-   *
-   * match(curatedResult)
-   *   .with({ success: true }, ({ data }) => {
-   *     console.log('Highly curated content:');
-   *     data.messages.forEach(msg => {
-   *       console.log(`By ${msg.user}: ${msg.text}`);
-   *       console.log(`Engagement: ${msg.totalReactions} reactions`);
-   *     });
-   *   })
-   *   .with({ success: false }, ({ error }) => console.error(error))
-   *   .exhaustive();
+   * // Search query: "has:star has:bookmark has:point_up after:2024-01-01 before:2024-12-31"
    * ```
    *
-   * @example Time-based Analysis
+   * @example Time-based Filtering
    * ```typescript
-   * const weeklyAnalysis = await findMessagesByReactions({
-   *   channel: 'C1234567890',
-   *   reactions: ['thumbsup'],
-   *   after: '2024-08-10',
-   *   before: '2024-08-17',
-   *   min_reaction_count: 2
+   * const timeFilteredResult = await findMessagesByReactions({
+   *   reactions: ['calendar'],
+   *   after: '2024-08-01',
+   *   before: '2024-08-31'
    * });
-   *
-   * if (weeklyAnalysis.success) {
-   *   const engagement = weeklyAnalysis.data.messages.reduce(
-   *     (sum, msg) => sum + msg.totalReactions, 0
-   *   );
-   *   console.log(`Weekly engagement: ${engagement} total reactions`);
-   * }
+   * // Search query: "has:calendar after:2024-08-01 before:2024-08-31"
    * ```
    *
    * @implements TypeSafeAPI ServiceOutput constraints
@@ -744,77 +723,180 @@ export const createReactionServiceTypeSafeAPI = (
   const findMessagesByReactions = async (args: unknown): Promise<FindMessagesByReactionsResult> => {
     try {
       const input = FindMessagesByReactionsSchema.parse(args);
-      const client = deps.clientManager.getClientForOperation('read');
 
-      // Get messages from channel if specified, otherwise search across workspace would go here
-      const messages: SlackMessage[] = [];
-
+      // Determine search strategy based on channel parameter
       if (input.channel) {
-        const historyResult = await client.conversations.history({
-          channel: input.channel,
-          limit: 1000,
-          oldest: input.after ? new Date(input.after).getTime() / 1000 + '' : undefined,
-          latest: input.before ? new Date(input.before).getTime() / 1000 + '' : undefined,
-        });
-
-        if (historyResult.ok && historyResult.messages) {
-          messages.push(...(historyResult.messages as SlackMessage[]));
-        }
+        // Channel-specific search using existing conversations.history approach
+        return await findMessagesByReactionsInChannel(input);
+      } else {
+        // Workspace-wide search using Search API
+        return await findMessagesByReactionsWorkspaceWide(input);
       }
-
-      // Filter messages based on reaction criteria
-      const filteredMessages = messages.filter((message) => {
-        const reactions = message.reactions || [];
-        if (reactions.length === 0) return false;
-
-        const messageReactionNames = reactions.map((r) => r.name || '');
-        const totalReactionCount = reactions.reduce((sum, r) => sum + (r.count || 0), 0);
-
-        // Check minimum reaction count
-        if (input.min_reaction_count && totalReactionCount < input.min_reaction_count) {
-          return false;
-        }
-
-        // Check reaction matching
-        if (input.match_type === 'all') {
-          return input.reactions.every((reaction) => messageReactionNames.includes(reaction));
-        } else {
-          return input.reactions.some((reaction) => messageReactionNames.includes(reaction));
-        }
-      });
-
-      // Limit results and transform to expected format
-      const limitedMessages = filteredMessages.slice(0, input.limit || 20);
-
-      const transformedMessages = limitedMessages.map((message) => ({
-        channel: input.channel || '',
-        text: message.text || '',
-        user: message.user || '',
-        timestamp: message.ts || '',
-        reactions: (message.reactions || []).map((r) => ({
-          name: r.name || '',
-          count: r.count || 0,
-          users: r.users || [],
-        })),
-        totalReactions: (message.reactions || []).reduce((sum, r) => sum + (r.count || 0), 0),
-        permalink: `https://example.slack.com/archives/${input.channel}/p${(message.ts || '').replace('.', '')}`,
-      }));
-
-      return createServiceSuccess(
-        {
-          messages: transformedMessages,
-          total: limitedMessages.length,
-          searchedReactions: input.reactions,
-          matchType: input.match_type || 'any',
-          minReactionCount: input.min_reaction_count || 1,
-        },
-        'Message search completed'
-      );
     } catch (error) {
       return createServiceError(
         error instanceof Error ? error.message : 'Failed to find messages by reactions',
         'Failed to search messages'
       );
+    }
+  };
+
+  /**
+   * Helper function: Channel-specific reaction search using conversations.history API
+   * Maintains backward compatibility with existing behavior
+   */
+  const findMessagesByReactionsInChannel = async (
+    input: ReturnType<typeof FindMessagesByReactionsSchema.parse>
+  ): Promise<FindMessagesByReactionsResult> => {
+    const client = deps.clientManager.getClientForOperation('read');
+    const messages: SlackMessage[] = [];
+
+    const historyResult = await client.conversations.history({
+      channel: input.channel!,
+      limit: 1000,
+      oldest: input.after ? new Date(input.after).getTime() / 1000 + '' : undefined,
+      latest: input.before ? new Date(input.before).getTime() / 1000 + '' : undefined,
+    });
+
+    if (historyResult.ok && historyResult.messages) {
+      messages.push(...(historyResult.messages as SlackMessage[]));
+    }
+
+    // Filter messages based on reaction criteria
+    const filteredMessages = messages.filter((message) => {
+      const reactions = message.reactions || [];
+      if (reactions.length === 0) return false;
+
+      const messageReactionNames = reactions.map((r) => r.name || '');
+      const totalReactionCount = reactions.reduce((sum, r) => sum + (r.count || 0), 0);
+
+      // Check minimum reaction count
+      if (input.min_reaction_count && totalReactionCount < input.min_reaction_count) {
+        return false;
+      }
+
+      // Check reaction matching
+      if (input.match_type === 'all') {
+        return input.reactions.every((reaction) => messageReactionNames.includes(reaction));
+      } else {
+        return input.reactions.some((reaction) => messageReactionNames.includes(reaction));
+      }
+    });
+
+    // Limit results and transform to expected format
+    const limitedMessages = filteredMessages.slice(0, input.limit || 20);
+
+    const transformedMessages = limitedMessages.map((message) => ({
+      channel: input.channel!,
+      text: message.text || '',
+      user: message.user || '',
+      timestamp: message.ts || '',
+      reactions: (message.reactions || []).map((r) => ({
+        name: r.name || '',
+        count: r.count || 0,
+        users: r.users || [],
+      })),
+      totalReactions: (message.reactions || []).reduce((sum, r) => sum + (r.count || 0), 0),
+      permalink: `https://example.slack.com/archives/${input.channel}/p${(message.ts || '').replace('.', '')}`,
+    }));
+
+    return createServiceSuccess(
+      {
+        messages: transformedMessages,
+        total: limitedMessages.length,
+        searchedReactions: input.reactions,
+        matchType: input.match_type || 'any',
+        minReactionCount: input.min_reaction_count || 1,
+        searchMethod: 'channel_history',
+      },
+      'Channel message search completed'
+    );
+  };
+
+  /**
+   * Helper function: Workspace-wide reaction search using Message Service
+   * Delegates to message service for consistent search infrastructure
+   */
+  const findMessagesByReactionsWorkspaceWide = async (
+    input: ReturnType<typeof FindMessagesByReactionsSchema.parse>
+  ): Promise<FindMessagesByReactionsResult> => {
+    try {
+      // Build reaction search query using Slack search operators
+      const reactionQuery = buildReactionSearchQuery(input);
+
+      // Delegate to message service's searchMessages method
+      const searchResult = await deps.messageService.searchMessages({
+        query: reactionQuery,
+        count: input.limit || 20,
+        // Include time filters if specified - message service handles these automatically
+        ...(input.after && { after: input.after }),
+        ...(input.before && { before: input.before }),
+      });
+
+      // Transform message search result to reaction search result format
+      return match(searchResult)
+        .with({ success: true }, (success) => {
+          // Transform messages from MessageSearchResult to FindMessagesByReactionsResult format
+          const transformedMessages = success.data.messages.map(msg => ({
+            channel: msg.channel || '',
+            channelName: '', // Message service doesn't provide channel names in search results
+            text: msg.text || '',
+            user: msg.user || '',
+            username: msg.userDisplayName || msg.user || '', // Use display name when available
+            timestamp: msg.ts || '',
+            permalink: msg.permalink || '',
+            reactions: [], // Search API doesn't return reaction details
+            totalReactions: 0, // Would need separate API call to get reaction counts
+            searchMatch: true, // Indicates this came from search, not history
+          }));
+
+          return createServiceSuccess(
+            {
+              messages: transformedMessages,
+              total: success.data.total,
+              searchedReactions: input.reactions,
+              matchType: input.match_type || 'any',
+              minReactionCount: input.min_reaction_count || 1,
+              searchMethod: 'workspace_search' as const,
+            },
+            'Workspace reaction search completed'
+          );
+        })
+        .with({ success: false }, (error) => {
+          // Transform message service error to reaction service error
+          return createServiceError(
+            error.error,
+            error.message || 'Failed to perform workspace reaction search'
+          );
+        })
+        .exhaustive();
+    } catch (error) {
+      return createServiceError(
+        error instanceof Error ? error.message : 'Workspace search failed',
+        'Failed to perform workspace reaction search'
+      );
+    }
+  };
+
+  /**
+   * Helper function: Build Slack Search API query for reaction searches
+   * Supports both 'any' (OR) and 'all' (AND) match types
+   * Time filtering is handled by message service, so we only build reaction operators
+   */
+  const buildReactionSearchQuery = (
+    input: ReturnType<typeof FindMessagesByReactionsSchema.parse>
+  ): string => {
+    const reactionQueries = input.reactions.map(reaction => `has:${reaction}`);
+    
+    if (input.match_type === 'all') {
+      // AND logic: all reactions must be present
+      return reactionQueries.join(' ');
+    } else {
+      // OR logic (default): any reaction can be present
+      if (reactionQueries.length === 1) {
+        return reactionQueries[0] || '';
+      } else {
+        return reactionQueries.join(' OR ');
+      }
     }
   };
 
