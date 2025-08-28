@@ -52,8 +52,9 @@ class Logger {
 
     const timestamp = new Date().toISOString();
     const levelName = LogLevel[level];
+    const linePrefix = `[${timestamp}] ${levelName}: ${message}`;
 
-    console.log(`[${timestamp}] ${levelName}: ${message}`, ...args);
+    console.error(linePrefix, ...args);
   }
 
   debug(message: string, ...args: unknown[]): void {
