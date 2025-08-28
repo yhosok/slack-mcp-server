@@ -193,7 +193,7 @@ class SlackMCPServer {
   async start(): Promise<void> {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger.info(`Slack MCP Server started successfully`);
+    // Note: No startup log message needed - MCP clients detect successful connection via protocol
   }
 }
 
