@@ -10,6 +10,8 @@ import type {
   ActionItem,
 } from '../../types/index.js';
 
+import type { MultilingualContent } from '../shared/text-processing/multilingual-processor.js';
+
 /**
  * Input data structures for analysis functions
  */
@@ -106,12 +108,9 @@ export interface TimelineAnalysisResult {
 /**
  * Multilingual analysis types
  */
-export interface MultilingualContent {
-  readonly hasJapanese: boolean;
-  readonly hasEnglish: boolean;
-  readonly mixedLanguage: boolean;
-  readonly primaryLanguage: 'japanese' | 'english' | 'mixed';
-}
+// Note: MultilingualContent is now imported from shared utilities
+// Re-export for backward compatibility
+export type { MultilingualContent };
 
 /**
  * Keyword analysis types

@@ -110,18 +110,12 @@ describe('User Service Type Integration - Green Phase Validation', () => {
         expect(createUserService).toBeDefined();
         expect(typeof createUserService).toBe('function');
 
-        // Create a user service instance with mock dependencies
+        // Create a user service instance with correct dependencies
         const mockDeps = {
-          clientManager: {
-            getClient: jest.fn().mockReturnValue(mockWebClient),
-            getClientForOperation: jest.fn().mockReturnValue(mockWebClient),
-          },
-          requestHandler: {
-            handleServiceRequest: jest.fn(),
-          },
+          client: mockWebClient, // Direct client injection for Domain pattern
         };
 
-        const userService = createUserService(mockDeps as any);
+        const userService = createUserService(mockDeps);
         expect(userService).toBeDefined();
         expect(typeof userService.getUserInfo).toBe('function');
       } catch (error) {
@@ -168,9 +162,8 @@ describe('User Service Type Integration - Green Phase Validation', () => {
           try {
             const { createUserService } = await import('../slack/services/users/user-service');
             const userService = createUserService({
-              clientManager: { getClient: jest.fn().mockReturnValue(mockWebClient) },
-              requestHandler: { handleServiceRequest: jest.fn() },
-            } as any);
+              client: mockWebClient,
+            });
 
             // Mock successful user info response
             mockWebClient.users.info.mockResolvedValue({
@@ -208,9 +201,8 @@ describe('User Service Type Integration - Green Phase Validation', () => {
           try {
             const { createUserService } = await import('../slack/services/users/user-service');
             const userService = createUserService({
-              clientManager: { getClient: jest.fn().mockReturnValue(mockWebClient) },
-              requestHandler: { handleServiceRequest: jest.fn() },
-            } as any);
+              client: mockWebClient,
+            });
 
             // Mock responses for different user types
             mockWebClient.users.info.mockImplementation(({ user }: any) => {
@@ -254,9 +246,8 @@ describe('User Service Type Integration - Green Phase Validation', () => {
           try {
             const { createUserService } = await import('../slack/services/users/user-service');
             const userService = createUserService({
-              clientManager: { getClient: jest.fn().mockReturnValue(mockWebClient) },
-              requestHandler: { handleServiceRequest: jest.fn() },
-            } as any);
+              client: mockWebClient,
+            });
 
             // Mock responses for different user states
             mockWebClient.users.info.mockImplementation(({ user }: any) => {
@@ -367,11 +358,10 @@ describe('User Service Type Integration - Green Phase Validation', () => {
 
         // Verify TypeSafeAPI pattern compliance
         const mockDeps = {
-          clientManager: { getClient: jest.fn() },
-          requestHandler: { handleServiceRequest: jest.fn() },
+          client: mockWebClient, // Direct client injection for Domain pattern
         };
 
-        const userService = createUserService(mockDeps as any);
+        const userService = createUserService(mockDeps);
         expect(userService.getUserInfo).toBeDefined();
         expect(userService.getDisplayName).toBeDefined();
       } catch (error) {

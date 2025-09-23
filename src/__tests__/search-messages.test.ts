@@ -321,6 +321,184 @@ describe('SlackService.searchMessages', () => {
     expect(content.statusCode).toBe('10000');
     expect(content.data.messages[0].channel).toBe('C3BVD6FPB'); // Actual channel ID from mock data
   });
+
+  // TDD Red Phase: Period parameter tests
+  describe('period parameters (after/before)', () => {
+    beforeEach(() => {
+      const mockSearchResult = {
+        ok: true,
+        messages: {
+          total: 1,
+          paging: {
+            page: 1,
+            pages: 1,
+          },
+          matches: [
+            {
+              user: 'U123456',
+              text: 'Test message within period',
+              ts: '1638316800.123456', // 2021-12-01
+              channel: { id: 'C123456', name: 'general' },
+              permalink: 'https://slack.com/archives/C123456/p1638316800123456',
+            },
+          ],
+        },
+      };
+      mockUserClient.search.messages.mockResolvedValue(mockSearchResult);
+      mockUserClient.users.info.mockResolvedValue({
+        ok: true,
+        user: {
+          profile: { display_name: 'Test User' },
+          real_name: 'Test User',
+          name: 'testuser',
+        },
+      });
+    });
+
+    it('should handle after parameter', async () => {
+      const result = await slackService.searchMessages({
+        query: 'test',
+        after: '2021-11-01',
+      });
+
+      expect(mockUserClient.search.messages).toHaveBeenCalledWith({
+        query: 'test after:2021-11-01',
+        sort: 'score',
+        sort_dir: 'desc',
+        count: 20,
+        page: 1,
+        highlight: false,
+      });
+
+      const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
+      expect(content.statusCode).toBe('10000');
+      expect(content.data.query).toBe('test after:2021-11-01');
+    });
+
+    it('should handle before parameter', async () => {
+      const result = await slackService.searchMessages({
+        query: 'test',
+        before: '2021-12-31',
+      });
+
+      expect(mockUserClient.search.messages).toHaveBeenCalledWith({
+        query: 'test before:2021-12-31',
+        sort: 'score',
+        sort_dir: 'desc',
+        count: 20,
+        page: 1,
+        highlight: false,
+      });
+
+      const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
+      expect(content.statusCode).toBe('10000');
+      expect(content.data.query).toBe('test before:2021-12-31');
+    });
+
+    it('should handle both after and before parameters', async () => {
+      const result = await slackService.searchMessages({
+        query: 'test',
+        after: '2021-11-01',
+        before: '2021-12-31',
+      });
+
+      expect(mockUserClient.search.messages).toHaveBeenCalledWith({
+        query: 'test after:2021-11-01 before:2021-12-31',
+        sort: 'score',
+        sort_dir: 'desc',
+        count: 20,
+        page: 1,
+        highlight: false,
+      });
+
+      const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
+      expect(content.statusCode).toBe('10000');
+      expect(content.data.query).toBe('test after:2021-11-01 before:2021-12-31');
+    });
+
+    it('should prioritize query string date operators over parameters', async () => {
+      const result = await slackService.searchMessages({
+        query: 'test after:2021-10-01',
+        after: '2021-11-01', // Should be ignored when query already has after:
+        before: '2021-12-31',
+      });
+
+      expect(mockUserClient.search.messages).toHaveBeenCalledWith({
+        query: 'test after:2021-10-01 before:2021-12-31',
+        sort: 'score',
+        sort_dir: 'desc',
+        count: 20,
+        page: 1,
+        highlight: false,
+      });
+
+      const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
+      expect(content.statusCode).toBe('10000');
+      expect(content.data.query).toBe('test after:2021-10-01 before:2021-12-31');
+    });
+
+    it('should handle invalid date format', async () => {
+      const result = await slackService.searchMessages({
+        query: 'test',
+        after: 'invalid-date',
+      });
+
+      expect(result.isError).toBe(true);
+      expect(extractTextContent(result.content?.[0])).toContain('Invalid date format');
+    });
+
+    it('should handle before date earlier than after date', async () => {
+      const result = await slackService.searchMessages({
+        query: 'test',
+        after: '2021-12-01',
+        before: '2021-11-01', // Earlier than after
+      });
+
+      expect(result.isError).toBe(true);
+      expect(extractTextContent(result.content?.[0])).toContain('before date must be after the after date');
+    });
+
+    it('should handle relative date formats', async () => {
+      const result = await slackService.searchMessages({
+        query: 'test',
+        after: 'yesterday',
+        before: 'today',
+      });
+
+      expect(mockUserClient.search.messages).toHaveBeenCalledWith({
+        query: 'test after:yesterday before:today',
+        sort: 'score',
+        sort_dir: 'desc',
+        count: 20,
+        page: 1,
+        highlight: false,
+      });
+
+      const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
+      expect(content.statusCode).toBe('10000');
+      expect(content.data.query).toBe('test after:yesterday before:today');
+    });
+
+    it('should handle query with existing before operator and parameter after', async () => {
+      const result = await slackService.searchMessages({
+        query: 'test before:2021-12-31',
+        after: '2021-11-01',
+      });
+
+      expect(mockUserClient.search.messages).toHaveBeenCalledWith({
+        query: 'test before:2021-12-31 after:2021-11-01',
+        sort: 'score',
+        sort_dir: 'desc',
+        count: 20,
+        page: 1,
+        highlight: false,
+      });
+
+      const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
+      expect(content.statusCode).toBe('10000');
+      expect(content.data.query).toBe('test before:2021-12-31 after:2021-11-01');
+    });
+  });
 });
 
 // Note: Additional test for missing SLACK_USER_TOKEN would require more complex mock setup

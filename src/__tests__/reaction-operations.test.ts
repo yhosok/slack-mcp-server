@@ -109,7 +109,7 @@ describe('ReactionService - Reaction Operations', () => {
     mockWebClientInstance = createMockWebClient();
 
     // Create mock user service for infrastructure
-    const mockInfraUserService = {
+    const mockConsolidatedUserService = {
       getUserInfo: jest.fn(() =>
         Promise.resolve({
           success: true,
@@ -232,8 +232,8 @@ describe('ReactionService - Reaction Operations', () => {
           rateLimitsByTier: new Map(),
         }),
       },
-      userService: mockInfraUserService, // Legacy support
-      infrastructureUserService: mockInfraUserService,
+      userService: mockConsolidatedUserService, // Legacy support
+      infrastructureUserService: mockConsolidatedUserService,
       domainUserService: mockDomainUserService,
       messageService: mockMessageService, // Add message service for delegation
       requestHandler: {

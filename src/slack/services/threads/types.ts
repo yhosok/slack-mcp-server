@@ -16,26 +16,27 @@ import type {
   ThreadMetricsResult,
   ThreadsByParticipantsResult,
 } from '../../types/outputs/threads.js';
-import type { UserService as DomainUserService } from '../users/types.js';
-import type { UserService as InfraUserService } from '../../infrastructure/user/types.js';
+import type { UserService } from '../users/types.js';
 import type { ParticipantTransformationService } from './participant-transformation-service.js';
 
 /**
  * Dependencies for thread service operations
- * Enhanced with both Infrastructure and Domain user services for efficient operations
+ * Enhanced with consolidated user service (eliminates duplication)
  */
 export interface ThreadServiceDependencies extends InfrastructureServices {
   /**
-   * Infrastructure user service - lightweight display name operations
-   * Use for: Quick display name resolution, bulk operations, caching
+   * Consolidated user service - supports both lightweight utilities and TypeSafeAPI operations
+   * Provides: Display name resolution, bulk operations, caching, complete user information
+   * Eliminates the need for separate infrastructure and domain user services
    */
-  infrastructureUserService: InfraUserService;
+  infrastructureUserService: UserService;
 
   /**
-   * Domain user service - complete TypeSafeAPI-compliant user operations
-   * Use for: Full user information when detailed data is required
+   * Consolidated user service (same as infrastructureUserService)
+   * Maintained for backward compatibility during transition period
+   * TODO: Remove this after updating all service implementations
    */
-  domainUserService: DomainUserService;
+  domainUserService: UserService;
 
   /**
    * Participant transformation service - centralized participant building logic

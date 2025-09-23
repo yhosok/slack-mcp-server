@@ -123,13 +123,12 @@ describe('User Service Type Integration - Post-TDD Validation', () => {
         expect(createUserService).toBeDefined();
         expect(typeof createUserService).toBe('function');
 
-        // Create a user service instance with mock dependencies
+        // Create a user service instance with correct dependencies
         const mockDeps = {
-          clientManager: { getClient: jest.fn() },
-          requestHandler: { handleServiceRequest: jest.fn() },
+          client: mockWebClient, // Direct client injection for Domain pattern
         };
 
-        const userService = createUserService(mockDeps as any);
+        const userService = createUserService(mockDeps);
         expect(userService).toBeDefined();
         expect(typeof userService.getUserInfo).toBe('function');
       } catch (error) {
@@ -381,11 +380,10 @@ describe('User Service Type Integration - Post-TDD Validation', () => {
 
         // Mock dependencies and test service creation
         const mockDeps = {
-          clientManager: { getClient: jest.fn() },
-          requestHandler: { handleServiceRequest: jest.fn() },
+          client: mockWebClient, // Direct client injection for Domain pattern
         };
 
-        const userService = createUserService(mockDeps as any);
+        const userService = createUserService(mockDeps);
         expect(userService).toBeDefined();
         expect(typeof userService.getUserInfo).toBe('function');
         expect(typeof userService.getDisplayName).toBe('function');

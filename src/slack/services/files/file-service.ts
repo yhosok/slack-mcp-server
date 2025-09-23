@@ -21,24 +21,25 @@ import {
   type ParsedSearchQuery,
 } from '../../utils/search-query-parser.js';
 import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
+import { validateDateParameters } from '../../../utils/date-validation.js';
 import type { FileService, FileServiceDependencies } from './types.js';
 import {
   createServiceSuccess,
   createTypedServiceError,
   enforceServiceOutput,
 } from '../../types/typesafe-api-patterns.js';
+import {
+  createServiceMethod,
+  type ServiceMethodContext,
+} from '../../infrastructure/service-patterns/index.js';
 import type {
   UploadFileResult,
   ListFilesResult,
-  FileInfoResult,
-  DeleteFileResult,
   ShareFileResult,
   FileAnalysisResult,
   SearchFilesResult,
   UploadFileOutput,
   ListFilesOutput,
-  FileInfoOutput,
-  DeleteFileOutput,
   ShareFileOutput,
   FileAnalysisOutput,
   SearchFilesOutput,
@@ -594,44 +595,18 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
    * Retrieves comprehensive metadata about a specific file including
    * optional comments if requested.
    *
-   * @param args - Unknown input (validated at runtime using GetFileInfoSchema)
-   * @returns ServiceResult with detailed file information
-   *
-   * @example Basic File Info
-   * ```typescript
-   * const result = await getFileInfo({
-   *   file_id: 'F1234567890'
-   * });
-   * ```
-   *
-   * @example File Info with Comments
-   * ```typescript
-   * const result = await getFileInfo({
-   *   file_id: 'F1234567890',
-   *   include_comments: true
-   * });
-   * ```
+   * REFACTORED: Now uses shared service method factory to eliminate duplication
    */
-  const getFileInfo = async (args: unknown): Promise<FileInfoResult> => {
-    try {
-      // Validate input using TypeSafeAPI validation pattern
-      const input = validateInput(GetFileInfoSchema, args);
-
-      const client = deps.clientManager.getClientForOperation('read');
-
+  const getFileInfo = createServiceMethod({
+    schema: GetFileInfoSchema,
+    operation: 'read',
+    handler: async (input, { client }: ServiceMethodContext) => {
       const result = await client.files.info({
         file: input.file_id,
       });
 
       if (!result.file) {
-        return createTypedServiceError(
-          'NOT_FOUND_ERROR',
-          'File not found',
-          'The requested file does not exist or is not accessible',
-          {
-            fileId: input.file_id,
-          }
-        );
+        throw new Error(`File with ID '${input.file_id}' not found or not accessible`);
       }
 
       // Get file comments if requested
@@ -647,7 +622,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       }
 
       // Create TypeSafeAPI-compliant output
-      const output: FileInfoOutput = enforceServiceOutput({
+      return enforceServiceOutput({
         id: result.file.id || '',
         name: result.file.name || '',
         title: result.file.title || '',
@@ -675,31 +650,11 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           timestamp: comment.timestamp,
         })),
       });
-
-      return createServiceSuccess(output, 'File information retrieved successfully');
-    } catch (error) {
-      if (error instanceof SlackAPIError) {
-        return createTypedServiceError(
-          'API_ERROR',
-          error.message,
-          'Failed to retrieve file information',
-          {
-            slackErrorCode: error.code,
-            statusCode: error.statusCode,
-          }
-        );
-      }
-
-      return createTypedServiceError(
-        'UNKNOWN_ERROR',
-        `Failed to get file info: ${error}`,
-        'Unexpected error during file information retrieval',
-        {
-          errorType: error?.constructor?.name || 'Unknown',
-        }
-      );
-    }
-  };
+    },
+    successMessage: 'File information retrieved successfully',
+    methodName: 'getFileInfo',
+    errorPrefix: 'Failed to retrieve file information',
+  }, { clientManager: deps.clientManager });
 
   /**
    * Delete a file (where permitted) using TypeSafeAPI + ts-pattern type safety
@@ -707,66 +662,32 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
    * Removes a file from the workspace if the user has appropriate permissions.
    * This is a simple success/failure operation with context preservation.
    *
-   * @param args - Unknown input (validated at runtime using DeleteFileSchema)
-   * @returns ServiceResult with deletion confirmation
-   *
-   * @example File Deletion
-   * ```typescript
-   * const result = await deleteFile({
-   *   file_id: 'F1234567890'
-   * });
-   * ```
+   * REFACTORED: Now uses shared service method factory to eliminate duplication
    */
-  const deleteFile = async (args: unknown): Promise<DeleteFileResult> => {
-    try {
-      // Validate input using TypeSafeAPI validation pattern
-      const input = validateInput(DeleteFileSchema, args);
-
-      const client = deps.clientManager.getClientForOperation('write');
-
+  const deleteFile = createServiceMethod({
+    schema: DeleteFileSchema,
+    operation: 'write',
+    handler: async (input, { client }: ServiceMethodContext) => {
       const result = await client.files.delete({
         file: input.file_id,
       });
 
       if (!result.ok) {
-        return createTypedServiceError(
-          'API_ERROR',
-          `Failed to delete file: ${result.error || 'Unknown error'}`,
-          'File deletion failed',
-          {
-            slackError: result.error,
-            fileId: input.file_id,
-          }
-        );
+        throw new Error(`Failed to delete file: ${result.error || 'Unknown error'}`);
       }
 
       // Create TypeSafeAPI-compliant output
-      const output: DeleteFileOutput = enforceServiceOutput({
+      return enforceServiceOutput({
         success: true,
         fileId: input.file_id,
         message: 'File deleted successfully',
         timestamp: new Date().toISOString(),
       });
-
-      return createServiceSuccess(output, 'File deleted successfully');
-    } catch (error) {
-      if (error instanceof SlackAPIError) {
-        return createTypedServiceError('API_ERROR', error.message, 'Failed to delete file', {
-          slackErrorCode: error.code,
-          statusCode: error.statusCode,
-        });
-      }
-
-      return createTypedServiceError(
-        'UNKNOWN_ERROR',
-        `Failed to delete file: ${error}`,
-        'Unexpected error during file deletion',
-        {
-          errorType: error?.constructor?.name || 'Unknown',
-        }
-      );
-    }
-  };
+    },
+    successMessage: 'File deleted successfully',
+    methodName: 'deleteFile',
+    errorPrefix: 'Failed to delete file',
+  }, { clientManager: deps.clientManager });
 
   /**
    * Share an existing file to additional channels using TypeSafeAPI + ts-pattern type safety
@@ -1093,6 +1014,17 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
     try {
       // Validate input using TypeSafeAPI validation pattern
       const input = validateInput(SearchFilesSchema, args);
+
+      // Validate date parameters
+      const dateValidationError = validateDateParameters(input.after, input.before);
+      if (dateValidationError) {
+        return createTypedServiceError(
+          'VALIDATION_ERROR',
+          dateValidationError,
+          'Invalid date parameters',
+          { after: input.after, before: input.before }
+        );
+      }
 
       // Check if search API is available
       try {

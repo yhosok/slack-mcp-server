@@ -11,6 +11,7 @@
  * - Action item extraction and prioritization
  * - Timeline analysis and event processing
  * - Comprehensive formatting utilities
+ * - Shared text processing utilities for reuse across analysis functions
  */
 
 // Thread Analysis Functions
@@ -26,6 +27,11 @@ export * from './formatters/general-formatters.js';
 export * from './formatters/thread-formatters.js';
 export * from './formatters/file-formatters.js';
 export * from './formatters/types.js';
+
+// Shared Utilities (for reuse across analysis functions)
+// Note: These are available for internal use but not re-exported to avoid conflicts
+// with existing exports from thread analysis functions. Import directly from
+// shared utilities when needed.
 
 // Re-export key types for convenience
 export type {
@@ -46,6 +52,12 @@ export type {
   FileAnalysisFormatterOptions,
   FormattedResult,
 } from './formatters/types.js';
+
+// Shared utility types - available for direct import but not re-exported
+// to avoid conflicts with existing exports
+// export type { MultilingualContent } from './shared/text-processing/multilingual-processor.js';
+// export type { DistributionStats, DistributionFormatterConfig } from './shared/formatters/distribution-formatter.js';
+// export type { FileInfo, SizeRangeStats } from './shared/formatters/statistical-formatter.js';
 
 /**
  * High-level analysis orchestration functions

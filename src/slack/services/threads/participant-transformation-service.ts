@@ -25,10 +25,10 @@ export interface ParticipantTransformationServiceDependencies {
   domainUserService: {
     getUserInfo(args: { user: string }): Promise<ServiceResult<SlackUser>>;
   };
-  /** Infrastructure user service for efficient bulk operations */
+  /** Consolidated user service for efficient bulk operations */
   infrastructureUserService: {
     bulkGetDisplayNames(userIds: string[]): Promise<ReadonlyMap<string, string>>;
-    getUserInfo(userId: string): Promise<SlackUser>;
+    getUserInfoDirect(userId: string): Promise<SlackUser>;
   };
 }
 

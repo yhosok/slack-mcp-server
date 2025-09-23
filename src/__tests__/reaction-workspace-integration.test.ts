@@ -16,9 +16,8 @@ import type {
   SlackClientManager,
   RateLimitService,
   RequestHandler,
-  UserService as InfraUserService,
 } from '../slack/infrastructure/index.js';
-import type { UserService as DomainUserService } from '../slack/services/users/types.js';
+import type { UserService } from '../slack/services/users/types.js';
 import type { MessageService } from '../slack/services/messages/types.js';
 import { createServiceSuccess } from '../slack/types/typesafe-api-patterns.js';
 import type { SlackUser } from '../slack/types/core/users.js';
@@ -37,8 +36,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
   let mockClientManager: jest.Mocked<SlackClientManager>;
   let mockRateLimitService: jest.Mocked<RateLimitService>;
   let mockRequestHandler: jest.Mocked<RequestHandler>;
-  let mockInfraUserService: jest.Mocked<InfraUserService>;
-  let mockDomainUserService: jest.Mocked<DomainUserService>;
+  let mockUserService: jest.Mocked<UserService>;
   let mockMessageService: jest.Mocked<MessageService>;
   let mockClient: jest.Mocked<WebClient>;
 
@@ -66,16 +64,16 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
       },
     } as unknown as jest.Mocked<WebClient>;
 
-    // Mock Infrastructure User Service (lightweight)
-    mockInfraUserService = {
+    // Mock Consolidated User Service (supports both Infrastructure and Domain patterns)
+    mockUserService = {
+      // Infrastructure pattern methods
       getDisplayName: jest.fn(),
+      bulkGetDisplayNames: jest.fn(),
+      getUserInfoDirect: jest.fn(),
+      clearCache: jest.fn(),
+      // Domain pattern methods
       getUserInfo: jest.fn(),
-    } as unknown as jest.Mocked<InfraUserService>;
-
-    // Mock Domain User Service (TypeSafeAPI-compliant)
-    mockDomainUserService = {
-      getUserInfo: jest.fn(),
-    } as unknown as jest.Mocked<DomainUserService>;
+    } as unknown as jest.Mocked<UserService>;
 
     // Mock Message Service (TypeSafeAPI-compliant)
     mockMessageService = {
@@ -105,7 +103,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
 
     // Setup default mocks
     mockClientManager.getClientForOperation.mockReturnValue(mockClient);
-    mockInfraUserService.getDisplayName.mockResolvedValue('Display Name');
+    mockUserService.getDisplayName.mockResolvedValue('Display Name');
     const mockSlackUser: SlackUser = {
       id: 'U123',
       team_id: 'T123',
@@ -146,7 +144,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
       tz_offset: -18000,
     };
 
-    mockDomainUserService.getUserInfo.mockResolvedValue(
+    mockUserService.getUserInfo.mockResolvedValue(
       createServiceSuccess(mockSlackUser, 'User info retrieved')
     );
     mockRateLimitService.getMetrics.mockReturnValue({
@@ -165,9 +163,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         clientManager: mockClientManager,
         rateLimitService: mockRateLimitService,
         requestHandler: mockRequestHandler,
-        userService: mockInfraUserService, // Legacy - still included for compatibility
-        infrastructureUserService: mockInfraUserService,
-        domainUserService: mockDomainUserService,
+        userService: mockUserService, // Legacy - still included for compatibility
+        infrastructureUserService: mockUserService,
+        domainUserService: mockUserService,
         messageService: mockMessageService,
         cacheService: null,
         relevanceScorer: null,
@@ -188,9 +186,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         clientManager: mockClientManager,
         rateLimitService: mockRateLimitService,
         requestHandler: mockRequestHandler,
-        userService: mockInfraUserService, // Legacy - still included for compatibility
-        infrastructureUserService: mockInfraUserService,
-        domainUserService: mockDomainUserService,
+        userService: mockUserService, // Legacy - still included for compatibility
+        infrastructureUserService: mockUserService,
+        domainUserService: mockUserService,
         messageService: mockMessageService,
         cacheService: null,
         relevanceScorer: null,
@@ -227,7 +225,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
       });
 
       // This should now pass because we expect infrastructureUserService to be called
-      expect(mockInfraUserService.getDisplayName).toHaveBeenCalled();
+      expect(mockUserService.getDisplayName).toHaveBeenCalled();
     });
 
     test('Should use domainUserService for detailed user information', async () => {
@@ -235,9 +233,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         clientManager: mockClientManager,
         rateLimitService: mockRateLimitService,
         requestHandler: mockRequestHandler,
-        userService: mockInfraUserService, // Legacy - still included for compatibility
-        infrastructureUserService: mockInfraUserService,
-        domainUserService: mockDomainUserService,
+        userService: mockUserService, // Legacy - still included for compatibility
+        infrastructureUserService: mockUserService,
+        domainUserService: mockUserService,
         messageService: mockMessageService,
         cacheService: null,
         relevanceScorer: null,
@@ -285,9 +283,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         clientManager: mockClientManager,
         rateLimitService: mockRateLimitService,
         requestHandler: mockRequestHandler,
-        userService: mockInfraUserService, // Legacy - still included for compatibility
-        infrastructureUserService: mockInfraUserService,
-        domainUserService: mockDomainUserService,
+        userService: mockUserService, // Legacy - still included for compatibility
+        infrastructureUserService: mockUserService,
+        domainUserService: mockUserService,
         cacheService: null,
         relevanceScorer: null,
         config: {
@@ -306,9 +304,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         clientManager: mockClientManager,
         rateLimitService: mockRateLimitService,
         requestHandler: mockRequestHandler,
-        userService: mockInfraUserService, // Legacy - still included for compatibility
-        infrastructureUserService: mockInfraUserService,
-        domainUserService: mockDomainUserService,
+        userService: mockUserService, // Legacy - still included for compatibility
+        infrastructureUserService: mockUserService,
+        domainUserService: mockUserService,
         cacheService: null,
         relevanceScorer: null,
         config: {
@@ -348,9 +346,9 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         clientManager: mockClientManager,
         rateLimitService: mockRateLimitService,
         requestHandler: mockRequestHandler,
-        userService: mockInfraUserService, // Legacy - still included for compatibility
-        infrastructureUserService: mockInfraUserService,
-        domainUserService: mockDomainUserService,
+        userService: mockUserService, // Legacy - still included for compatibility
+        infrastructureUserService: mockUserService,
+        domainUserService: mockUserService,
         cacheService: null,
         relevanceScorer: null,
         config: {
@@ -389,7 +387,7 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
       });
 
       // This should now pass because we expect domainUserService to be called for detailed user analysis
-      expect(mockDomainUserService.getUserInfo).toHaveBeenCalled();
+      expect(mockUserService.getUserInfo).toHaveBeenCalled();
     });
   });
 
@@ -403,16 +401,16 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         clientManager: mockClientManager,
         rateLimitService: mockRateLimitService,
         requestHandler: mockRequestHandler,
-        infrastructureUserService: mockInfraUserService,
-        domainUserService: mockDomainUserService,
+        infrastructureUserService: mockUserService,
+        domainUserService: mockUserService,
       };
 
       const expectedWorkspaceDeps = {
         clientManager: mockClientManager,
         rateLimitService: mockRateLimitService,
         requestHandler: mockRequestHandler,
-        infrastructureUserService: mockInfraUserService,
-        domainUserService: mockDomainUserService,
+        infrastructureUserService: mockUserService,
+        domainUserService: mockUserService,
       };
 
       // These assertions should fail until we update the service factory
@@ -432,22 +430,22 @@ describe('Phase 4: Reaction and Workspace Services Dependency Integration', () =
         clientManager: SlackClientManager;
         rateLimitService: RateLimitService;
         requestHandler: RequestHandler;
-        infrastructureUserService: InfraUserService;
-        domainUserService: DomainUserService;
+        infrastructureUserService: UserService;
+        domainUserService: UserService;
       }
 
       // Test that all services follow this pattern
       const _threadDeps = {
-        infrastructureUserService: mockInfraUserService,
-        domainUserService: mockDomainUserService,
+        infrastructureUserService: mockUserService,
+        domainUserService: mockUserService,
       } as any; // Should pass (already implemented)
       const reactionDeps = {
-        infrastructureUserService: mockInfraUserService,
-        domainUserService: mockDomainUserService,
+        infrastructureUserService: mockUserService,
+        domainUserService: mockUserService,
       } as any; // Should now pass (implemented)
       const workspaceDeps = {
-        infrastructureUserService: mockInfraUserService,
-        domainUserService: mockDomainUserService,
+        infrastructureUserService: mockUserService,
+        domainUserService: mockUserService,
       } as any; // Should now pass (implemented)
 
       // These should now pass for all services

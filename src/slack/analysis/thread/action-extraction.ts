@@ -14,7 +14,7 @@ import type {
   RequestPatternInfo,
   LineScoreInfo,
 } from './types.js';
-import { normalizeConjugation } from './topic-extraction.js';
+import { normalizeConjugation } from '../shared/text-processing/japanese-text-processor.js';
 
 /**
  * Default bullet point configuration

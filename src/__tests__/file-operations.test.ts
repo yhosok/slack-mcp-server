@@ -1369,5 +1369,141 @@ describe('SlackService - File Operations', () => {
       expect(result.isError).toBe(true);
       expect(extractTextContent(result.content[0])).toContain('Validation failed');
     });
+
+    // TDD Red Phase: Period parameter tests for search files
+    describe('period parameters (after/before)', () => {
+      beforeEach(() => {
+        const mockSearchResult = {
+          files: {
+            matches: [
+              {
+                id: 'F1234567890',
+                name: 'period-test.pdf',
+                title: 'Test File',
+                filetype: 'pdf',
+                size: 2048,
+                url_private: 'https://files.slack.com/files-pri/period-test',
+                user: 'U1234567890',
+                timestamp: 1638316800, // 2021-12-01
+              },
+            ],
+            total: 1,
+            paging: { count: 1, total: 1, page: 1, pages: 1 },
+          },
+        };
+        mockWebClientInstance.search.files.mockResolvedValue({ ok: true, ...mockSearchResult });
+      });
+
+      it('should handle after parameter', async () => {
+        const result = await slackService.searchFiles({
+          query: 'test',
+          after: '2021-11-01',
+        });
+
+        const searchCall = mockWebClientInstance.search.files.mock.calls[0][0];
+        expect(searchCall.query).toBe('test after:2021-11-01');
+        expect(searchCall.count).toBe(20);
+        expect(searchCall.sort).toBe('timestamp');
+
+        const content = extractTextContent(result.content?.[0]);
+        expect(content).toContain('total');
+        expect(content).toContain('1');
+      });
+
+      it('should handle before parameter', async () => {
+        const _result = await slackService.searchFiles({
+          query: 'test',
+          before: '2021-12-31',
+        });
+
+        const searchCall = mockWebClientInstance.search.files.mock.calls[0][0];
+        expect(searchCall.query).toBe('test before:2021-12-31');
+        expect(searchCall.count).toBe(20);
+        expect(searchCall.sort).toBe('timestamp');
+      });
+
+      it('should handle both after and before parameters', async () => {
+        const _result = await slackService.searchFiles({
+          query: 'test',
+          after: '2021-11-01',
+          before: '2021-12-31',
+        });
+
+        const searchCall = mockWebClientInstance.search.files.mock.calls[0][0];
+        expect(searchCall.query).toBe('test after:2021-11-01 before:2021-12-31');
+      });
+
+      it('should prioritize query string date operators over parameters', async () => {
+        const _result = await slackService.searchFiles({
+          query: 'test after:2021-10-01',
+          after: '2021-11-01', // Should be ignored when query already has after:
+          before: '2021-12-31',
+        });
+
+        const searchCall = mockWebClientInstance.search.files.mock.calls[0][0];
+        expect(searchCall.query).toBe('test after:2021-10-01 before:2021-12-31');
+      });
+
+      it('should handle invalid date format', async () => {
+        const result = await slackService.searchFiles({
+          query: 'test',
+          after: 'invalid-date',
+        });
+
+        expect(result.isError).toBe(true);
+        expect(extractTextContent(result.content?.[0])).toContain('Invalid date format');
+      });
+
+      it('should handle before date earlier than after date', async () => {
+        const result = await slackService.searchFiles({
+          query: 'test',
+          after: '2021-12-01',
+          before: '2021-11-01', // Earlier than after
+        });
+
+        expect(result.isError).toBe(true);
+        expect(extractTextContent(result.content?.[0])).toContain('before date must be after the after date');
+      });
+
+      it('should combine period parameters with other filters', async () => {
+        const _result = await slackService.searchFiles({
+          query: 'quarterly report',
+          types: 'pdf,xlsx',
+          user: 'U1234567890',
+          channel: 'C1234567890',
+          after: '2021-10-01',
+          before: '2021-12-31',
+        });
+
+        const searchCall = mockWebClientInstance.search.files.mock.calls[0][0];
+        expect(searchCall.query).toContain('quarterly report');
+        expect(searchCall.query).toContain('filetype:pdf OR filetype:xlsx');
+        expect(searchCall.query).toContain('from:<@U1234567890>');
+        expect(searchCall.query).toContain('in:#C1234567890');
+        expect(searchCall.query).toContain('after:2021-10-01');
+        expect(searchCall.query).toContain('before:2021-12-31');
+      });
+
+      it('should handle relative date formats', async () => {
+        const _result = await slackService.searchFiles({
+          query: 'test',
+          after: 'yesterday',
+          before: 'today',
+        });
+
+        const searchCall = mockWebClientInstance.search.files.mock.calls[0][0];
+        expect(searchCall.query).toBe('test after:yesterday before:today');
+      });
+
+      it('should handle query with existing before operator and parameter after', async () => {
+        const _result = await slackService.searchFiles({
+          query: 'test before:2021-12-31',
+          after: '2021-11-01',
+        });
+
+        const searchCall = mockWebClientInstance.search.files.mock.calls[0][0];
+        expect(searchCall.query).toBe('test before:2021-12-31 after:2021-11-01');
+      });
+    });
   });
 });
