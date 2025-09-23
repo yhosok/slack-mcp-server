@@ -614,6 +614,118 @@ describe('SlackService', () => {
         const content = extractTextContent(result.content?.[0]);
         expect(content).toBeDefined();
       });
+
+      // TDD Red Phase: Period parameter tests for search threads
+      describe('period parameters (after/before)', () => {
+        beforeEach(() => {
+          const mockSearchResults = {
+            ok: true,
+            messages: {
+              matches: [
+                {
+                  ts: '1638316800.123456', // 2021-12-01
+                  thread_ts: '1638316800.123456',
+                  text: 'Thread within period',
+                  channel: { id: 'C1234567890' },
+                  score: 0.95,
+                },
+              ],
+            },
+          };
+          const mockThreadReplies = [
+            {
+              ts: '1638316800.123456',
+              text: 'Thread message within period',
+              user: 'U1234567890',
+            },
+          ];
+          mockWebClientInstance.search.messages.mockResolvedValue(mockSearchResults);
+          mockWebClientInstance.conversations.replies.mockResolvedValue({
+            ok: true,
+            messages: mockThreadReplies,
+          });
+        });
+
+        it('should handle after parameter', async () => {
+          const result = await slackService.searchThreads({
+            query: 'test',
+            after: '2021-11-01',
+          });
+
+          expect(result.content).toBeDefined();
+          const content = extractTextContent(result.content?.[0]);
+          expect(content).toBeDefined();
+          // Verify that the search was called (implementation may vary but should not fail)
+        });
+
+        it('should handle before parameter', async () => {
+          const result = await slackService.searchThreads({
+            query: 'test',
+            before: '2021-12-31',
+          });
+
+          expect(result.content).toBeDefined();
+          const content = extractTextContent(result.content?.[0]);
+          expect(content).toBeDefined();
+        });
+
+        it('should handle both after and before parameters', async () => {
+          const result = await slackService.searchThreads({
+            query: 'test',
+            after: '2021-11-01',
+            before: '2021-12-31',
+          });
+
+          expect(result.content).toBeDefined();
+          const content = extractTextContent(result.content?.[0]);
+          expect(content).toBeDefined();
+        });
+
+        it('should handle invalid date format', async () => {
+          const result = await slackService.searchThreads({
+            query: 'test',
+            after: 'invalid-date',
+          });
+
+          expect(result.isError).toBe(true);
+          expect(extractTextContent(result.content?.[0])).toContain('Invalid date format');
+        });
+
+        it('should handle before date earlier than after date', async () => {
+          const result = await slackService.searchThreads({
+            query: 'test',
+            after: '2021-12-01',
+            before: '2021-11-01', // Earlier than after
+          });
+
+          expect(result.isError).toBe(true);
+          expect(extractTextContent(result.content?.[0])).toContain('before date must be after the after date');
+        });
+
+        it('should handle relative date formats', async () => {
+          const result = await slackService.searchThreads({
+            query: 'test',
+            after: 'yesterday',
+            before: 'today',
+          });
+
+          expect(result.content).toBeDefined();
+          const content = extractTextContent(result.content?.[0]);
+          expect(content).toBeDefined();
+        });
+
+        it('should prioritize query string date operators over parameters', async () => {
+          const result = await slackService.searchThreads({
+            query: 'test after:2021-10-01',
+            after: '2021-11-01', // Should be ignored when query already has after:
+            before: '2021-12-31',
+          });
+
+          expect(result.content).toBeDefined();
+          const content = extractTextContent(result.content?.[0]);
+          expect(content).toBeDefined();
+        });
+      });
     });
   });
 

@@ -26,6 +26,7 @@ import {
   type SearchQueryOptions,
 } from '../../utils/search-query-parser.js';
 import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
+import { validateDateParameters } from '../../../utils/date-validation.js';
 import type { ThreadService, ThreadServiceDependencies } from './types.js';
 import {
   formatFindThreadsResponse as _formatFindThreadsResponse,
@@ -548,6 +549,12 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const searchThreads = async (args: unknown): Promise<ThreadSearchResult> => {
     try {
       const input = validateInput(SearchThreadsSchema, args);
+
+      // Validate date parameters
+      const dateValidationError = validateDateParameters(input.after, input.before);
+      if (dateValidationError) {
+        return createServiceError(dateValidationError, 'Invalid date parameters');
+      }
 
       // Check if search API is available
       deps.clientManager.checkSearchApiAvailability(
@@ -1849,6 +1856,12 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
   const getThreadsByParticipants = async (args: unknown): Promise<ThreadsByParticipantsResult> => {
     try {
       const input = validateInput(GetThreadsByParticipantsSchema, args);
+
+      // Validate date parameters
+      const dateValidationError = validateDateParameters(input.after, input.before);
+      if (dateValidationError) {
+        return createServiceError(dateValidationError, 'Invalid date parameters');
+      }
 
       // Strategy 1: Use findThreadsInChannel for single-channel searches (more reliable)
       if (input.channel) {

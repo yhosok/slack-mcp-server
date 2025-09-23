@@ -140,6 +140,8 @@ export const SearchMessagesSchema = z
       .describe('Number of results to return (1-100)'),
     page: z.number().min(1).max(100).optional().default(1).describe('Page number for pagination'),
     highlight: z.boolean().optional().default(false).describe('Whether to highlight search terms'),
+    after: z.string().optional().describe('Search after this date (YYYY-MM-DD)'),
+    before: z.string().optional().describe('Search before this date (YYYY-MM-DD)'),
   })
   .describe('Search for messages in the Slack workspace');
 
@@ -1019,6 +1021,7 @@ export type SendMessageInput = z.infer<typeof SendMessageSchema>;
 export type ListChannelsInput = z.infer<typeof ListChannelsSchema>;
 export type GetChannelHistoryInput = z.infer<typeof GetChannelHistorySchema>;
 export type GetUserInfoInput = z.infer<typeof GetUserInfoSchema>;
+export type SearchMessagesInput = z.infer<typeof SearchMessagesSchema>;
 
 // Thread-specific input types
 export type FindThreadsInChannelInput = z.infer<typeof FindThreadsInChannelSchema>;

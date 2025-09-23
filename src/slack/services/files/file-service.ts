@@ -21,6 +21,7 @@ import {
   type ParsedSearchQuery,
 } from '../../utils/search-query-parser.js';
 import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
+import { validateDateParameters } from '../../../utils/date-validation.js';
 import type { FileService, FileServiceDependencies } from './types.js';
 import {
   createServiceSuccess,
@@ -1093,6 +1094,17 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
     try {
       // Validate input using TypeSafeAPI validation pattern
       const input = validateInput(SearchFilesSchema, args);
+
+      // Validate date parameters
+      const dateValidationError = validateDateParameters(input.after, input.before);
+      if (dateValidationError) {
+        return createTypedServiceError(
+          'VALIDATION_ERROR',
+          dateValidationError,
+          'Invalid date parameters',
+          { after: input.after, before: input.before }
+        );
+      }
 
       // Check if search API is available
       try {

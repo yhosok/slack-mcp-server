@@ -675,6 +675,91 @@ describe('Advanced Thread Features', () => {
       });
     });
 
+    // TDD Red Phase: Additional period parameter tests for getThreadsByParticipants
+    describe('period parameters (after/before) - detailed', () => {
+      it('should handle after parameter only', async () => {
+        const _response = await threadService.getThreadsByParticipants({
+          participants: [testUserId1],
+          after: '2021-11-01',
+        });
+
+        expect(mockWebClientInstance.search.all).toHaveBeenCalledWith({
+          query: expect.stringContaining('after:2021-11-01'),
+          count: 60,
+          sort: 'timestamp',
+          sort_dir: 'desc',
+        });
+
+        // Should not contain before: in query
+        const searchCall = mockWebClientInstance.search.all.mock.calls[0][0];
+        expect(searchCall.query).not.toContain('before:');
+      });
+
+      it('should handle before parameter only', async () => {
+        await threadService.getThreadsByParticipants({
+          participants: [testUserId1],
+          before: '2021-12-31',
+        });
+
+        expect(mockWebClientInstance.search.all).toHaveBeenCalledWith({
+          query: expect.stringContaining('before:2021-12-31'),
+          count: 60,
+          sort: 'timestamp',
+          sort_dir: 'desc',
+        });
+
+        // Should not contain after: in query
+        const searchCall = mockWebClientInstance.search.all.mock.calls[0][0];
+        expect(searchCall.query).not.toContain('after:');
+      });
+
+      it('should handle invalid date format in after parameter', async () => {
+        const response = await threadService.getThreadsByParticipants({
+          participants: [testUserId1],
+          after: 'invalid-date',
+        });
+
+        expect(response.isError).toBe(true);
+        expect(getErrorText(response)).toContain('Invalid date format');
+      });
+
+      it('should handle invalid date format in before parameter', async () => {
+        const response = await threadService.getThreadsByParticipants({
+          participants: [testUserId1],
+          before: 'invalid-date',
+        });
+
+        expect(response.isError).toBe(true);
+        expect(getErrorText(response)).toContain('Invalid date format');
+      });
+
+      it('should handle before date earlier than after date', async () => {
+        const response = await threadService.getThreadsByParticipants({
+          participants: [testUserId1],
+          after: '2021-12-01',
+          before: '2021-11-01', // Earlier than after
+        });
+
+        expect(response.isError).toBe(true);
+        expect(getErrorText(response)).toContain('before date must be after the after date');
+      });
+
+      it('should handle relative date formats', async () => {
+        await threadService.getThreadsByParticipants({
+          participants: [testUserId1],
+          after: 'yesterday',
+          before: 'today',
+        });
+
+        expect(mockWebClientInstance.search.all).toHaveBeenCalledWith({
+          query: expect.stringMatching(/after:yesterday.*before:today/),
+          count: 60,
+          sort: 'timestamp',
+          sort_dir: 'desc',
+        });
+      });
+    });
+
     it('should respect limit parameter', async () => {
       await threadService.getThreadsByParticipants({
         participants: [testUserId1],

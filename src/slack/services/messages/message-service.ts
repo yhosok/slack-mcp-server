@@ -15,6 +15,7 @@ import {
   buildSlackSearchQuery,
   type SearchQueryOptions,
 } from '../../utils/search-query-parser.js';
+import { validateDateParameters } from '../../../utils/date-validation.js';
 import type { MessageService, MessageServiceDependencies } from './types.js';
 import {
   formatSendMessageResponse,
@@ -372,6 +373,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
     }
   };
 
+
   /**
    * Search for messages in the workspace with TypeSafeAPI + ts-pattern type safety
    */
@@ -379,6 +381,12 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
     try {
       // Validate input using TypeSafeAPI validation pattern
       const input = validateInput(SearchMessagesSchema, args);
+
+      // Validate date parameters
+      const dateValidationError = validateDateParameters(input.after, input.before);
+      if (dateValidationError) {
+        return createServiceError(dateValidationError, 'Invalid date parameters');
+      }
 
       // Check if search API is available
       deps.clientManager.checkSearchApiAvailability(
@@ -391,11 +399,17 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       /**
        * Build advanced message search query using the search query parser
        * Supports complex queries with operators, boolean logic, and proper escaping
-       * 
+       *
        * @param query - Raw search query from input
+       * @param after - Optional after date parameter
+       * @param before - Optional before date parameter
        * @returns Enhanced search query with proper Slack syntax
        */
-      const buildAdvancedMessageSearchQuery = (query: string): string => {
+      const buildAdvancedMessageSearchQuery = (
+        query: string,
+        after?: string,
+        before?: string
+      ): string => {
         try {
           // Configure parser options for message search
           const parserOptions: SearchQueryOptions = {
@@ -409,32 +423,72 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
           const parseResult = parseSearchQuery(query, parserOptions);
 
           if (parseResult.success) {
+            const parsedQuery = parseResult.query;
+
+            // Add date operators from parameters if not already present
+            if (after && !parsedQuery.operators.some(op => op.type === 'after')) {
+              parsedQuery.operators.push({
+                type: 'after',
+                value: after,
+                field: 'date'
+              });
+            }
+
+            if (before && !parsedQuery.operators.some(op => op.type === 'before')) {
+              parsedQuery.operators.push({
+                type: 'before',
+                value: before,
+                field: 'date'
+              });
+            }
+
             // Use parsed query and rebuild with proper Slack syntax
-            return buildSlackSearchQuery(parseResult.query, parserOptions);
+            return buildSlackSearchQuery(parsedQuery, parserOptions);
           } else {
-            // Fallback to escaped simple query for legacy compatibility
-            logger.debug('Advanced message search query parsing failed, using simple escaping', {
+            // Fallback to legacy query building with dates
+            logger.debug('Advanced message search query parsing failed, using legacy mode', {
               error: parseResult.error.message,
               query
             });
-            
-            // Use the legacy escape function from the parser for consistency
-            return query.trim();
+
+            return buildLegacyQueryWithDates(query, after, before);
           }
 
         } catch (error) {
-          // Final fallback to simple query for any errors
-          logger.warn('Advanced message search query building failed, falling back to simple query', {
+          // Final fallback to legacy query building for any errors
+          logger.warn('Advanced message search query building failed, falling back to legacy mode', {
             error: error instanceof Error ? error.message : 'Unknown error',
             query
           });
-          
-          return query.trim();
+
+          return buildLegacyQueryWithDates(query, after, before);
         }
       };
 
-      // Build enhanced search query
-      const enhancedQuery = buildAdvancedMessageSearchQuery(input.query);
+      /**
+       * Legacy fallback for building search queries with date parameters
+       * Manually appends date operators when advanced parsing fails
+       */
+      const buildLegacyQueryWithDates = (
+        query: string,
+        after?: string,
+        before?: string
+      ): string => {
+        let searchQuery = query.trim();
+
+        // Add date filters if specified and not already present
+        if (after && !searchQuery.includes('after:')) {
+          searchQuery += ` after:${after}`;
+        }
+        if (before && !searchQuery.includes('before:')) {
+          searchQuery += ` before:${before}`;
+        }
+
+        return searchQuery.trim();
+      };
+
+      // Build enhanced search query with date parameters
+      const enhancedQuery = buildAdvancedMessageSearchQuery(input.query, input.after, input.before);
 
       const searchArgs: SearchAllArguments = {
         query: enhancedQuery,
