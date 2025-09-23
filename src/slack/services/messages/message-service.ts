@@ -28,27 +28,22 @@ import {
   createServiceSuccess,
   createServiceError,
   enforceServiceOutput,
-  type ServiceErrorType as _ServiceErrorType,
-  createTypedServiceError as _createTypedServiceError,
 } from '../../types/typesafe-api-patterns.js';
 import {
-  CacheIntegrationHelper as _CacheIntegrationHelper,
-  CacheKeyBuilder as _CacheKeyBuilder,
+  createServiceMethod,
+  type ServiceMethodContext,
+} from '../../infrastructure/service-patterns/index.js';
+import {
   createCacheIntegrationHelper,
-  type CacheOrFetchOptions as _CacheOrFetchOptions,
 } from '../../infrastructure/cache/cache-integration-helpers.js';
 import type {
-  SendMessageResult,
   MessageSearchResult,
   ChannelHistoryResult,
   ListChannelsResult,
-  ChannelInfoResult,
   MessageImagesResult,
-  SendMessageOutput,
   MessageSearchOutput,
   ChannelHistoryOutput,
   ListChannelsOutput,
-  ChannelInfoOutput,
   MessageImagesOutput,
 } from '../../types/outputs/messages.js';
 import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
@@ -104,42 +99,12 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
    * Sends a text message to a Slack channel, direct message, or thread.
    * Uses bot token for write operations and includes comprehensive error handling.
    *
-   * @param args - Unknown input (validated at runtime using SendMessageSchema)
-   * @returns ServiceResult with send confirmation or error details
-   *
-   * @example Basic Message
-   * ```typescript
-   * const result = await sendMessage({
-   *   channel: 'C1234567890',
-   *   text: 'Hello, team!'
-   * });
-   * ```
-   *
-   * @example Thread Reply
-   * ```typescript
-   * const result = await sendMessage({
-   *   channel: 'C1234567890',
-   *   text: 'Reply to this thread',
-   *   thread_ts: '1234567890.123456'
-   * });
-   * ```
-   *
-   * @example Error Handling
-   * ```typescript
-   * const result = await sendMessage(args);
-   * if (!result.success) {
-   *   console.error(`Send failed: ${result.error}`);
-   *   // Handle specific error cases
-   * }
-   * ```
+   * REFACTORED: Now uses shared service method factory to eliminate duplication
    */
-  const sendMessage = async (args: unknown): Promise<SendMessageResult> => {
-    try {
-      // Validate input using TypeSafeAPI validation pattern
-      const input = validateInput(SendMessageSchema, args);
-
-      const client = deps.clientManager.getClientForOperation('write');
-
+  const sendMessage = createServiceMethod({
+    schema: SendMessageSchema,
+    operation: 'write',
+    handler: async (input, { client }: ServiceMethodContext) => {
       const result = await client.chat.postMessage({
         channel: input.channel,
         text: input.text,
@@ -147,10 +112,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       });
 
       if (!result.ok) {
-        return createServiceError(
-          `Failed to send message: ${result.error}`,
-          'Message delivery failed'
-        );
+        throw new Error(`Failed to send message: ${result.error || 'Unknown error'}`);
       }
 
       // Create TypeSafeAPI-compliant output using existing formatter
@@ -162,26 +124,18 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       });
 
       // Ensure ServiceOutput compliance and create type-safe success result
-      const output: SendMessageOutput = enforceServiceOutput({
+      return enforceServiceOutput({
         success: true,
         channel: result.channel || input.channel,
         ts: result.ts || '',
         message: 'Message sent successfully',
         ...formattedResponse,
       });
-
-      return createServiceSuccess(output, 'Message sent successfully');
-    } catch (error) {
-      if (error instanceof SlackAPIError) {
-        return createServiceError(error.message, 'Message delivery failed');
-      }
-
-      return createServiceError(
-        `Failed to send message: ${error}`,
-        'Unexpected error during message delivery'
-      );
-    }
-  };
+    },
+    successMessage: 'Message sent successfully',
+    methodName: 'sendMessage',
+    errorPrefix: 'Failed to send message',
+  }, { clientManager: deps.clientManager });
 
   /**
    * List channels in the workspace with TypeSafeAPI + ts-pattern type safety
@@ -583,24 +537,23 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
 
   /**
    * Get detailed information about a channel with TypeSafeAPI + ts-pattern type safety
+   *
+   * REFACTORED: Now uses shared service method factory to eliminate duplication
    */
-  const getChannelInfo = async (args: unknown): Promise<ChannelInfoResult> => {
-    try {
-      // Validate input using TypeSafeAPI validation pattern
-      const input = validateInput(GetChannelInfoSchema, args);
-
-      const client = deps.clientManager.getClientForOperation('read');
-
+  const getChannelInfo = createServiceMethod({
+    schema: GetChannelInfoSchema,
+    operation: 'read',
+    handler: async (input, { client }: ServiceMethodContext) => {
       const result = await client.conversations.info({
         channel: input.channel,
       });
 
       if (!result.channel) {
-        return createServiceError('Channel not found', 'Requested channel does not exist');
+        throw new Error('Channel not found');
       }
 
       // Create TypeSafeAPI-compliant output
-      const output: ChannelInfoOutput = enforceServiceOutput({
+      return enforceServiceOutput({
         id: result.channel.id || '',
         name: result.channel.name || '',
         isChannel: result.channel.is_channel,
@@ -614,19 +567,11 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         memberCount: result.channel.num_members,
         members: (result.channel as { members?: string[] })?.members,
       });
-
-      return createServiceSuccess(output, 'Channel information retrieved successfully');
-    } catch (error) {
-      if (error instanceof SlackAPIError) {
-        return createServiceError(error.message, 'Failed to retrieve channel information');
-      }
-
-      return createServiceError(
-        `Failed to get channel info: ${error}`,
-        'Unexpected error during channel information retrieval'
-      );
-    }
-  };
+    },
+    successMessage: 'Channel information retrieved successfully',
+    methodName: 'getChannelInfo',
+    errorPrefix: 'Failed to retrieve channel information',
+  }, { clientManager: deps.clientManager });
 
   /**
    * Get all images from a specific message with TypeSafeAPI + ts-pattern type safety

@@ -1,11 +1,15 @@
 /**
  * Pure sentiment analysis functions for thread messages
  * No side effects, fully testable and functional
+ * Refactored to use shared text processing utilities
  */
 
 import type { SlackMessage } from '../../types/index.js';
 import type { SentimentScore, SentimentAnalysisResult, SentimentConfig } from './types.js';
-import { cleanText, tokenizeText, detectLanguageContent } from './topic-extraction.js';
+import {
+  detectLanguageContent,
+  countWordsInText,
+} from '../shared/text-processing/multilingual-processor.js';
 
 /**
  * Default sentiment analysis configuration with Japanese support
@@ -307,44 +311,9 @@ export function processEmphasisMitigation(
   };
 }
 
-/**
- * Count words in text with multilingual support (English and Japanese)
- *
- * Uses the same tokenization logic as topic extraction for consistency.
- * This function properly handles:
- * - English words separated by spaces
- * - Japanese text including Hiragana, Katakana, and Kanji
- * - Mixed language content
- * - Slack-specific formatting (links, mentions, emoji codes)
- *
- * @param text - Text to count words in
- * @returns Number of meaningful words/tokens
- */
-export function countWordsInText(text: string): number {
-  if (!text || typeof text !== 'string') {
-    return 0;
-  }
-
-  // Clean and tokenize the text using existing multilingual infrastructure
-  const cleanedText = cleanText(text);
-  const tokens = tokenizeText(cleanedText);
-
-  // Filter out empty tokens and single characters (except for valid single-character words)
-  const meaningfulTokens = tokens.filter((token: string) => {
-    if (!token || token.length === 0) {
-      return false;
-    }
-
-    // Allow single character tokens if they are meaningful (numbers, letters, or Japanese characters)
-    if (token.length === 1) {
-      return /[a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(token);
-    }
-
-    return true;
-  });
-
-  return meaningfulTokens.length;
-}
+// Note: countWordsInText is now imported from shared utilities
+// Re-export for backward compatibility
+export { countWordsInText } from '../shared/text-processing/multilingual-processor.js';
 
 /**
  * Count total words in an array of Slack messages with multilingual support
@@ -453,7 +422,7 @@ export function analyzeSentiment(
     }
   }
 
-  // Calculate total words using multilingual word counting
+  // Calculate total words using shared multilingual word counting
   const totalWords = countWordsInText(text);
 
   let sentiment: SentimentScore = 'neutral';

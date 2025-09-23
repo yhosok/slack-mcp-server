@@ -3,23 +3,23 @@ import type { z } from 'zod';
 import {
   createSlackClientManager,
   createRateLimitService,
-  createUserService,
   createRequestHandler,
   convertLogLevel,
   defaultResponseFormatter,
   defaultErrorFormatter,
   CacheServiceFactory,
 } from './index.js';
+import { createUserService } from '../services/users/user-service.js';
 import type {
   SlackClientManager,
   RateLimitService,
-  UserService,
   RequestHandler,
   ClientManagerDependencies,
   ClientConfig,
   CacheService,
   CacheServiceConfig,
 } from './index.js';
+import type { UserService } from '../services/users/types.js';
 import { RelevanceScorer } from '../analysis/search/relevance-scorer.js';
 import type { RelevanceScorerConfig } from '../types/index.js';
 
@@ -154,10 +154,11 @@ export const createInfrastructureServices = (
   // Create client manager
   const clientManager = createSlackClientManager(clientManagerDependencies, rateLimitService);
 
-  // Create Infrastructure User Service - Pure utility for shared user operations
-  // This service provides display name resolution and caching utilities
+  // Create Consolidated User Service using enhanced domain service with Infrastructure pattern
+  // This eliminates duplication by using the domain service with getClient injection
+  // Provides both lightweight utilities and TypeSafeAPI methods in a single service
   // Used by: thread-service, reaction-service, workspace-service, etc.
-  // Role: Infrastructure utility, NOT MCP tool implementation
+  // Role: Dual-purpose service supporting both Infrastructure utilities and Domain operations
   const userService = createUserService({
     getClient: () => clientManager.getClientForOperation('read'),
   });
@@ -190,7 +191,7 @@ export const createInfrastructureServices = (
           handleRequest: async <T>(fn: () => Promise<T>) => await fn(),
         },
         userService: {
-          getUser: async (userId: string) => await userService.getUserInfo(userId),
+          getUser: async (userId: string) => await userService.getUserInfoDirect(userId),
           getUserDisplayName: async (userId: string) => await userService.getDisplayName(userId),
         },
         config: {

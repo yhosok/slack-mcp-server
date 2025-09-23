@@ -175,7 +175,7 @@ describe('SlackService', () => {
       const parsedResponse = JSON.parse(responseText);
 
       expect(parsedResponse.statusCode).toBe('10001');
-      expect(parsedResponse.message).toBe('Message delivery failed');
+      expect(parsedResponse.message).toBe('Failed to send message: Unexpected error occurred');
       expect(parsedResponse.error).toContain('Failed to send message');
       expect(parsedResponse.error).toContain('channel_not_found');
     });

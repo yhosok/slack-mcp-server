@@ -1,34 +1,28 @@
 /**
  * User Service MCP Adapter
- * Following TypeSafeAPI + ts-pattern pattern established in other service adapters
+ * Enhanced to work with consolidated user service (eliminates duplication)
  */
 
-import type { WebClient } from '@slack/web-api';
 import type { MCPToolResult } from '../../../mcp/types.js';
 import { convertToMCPResult } from '../../infrastructure/mcp-adapter-utils.js';
-import { createUserServiceWithMCPTransformation } from './user-service-factory.js';
+import type { UserService } from './types.js';
 
 /**
- * Creates User Service MCP Adapter with Infrastructure Independence
+ * Creates User Service MCP Adapter using consolidated user service
  *
- * Provides the same interface pattern as other service MCP adapters but with
- * direct WebClient dependency injection for Services layer independence:
- * - message-service-mcp-adapter.ts
- * - thread-service-mcp-adapter.ts
- * - file-service-mcp-adapter.ts
- * - reaction-service-mcp-adapter.ts
- * - workspace-service-mcp-adapter.ts
+ * Updated to accept the consolidated user service directly, eliminating the need
+ * for separate infrastructure and domain user services. The consolidated service
+ * already provides both TypeSafeAPI methods and infrastructure utilities.
  */
 export const createUserServiceMCPAdapter = (
-  client: WebClient
+  consolidatedUserService: UserService
 ): {
   getUserInfo: (args: unknown) => Promise<MCPToolResult>;
 } => {
-  const userService = createUserServiceWithMCPTransformation(client);
-
   return {
     async getUserInfo(args: unknown): Promise<MCPToolResult> {
-      const result = await userService.getUserInfo(args);
+      // Use the consolidated service's getUserInfo method (TypeSafeAPI pattern)
+      const result = await consolidatedUserService.getUserInfo(args);
       return convertToMCPResult(result);
     },
   };

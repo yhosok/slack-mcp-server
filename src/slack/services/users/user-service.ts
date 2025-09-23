@@ -1,6 +1,19 @@
 /**
- * User service implementation following TypeSafeAPI + ts-pattern patterns
- * Handles user information retrieval, caching, and SlackUser domain type integration
+ * Consolidated User service implementation supporting both Domain and Infrastructure patterns
+ *
+ * This implementation eliminates duplication by providing both TypeSafeAPI (domain)
+ * and lightweight utility (infrastructure) methods in a single service while maintaining
+ * performance optimizations for different usage patterns.
+ *
+ * **Enhanced Features:**
+ * - Type-safe operations with discriminated union results (domain pattern)
+ * - Direct utility methods for infrastructure consumption (infrastructure pattern)
+ * - Automatic input validation using Zod schemas
+ * - Consistent error handling with ServiceResult patterns
+ * - Dual dependency injection support (direct client or getClient function)
+ * - Efficient caching for display names and user information
+ * - Complete SlackUser domain type mapping
+ * - Performance-optimized dual cache strategy
  */
 
 import { GetUserInfoSchema, validateInput } from '../../../utils/validation.js';
@@ -14,38 +27,57 @@ import {
 import { logger } from '../../../utils/logger.js';
 
 /**
- * Create user service with infrastructure dependencies
+ * Create consolidated user service supporting both Domain and Infrastructure patterns
  *
- * Factory function that creates a TypeSafeAPI-compliant user service with
- * full type safety, error handling, and SlackUser domain type integration.
+ * Factory function that creates a dual-interface user service eliminating the need
+ * for separate infrastructure and domain user services while maintaining performance
+ * and type safety for both usage patterns.
  *
- * Features:
- * - Type-safe operations with discriminated union results
- * - Automatic input validation using Zod schemas
- * - Consistent error handling with ServiceResult patterns
- * - Integration with Slack Web API client management
- * - Efficient caching for display names and user information
- * - Complete SlackUser domain type mapping
+ * @param deps - Dual dependencies (client or getClient function)
+ * @returns Consolidated user service with both Domain and Infrastructure interfaces
  *
- * @param deps - Infrastructure dependencies (client manager, request handler)
- * @returns User service instance with TypeSafeAPI + ts-pattern type safety
- *
- * @example Service Creation
+ * @example Domain Usage (TypeSafeAPI + ts-pattern)
  * ```typescript
  * const userService = createUserService({
- *   clientManager,
- *   requestHandler
+ *   client: webClient
  * });
  *
  * const result = await userService.getUserInfo({ user: 'U1234567890' });
- *
  * match(result)
  *   .with({ success: true }, (success) => console.log('User:', success.data))
  *   .with({ success: false }, (error) => console.error('Failed:', error.error))
  *   .exhaustive();
  * ```
+ *
+ * @example Infrastructure Usage (Direct utilities)
+ * ```typescript
+ * const userService = createUserService({
+ *   getClient: () => clientManager.getClientForOperation('read')
+ * });
+ *
+ * const displayName = await userService.getDisplayName('U1234567890');
+ * const user = await userService.getUserInfoDirect('U1234567890');
+ * ```
  */
 export const createUserService = (deps: UserServiceDependencies): UserService => {
+  // Validate dependencies - ensure at least one client access method is provided
+  if (!deps.client && !deps.getClient) {
+    throw new Error('UserService requires either client or getClient dependency');
+  }
+
+  /**
+   * Get appropriate client for operations (supports both dependency injection patterns)
+   */
+  const getClient = (): import('@slack/web-api').WebClient => {
+    if (deps.client) {
+      return deps.client;
+    }
+    if (deps.getClient) {
+      return deps.getClient();
+    }
+    throw new Error('No client available - invalid UserService configuration');
+  };
+
   // Immutable cache state management for display names
   let userDisplayNameCache = new Map<string, string>();
 
@@ -103,7 +135,7 @@ export const createUserService = (deps: UserServiceDependencies): UserService =>
         return createServiceSuccess(cachedUser, 'User information retrieved from cache');
       }
 
-      const client = deps.client;
+      const client = getClient();
       const result = await client.users.info({ user: input.user });
 
       if (!result.user) {
@@ -172,6 +204,95 @@ export const createUserService = (deps: UserServiceDependencies): UserService =>
   };
 
   /**
+   * Get complete user information directly (Infrastructure pattern)
+   *
+   * Retrieves complete user information without ServiceResult wrapper.
+   * Optimized for infrastructure consumption where direct SlackUser access is needed.
+   *
+   * @param userId - Slack user ID
+   * @returns SlackUser object directly (throws on error)
+   *
+   * @example Infrastructure Usage
+   * ```typescript
+   * try {
+   *   const user = await getUserInfoDirect('U1234567890');
+   *   console.log('User admin status:', user.is_admin);
+   * } catch (error) {
+   *   console.error('Failed to get user:', error);
+   * }
+   * ```
+   */
+  const getUserInfoDirect = async (userId: string): Promise<SlackUser> => {
+    // Check cache first
+    if (userInfoCache.has(userId)) {
+      return userInfoCache.get(userId)!;
+    }
+
+    const client = getClient();
+    const result = await client.users.info({ user: userId });
+
+    if (!result.user) {
+      throw new Error('User not found');
+    }
+
+    // Enhanced validation: Ensure essential fields exist
+    if (!result.user.id) {
+      throw new Error('Invalid user data - missing required ID field');
+    }
+
+    // Map Slack API response to SlackUser domain type with enhanced type safety
+    const slackUser: SlackUser = {
+      id: result.user.id || '',
+      team_id: result.user.team_id || '',
+      name: result.user.name || '',
+      deleted: result.user.deleted || false,
+      color: result.user.color || '',
+      real_name: result.user.real_name || '',
+      tz: result.user.tz || '',
+      tz_label: result.user.tz_label || '',
+      tz_offset: result.user.tz_offset || 0,
+      profile: {
+        avatar_hash: result.user.profile?.avatar_hash || '',
+        status_text: result.user.profile?.status_text || '',
+        status_emoji: result.user.profile?.status_emoji || '',
+        real_name: result.user.profile?.real_name || '',
+        display_name: result.user.profile?.display_name || '',
+        real_name_normalized: result.user.profile?.real_name_normalized || '',
+        display_name_normalized: result.user.profile?.display_name_normalized || '',
+        email: result.user.profile?.email,
+        image_original: result.user.profile?.image_original,
+        image_24: result.user.profile?.image_24 || '',
+        image_32: result.user.profile?.image_32 || '',
+        image_48: result.user.profile?.image_48 || '',
+        image_72: result.user.profile?.image_72 || '',
+        image_192: result.user.profile?.image_192 || '',
+        image_512: result.user.profile?.image_512 || '',
+        team: result.user.profile?.team || '',
+      } as SlackUserProfile,
+      is_admin: result.user.is_admin || false,
+      is_owner: result.user.is_owner || false,
+      is_primary_owner: result.user.is_primary_owner || false,
+      is_restricted: result.user.is_restricted || false,
+      is_ultra_restricted: result.user.is_ultra_restricted || false,
+      is_bot: result.user.is_bot || false,
+      is_app_user: result.user.is_app_user || false,
+      updated: result.user.updated || 0,
+      is_email_confirmed: result.user.is_email_confirmed || false,
+      who_can_share_contact_card: result.user.who_can_share_contact_card || '',
+    };
+
+    // Cache the complete user information
+    updateUserInfoCache(userId, slackUser);
+
+    // Also cache the display name for efficiency
+    const displayName =
+      slackUser.profile.display_name || slackUser.real_name || slackUser.name || userId;
+    updateDisplayNameCache(userId, displayName);
+
+    return slackUser;
+  };
+
+  /**
    * Get display name for a user ID with caching
    */
   const getDisplayName = async (userId: string): Promise<string> => {
@@ -198,7 +319,7 @@ export const createUserService = (deps: UserServiceDependencies): UserService =>
       }
 
       // Fetch from API if not cached
-      const client = deps.client;
+      const client = getClient();
       const result = await client.users.info({ user: userId });
 
       if (result.user) {
@@ -261,6 +382,7 @@ export const createUserService = (deps: UserServiceDependencies): UserService =>
 
   return {
     getUserInfo,
+    getUserInfoDirect,
     getDisplayName,
     bulkGetDisplayNames,
     clearCache,

@@ -41,7 +41,7 @@ describe('ParticipantTransformationService', () => {
 
   const mockInfrastructureUserService = {
     bulkGetDisplayNames: jest.fn<(userIds: string[]) => Promise<ReadonlyMap<string, string>>>(),
-    getUserInfo: jest.fn<(userId: string) => Promise<SlackUser>>(),
+    getUserInfoDirect: jest.fn<(userId: string) => Promise<SlackUser>>(),
   };
 
   const participantTransformationService = createParticipantTransformationService({

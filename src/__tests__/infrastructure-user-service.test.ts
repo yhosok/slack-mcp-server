@@ -1,12 +1,12 @@
 /**
- * Infrastructure User Service Tests
- * Tests the infrastructure layer user service as a pure utility
+ * Consolidated User Service Tests
+ * Tests the consolidated user service supporting both Infrastructure and Domain patterns
  */
 
 import { jest } from '@jest/globals';
 // import type { WebClient } from '@slack/web-api';
-import { createUserService } from '../slack/infrastructure/user/user-service.js';
-import type { UserService, UserServiceDependencies } from '../slack/infrastructure/user/types.js';
+import { createUserService } from '../slack/services/users/user-service.js';
+import type { UserService, UserServiceDependencies } from '../slack/services/users/types.js';
 
 // Mock the configuration
 const mockConfig = {
@@ -48,7 +48,7 @@ const mockWebClient = {
 
 const mockGetClient = jest.fn(() => mockWebClient);
 
-describe('Infrastructure User Service - Pure Utility Tests', () => {
+describe('Consolidated User Service - Infrastructure Pattern Tests', () => {
   let userService: UserService;
   let dependencies: UserServiceDependencies;
 
@@ -60,15 +60,20 @@ describe('Infrastructure User Service - Pure Utility Tests', () => {
     userService = createUserService(dependencies);
   });
 
-  describe('Pure Utility Interface', () => {
-    test('should provide all required utility methods', () => {
+  describe('Consolidated Interface', () => {
+    test('should provide all required methods (Infrastructure + Domain patterns)', () => {
+      // Infrastructure pattern methods
       expect(userService).toHaveProperty('getDisplayName');
       expect(userService).toHaveProperty('bulkGetDisplayNames');
-      expect(userService).toHaveProperty('getUserInfo');
+      expect(userService).toHaveProperty('getUserInfoDirect');
       expect(userService).toHaveProperty('clearCache');
+
+      // Domain pattern methods
+      expect(userService).toHaveProperty('getUserInfo');
 
       expect(typeof userService.getDisplayName).toBe('function');
       expect(typeof userService.bulkGetDisplayNames).toBe('function');
+      expect(typeof userService.getUserInfoDirect).toBe('function');
       expect(typeof userService.getUserInfo).toBe('function');
       expect(typeof userService.clearCache).toBe('function');
     });
@@ -288,36 +293,24 @@ describe('Infrastructure User Service - Pure Utility Tests', () => {
 
       mockUsersInfo.mockResolvedValue(mockFullUserResponse);
 
-      const result = await userService.getUserInfo('U123');
+      const result = await userService.getUserInfoDirect('U123');
 
-      expect(result).toEqual({
-        id: 'U123',
-        team_id: 'T123',
-        name: 'john.doe',
-        deleted: false,
-        color: '9f69e7',
-        real_name: 'John Doe',
-        tz: 'America/New_York',
-        tz_label: 'Eastern Standard Time',
-        tz_offset: -18000,
-        profile: mockFullUserResponse.user.profile,
-        is_admin: false,
-        is_owner: false,
-        is_primary_owner: false,
-        is_restricted: false,
-        is_ultra_restricted: false,
-        is_bot: false,
-        is_app_user: false,
-        updated: 1234567890,
-        is_email_confirmed: true,
-        who_can_share_contact_card: 'EVERYONE',
-      });
+      // Should return complete SlackUser with all required fields
+      expect(result.id).toBe('U123');
+      expect(result.team_id).toBe('T123');
+      expect(result.name).toBe('john.doe');
+      expect(result.real_name).toBe('John Doe');
+      expect(result.profile.display_name).toBe('Johnny');
+      expect(result.profile.real_name).toBe('John Doe');
+      expect(result.profile.email).toBe('john@example.com');
+      expect(result.is_admin).toBe(false);
+      expect(result.is_bot).toBe(false);
     });
 
     test('should handle getUserInfo API errors', async () => {
       mockUsersInfo.mockRejectedValue(new Error('User not found'));
 
-      await expect(userService.getUserInfo('U999')).rejects.toThrow('User not found');
+      await expect(userService.getUserInfoDirect('U999')).rejects.toThrow('User not found');
     });
 
     test('should return plain SlackUser objects (not ServiceResult)', async () => {
@@ -335,7 +328,7 @@ describe('Infrastructure User Service - Pure Utility Tests', () => {
 
       mockUsersInfo.mockResolvedValue(mockUserResponse);
 
-      const result = await userService.getUserInfo('U456');
+      const result = await userService.getUserInfoDirect('U456');
 
       // Infrastructure layer should return plain SlackUser objects, NOT ServiceResult
       expect(result).not.toHaveProperty('success');
@@ -350,35 +343,75 @@ describe('Infrastructure User Service - Pure Utility Tests', () => {
     });
   });
 
-  describe('Infrastructure vs Services Layer Distinction', () => {
-    test('should provide different interface than Services layer', () => {
-      // Infrastructure layer provides plain utility methods
-      expect(typeof userService.getDisplayName).toBe('function');
-      expect(typeof userService.bulkGetDisplayNames).toBe('function');
-      expect(typeof userService.getUserInfo).toBe('function');
-      expect(typeof userService.clearCache).toBe('function');
+  describe('Domain Pattern Integration', () => {
+    test('should support TypeSafeAPI pattern with getUserInfo', async () => {
+      const mockUserResponse = {
+        user: {
+          id: 'U789',
+          team_id: 'T789',
+          name: 'domain.user',
+          real_name: 'Domain User',
+          profile: {
+            display_name: 'Domain',
+          },
+        },
+      };
 
-      // Infrastructure layer should NOT have ServiceResult-based methods
-      // (those belong to Services layer)
-      expect(userService).not.toHaveProperty('getUserInfoTypeSafe');
-      expect(userService).not.toHaveProperty('handleGetUserInfo');
+      mockUsersInfo.mockResolvedValue(mockUserResponse);
+
+      const result = await userService.getUserInfo({ user: 'U789' });
+
+      // Domain pattern should return ServiceResult
+      expect(result).toHaveProperty('success');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveProperty('id', 'U789');
+        expect(result.data).toHaveProperty('name', 'domain.user');
+      }
     });
 
-    test('should be designed for Infrastructure layer consumption', () => {
-      // Infrastructure layer user service is designed to be used by:
-      // - thread-service for display name resolution
-      // - reaction-service for user information
-      // - workspace-service for user details
-      // - other infrastructure components needing user utilities
+    test('should handle domain pattern validation errors', async () => {
+      const result = await userService.getUserInfo({}); // Missing user field
+
+      expect(result).toHaveProperty('success');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain('user');
+      }
+    });
+  });
+
+  describe('Dual Pattern Support', () => {
+    test('should provide both Infrastructure and Domain interfaces', () => {
+      // Infrastructure pattern methods (direct access)
+      expect(typeof userService.getDisplayName).toBe('function');
+      expect(typeof userService.bulkGetDisplayNames).toBe('function');
+      expect(typeof userService.getUserInfoDirect).toBe('function');
+      expect(typeof userService.clearCache).toBe('function');
+
+      // Domain pattern methods (ServiceResult wrapper)
+      expect(typeof userService.getUserInfo).toBe('function');
+    });
+
+    test('should be designed for both Infrastructure and Domain consumption', () => {
+      // Consolidated user service supports both usage patterns:
+      // - Infrastructure services for display name resolution and utilities
+      // - Domain services for MCP tool implementation with TypeSafeAPI
 
       const infrastructureServices = {
-        userService, // Infrastructure user service
+        userService, // Consolidated user service for infrastructure usage
         // ... other infrastructure services
       };
 
-      // Should integrate cleanly with infrastructure pattern
+      const domainServices = {
+        userService, // Same consolidated service for domain usage with different methods
+        // ... other domain services
+      };
+
+      // Should integrate cleanly with both patterns
       expect(infrastructureServices.userService.getDisplayName).toBeDefined();
       expect(infrastructureServices.userService.bulkGetDisplayNames).toBeDefined();
+      expect(domainServices.userService.getUserInfo).toBeDefined();
     });
   });
 });

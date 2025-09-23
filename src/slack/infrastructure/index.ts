@@ -9,9 +9,9 @@ export type {
 } from './client/types.js';
 export type { RateLimitService, RateLimitMetrics } from './client/rate-limit-service.js';
 
-// User Management
-export { createUserService } from './user/user-service.js';
-export type { UserService, UserServiceDependencies } from './user/types.js';
+// User Management - REMOVED: Now using consolidated domain user service
+// The infrastructure user service has been consolidated with the domain user service
+// to eliminate duplication. Use the domain service from '../services/users/user-service.js'
 
 // Request Validation and Handling
 export {

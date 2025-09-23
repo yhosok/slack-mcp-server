@@ -38,8 +38,11 @@ import {
   createServiceSuccess,
   createServiceError,
   enforceServiceOutput,
-  type ServiceResult as _ServiceResult,
 } from '../../types/typesafe-api-patterns.js';
+import {
+  createServiceMethod,
+  type ServiceMethodContext,
+} from '../../infrastructure/service-patterns/index.js';
 import type {
   ThreadDiscoveryResult,
   ThreadRepliesResult,
@@ -47,9 +50,6 @@ import type {
   ThreadAnalysisResult,
   ThreadSummaryResult,
   ActionItemsResult,
-  ThreadReplyResult,
-  CreateThreadResult,
-  MarkImportantResult,
   ImportantThreadsResult,
   ThreadExportResult,
   RelatedThreadsResult,
@@ -1020,12 +1020,13 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
   /**
    * Post a reply to an existing thread using TypeSafeAPI + ts-pattern patterns
+   *
+   * REFACTORED: Now uses shared service method factory to eliminate duplication
    */
-  const postThreadReply = async (args: unknown): Promise<ThreadReplyResult> => {
-    try {
-      const input = validateInput(PostThreadReplySchema, args);
-      const client = deps.clientManager.getClientForOperation('write');
-
+  const postThreadReply = createServiceMethod({
+    schema: PostThreadReplySchema,
+    operation: 'write',
+    handler: async (input, { client }: ServiceMethodContext) => {
       // Using Record<string, unknown> for Slack API compatibility - ChatPostMessageArguments has complex union types
       const messageArgs: Record<string, unknown> = {
         channel: input.channel,
@@ -1036,7 +1037,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
 
       const result = await client.chat.postMessage(messageArgs as unknown as Parameters<typeof client.chat.postMessage>[0]);
 
-      const output = enforceServiceOutput({
+      return enforceServiceOutput({
         success: true,
         timestamp: result.ts,
         channel: result.channel,
@@ -1047,22 +1048,21 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           broadcast: input.reply_broadcast || false,
         },
       });
-
-      return createServiceSuccess(output, 'Thread reply posted successfully');
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      return createServiceError(errorMessage, 'Failed to post thread reply');
-    }
-  };
+    },
+    successMessage: 'Thread reply posted successfully',
+    methodName: 'postThreadReply',
+    errorPrefix: 'Failed to post thread reply',
+  }, { clientManager: deps.clientManager });
 
   /**
-   * Create a new thread by posting a parent message and optional first reply using TypeSafeAPI + ts-pattern patterns
+   * Create a new thread by posting a parent message and optional first reply
+   *
+   * REFACTORED: Now uses shared service method factory to eliminate duplication
    */
-  const createThread = async (args: unknown): Promise<CreateThreadResult> => {
-    try {
-      const input = validateInput(CreateThreadSchema, args);
-      const client = deps.clientManager.getClientForOperation('write');
-
+  const createThread = createServiceMethod({
+    schema: CreateThreadSchema,
+    operation: 'write',
+    handler: async (input, { client }: ServiceMethodContext) => {
       // Post the parent message
       const parentResult = await client.chat.postMessage({
         channel: input.channel,
@@ -1087,7 +1087,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         replyResult = await client.chat.postMessage(replyArgs as unknown as Parameters<typeof client.chat.postMessage>[0]);
       }
 
-      const output = enforceServiceOutput({
+      return enforceServiceOutput({
         success: true,
         threadTs: parentResult.ts!,
         parentMessage: {
@@ -1106,22 +1106,21 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
           hasReply: !!input.reply_text,
         },
       });
-
-      return createServiceSuccess(output, 'Thread created successfully');
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      return createServiceError(errorMessage, 'Failed to create thread');
-    }
-  };
+    },
+    successMessage: 'Thread created successfully',
+    methodName: 'createThread',
+    errorPrefix: 'Failed to create thread',
+  }, { clientManager: deps.clientManager });
 
   /**
-   * Mark a thread as important with reactions and notifications using TypeSafeAPI + ts-pattern patterns
+   * Mark a thread as important with reactions and notifications
+   *
+   * REFACTORED: Now uses shared service method factory to eliminate duplication
    */
-  const markThreadImportant = async (args: unknown): Promise<MarkImportantResult> => {
-    try {
-      const input = validateInput(MarkThreadImportantSchema, args);
-      const client = deps.clientManager.getClientForOperation('write');
-
+  const markThreadImportant = createServiceMethod({
+    schema: MarkThreadImportantSchema,
+    operation: 'write',
+    handler: async (input, { client }: ServiceMethodContext) => {
       // Add importance reaction based on level
       const reactionMap = {
         low: 'information_source',
@@ -1147,7 +1146,7 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         });
       }
 
-      const output = enforceServiceOutput({
+      return enforceServiceOutput({
         success: true,
         channel: input.channel,
         threadTs: input.thread_ts,
@@ -1156,13 +1155,11 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
         commentPosted: !!input.reason,
         reason: input.reason,
       });
-
-      return createServiceSuccess(output, 'Thread marked as important successfully');
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      return createServiceError(errorMessage, 'Failed to mark thread as important');
-    }
-  };
+    },
+    successMessage: 'Thread marked as important successfully',
+    methodName: 'markThreadImportant',
+    errorPrefix: 'Failed to mark thread as important',
+  }, { clientManager: deps.clientManager });
 
   /**
    * Identify important or urgent threads in a channel using TypeSafeAPI + ts-pattern patterns

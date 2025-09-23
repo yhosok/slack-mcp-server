@@ -7,8 +7,7 @@ import { jest } from '@jest/globals';
 import type { WebClient } from '@slack/web-api';
 import { createThreadService } from '../slack/services/threads/thread-service.js';
 import type { ThreadServiceDependencies } from '../slack/services/threads/types.js';
-import type { UserService as DomainUserService } from '../slack/services/users/types.js';
-import type { UserService as InfraUserService } from '../slack/infrastructure/user/types.js';
+import type { UserService } from '../slack/services/users/types.js';
 import type {
   SlackClientManager,
   RateLimitService,
@@ -35,8 +34,7 @@ describe('Thread Service Dependencies Integration', () => {
   let mockClientManager: jest.Mocked<SlackClientManager>;
   let mockRateLimitService: jest.Mocked<RateLimitService>;
   let mockRequestHandler: jest.Mocked<RequestHandler>;
-  let mockInfraUserService: jest.Mocked<InfraUserService>;
-  let mockDomainUserService: jest.Mocked<DomainUserService>;
+  let mockConsolidatedUserService: jest.Mocked<UserService>;
   let mockParticipantTransformationService: any;
   let threadServiceDeps: ThreadServiceDependencies;
 
@@ -72,21 +70,16 @@ describe('Thread Service Dependencies Integration', () => {
       formatError: jest.fn(),
     } as unknown as jest.Mocked<RequestHandler>;
 
-    // Mock Infrastructure UserService (lightweight, display name focused)
-    mockInfraUserService = {
+    // Mock Consolidated UserService (supports both Infrastructure and Domain patterns)
+    mockConsolidatedUserService = {
+      // Infrastructure pattern methods
       getDisplayName: jest.fn(),
       bulkGetDisplayNames: jest.fn(),
-      getUserInfo: jest.fn(),
+      getUserInfoDirect: jest.fn(),
       clearCache: jest.fn(),
-    } as jest.Mocked<InfraUserService>;
-
-    // Mock Domain UserService (TypeSafeAPI compliant)
-    mockDomainUserService = {
+      // Domain pattern methods
       getUserInfo: jest.fn(),
-      getDisplayName: jest.fn(),
-      bulkGetDisplayNames: jest.fn(),
-      clearCache: jest.fn(),
-    } as jest.Mocked<DomainUserService>;
+    } as jest.Mocked<UserService>;
 
     // Mock participant transformation service
     mockParticipantTransformationService = {
@@ -98,10 +91,10 @@ describe('Thread Service Dependencies Integration', () => {
     threadServiceDeps = {
       clientManager: mockClientManager,
       rateLimitService: mockRateLimitService,
-      userService: mockInfraUserService, // For backward compatibility
+      userService: mockConsolidatedUserService, // For backward compatibility
       requestHandler: mockRequestHandler,
-      infrastructureUserService: mockInfraUserService,
-      domainUserService: mockDomainUserService,
+      infrastructureUserService: mockConsolidatedUserService,
+      domainUserService: mockConsolidatedUserService,
       participantTransformationService: mockParticipantTransformationService,
       cacheService: null,
       relevanceScorer: null,
@@ -142,7 +135,7 @@ describe('Thread Service Dependencies Integration', () => {
       const threadService = createThreadService(threadServiceDeps);
 
       // Setup mock display names
-      mockInfraUserService.bulkGetDisplayNames.mockResolvedValue(
+      mockConsolidatedUserService.bulkGetDisplayNames.mockResolvedValue(
         new Map([
           ['U1234567890', 'John Doe'],
           ['U0987654321', 'Jane Doe'],
@@ -193,7 +186,7 @@ describe('Thread Service Dependencies Integration', () => {
           { id: 'U0987654321', displayName: 'Jane Doe' },
         ]);
         // Verify efficient usage of infrastructure service
-        expect(mockInfraUserService.bulkGetDisplayNames).toHaveBeenCalledWith([
+        expect(mockConsolidatedUserService.bulkGetDisplayNames).toHaveBeenCalledWith([
           'U1234567890',
           'U0987654321',
         ]);
@@ -244,7 +237,7 @@ describe('Thread Service Dependencies Integration', () => {
       });
 
       // Mock domain user service for comprehensive user data (for legacy compatibility)
-      mockDomainUserService.getUserInfo.mockResolvedValue({
+      mockConsolidatedUserService.getUserInfo.mockResolvedValue({
         success: true,
         message: 'User retrieved',
         data: {
@@ -298,7 +291,7 @@ describe('Thread Service Dependencies Integration', () => {
       const threadService = createThreadService(threadServiceDeps);
 
       // Mock display names
-      mockInfraUserService.bulkGetDisplayNames.mockResolvedValue(
+      mockConsolidatedUserService.bulkGetDisplayNames.mockResolvedValue(
         new Map([
           ['U1234567890', 'John Doe'],
           ['U0987654321', 'Jane Doe'],
@@ -346,7 +339,7 @@ describe('Thread Service Dependencies Integration', () => {
         expect(result.data.threads[0].participantDisplayNames).toEqual([
           { id: 'U0987654321', displayName: 'Jane Doe' },
         ]);
-        expect(mockInfraUserService.bulkGetDisplayNames).toHaveBeenCalledWith([
+        expect(mockConsolidatedUserService.bulkGetDisplayNames).toHaveBeenCalledWith([
           'U1234567890',
           'U0987654321',
         ]);

@@ -31,7 +31,6 @@ import { createFileServiceMCPAdapter } from './services/files/file-service-mcp-a
 import { createReactionServiceMCPAdapter } from './services/reactions/reaction-service-mcp-adapter.js';
 import { createWorkspaceServiceMCPAdapter } from './services/workspace/workspace-service-mcp-adapter.js';
 import { createUserServiceMCPAdapter } from './services/users/user-service-mcp-adapter.js';
-import { createUserService } from './services/users/user-service.js';
 import { createParticipantTransformationService } from './services/threads/participant-transformation-service.js';
 import type { ThreadServiceDependencies } from './services/threads/types.js';
 import type { ReactionServiceDependencies } from './services/reactions/types.js';
@@ -168,41 +167,39 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
   // Create infrastructure services
   const infrastructure = createInfrastructureServices(infrastructureConfig);
 
-  // Create domain user service for complete TypeSafeAPI operations
-  const domainUserService = createUserService({
-    client: infrastructure.clientManager.getClientForOperation('read'),
-  });
+  // Note: infrastructure.userService is now the consolidated service supporting both patterns
+  // No need for separate domain user service creation since infrastructure service now handles both
 
   // Create participant transformation service for optimized participant building
   const participantTransformationService = createParticipantTransformationService({
-    domainUserService,
-    infrastructureUserService: infrastructure.userService,
+    domainUserService: infrastructure.userService, // Use consolidated service for domain operations
+    infrastructureUserService: infrastructure.userService, // Same service for infrastructure operations
   });
 
-  // Create enhanced thread service dependencies with both user services and participant transformation
+  // Create enhanced thread service dependencies with consolidated user service and participant transformation
   const threadServiceDeps: ThreadServiceDependencies = {
     ...infrastructure,
     infrastructureUserService: infrastructure.userService,
-    domainUserService,
+    domainUserService: infrastructure.userService, // Use consolidated service for domain operations
     participantTransformationService,
   };
 
   // Create TypeSafeAPI message service for reaction service delegation
   const typeSafeMessageService = createMessageService(infrastructure);
 
-  // Create enhanced reaction service dependencies with both user services and message service
+  // Create enhanced reaction service dependencies with consolidated user service and message service
   const reactionServiceDeps: ReactionServiceDependencies = {
     ...infrastructure,
     infrastructureUserService: infrastructure.userService,
-    domainUserService,
+    domainUserService: infrastructure.userService, // Use consolidated service for domain operations
     messageService: typeSafeMessageService,
   };
 
-  // Create enhanced workspace service dependencies with both user services
+  // Create enhanced workspace service dependencies with consolidated user service
   const workspaceServiceDeps: WorkspaceServiceDependencies = {
     ...infrastructure,
     infrastructureUserService: infrastructure.userService,
-    domainUserService,
+    domainUserService: infrastructure.userService, // Use consolidated service for domain operations
   };
 
   // Create domain services
@@ -212,7 +209,7 @@ export function createSlackServiceRegistry(): SlackServiceRegistry {
   const reactionService = createReactionServiceMCPAdapter(reactionServiceDeps);
   const workspaceService = createWorkspaceServiceMCPAdapter(workspaceServiceDeps);
   const userService = createUserServiceMCPAdapter(
-    infrastructure.clientManager.getClientForOperation('read')
+    infrastructure.userService // Use the consolidated service directly
   );
 
   const methods: ServiceMethodRegistry = {

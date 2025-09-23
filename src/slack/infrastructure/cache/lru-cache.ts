@@ -139,7 +139,7 @@ export class LRUCacheWrapper<K extends {} = string, V = unknown> {
         }
       };
 
-    // Map our configuration to lru-cache options  
+    // Map our configuration to lru-cache options
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cacheOptions: any = {
       max: config.max,
