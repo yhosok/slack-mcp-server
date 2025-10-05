@@ -432,7 +432,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
 
       // Handle after_date or oldest_ts
       if (input.after_date) {
-        oldestTs = convertDateToTimestamp(input.after_date, false); // 00:00:00 UTC
+        oldestTs = convertDateToTimestamp(input.after_date, false); // 00:00:00 local time
         startDate = new Date(input.after_date);
       } else if (input.oldest_ts) {
         oldestTs = input.oldest_ts;
@@ -445,7 +445,7 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
 
       // Handle before_date or latest_ts
       if (input.before_date) {
-        latestTs = convertDateToTimestamp(input.before_date, true); // 23:59:59 UTC
+        latestTs = convertDateToTimestamp(input.before_date, true); // 23:59:59 local time
         endDate = new Date(input.before_date);
       } else if (input.latest_ts) {
         latestTs = input.latest_ts;

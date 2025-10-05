@@ -37,12 +37,12 @@ export function isValidDateFormat(dateString: string): boolean {
     return false;
   }
 
-  // Create date object (month is 0-indexed in JavaScript)
-  const date = new Date(Date.UTC(year, month - 1, day));
+  // Create date object in local timezone (month is 0-indexed in JavaScript)
+  const date = new Date(year, month - 1, day);
 
   // Verify the date components match (catches invalid dates like Feb 30)
   return (
-    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+    date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
   );
 }
 
@@ -64,7 +64,7 @@ export function isTimestampFormat(value: string): boolean {
 /**
  * Convert YYYY-MM-DD date string to Unix timestamp
  * @param dateString - Date in YYYY-MM-DD format
- * @param endOfDay - If true, return 23:59:59 UTC, otherwise 00:00:00 UTC
+ * @param endOfDay - If true, return 23:59:59 local time, otherwise 00:00:00 local time
  * @returns Unix timestamp string (seconds since epoch)
  * @throws Error if date format is invalid or date is invalid
  */
@@ -91,12 +91,12 @@ export function convertDateToTimestamp(dateString: string, endOfDay: boolean = f
   const month = parts[1]!;
   const day = parts[2]!;
 
-  // Create UTC date at start of day
-  const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  // Create date in local timezone at start of day
+  const date = new Date(year, month - 1, day, 0, 0, 0, 0);
 
   if (endOfDay) {
-    // Set to end of day: 23:59:59 UTC
-    date.setUTCHours(23, 59, 59, 0);
+    // Set to end of day: 23:59:59 local time
+    date.setHours(23, 59, 59, 0);
   }
 
   // Convert to Unix timestamp (seconds, not milliseconds)
