@@ -1,13 +1,13 @@
 /**
  * @fileoverview Search Ranking Integration Tests
- * 
+ *
  * Comprehensive integration tests for the search ranking system, verifying:
  * - Configuration toggle functionality (SEARCH_RANKING_ENABLED)
  * - RelevanceScorer creation and initialization
  * - Integration with search services (messages, threads, files)
  * - Performance requirements and error handling
  * - End-to-end configuration flow from CONFIG → infrastructure → services
- * 
+ *
  * Created: 2025-08-20 (Phase 4: Comprehensive Testing - TDD for existing code)
  */
 
@@ -74,7 +74,10 @@ jest.mock('@slack/web-api', () => ({
   },
 }));
 
-import { createInfrastructureServices, createRelevanceScorerConfig } from '../slack/infrastructure/factory.js';
+import {
+  createInfrastructureServices,
+  createRelevanceScorerConfig,
+} from '../slack/infrastructure/factory.js';
 import type { InfrastructureConfig } from '../slack/infrastructure/factory.js';
 import { RelevanceScorer } from '../slack/analysis/search/relevance-scorer.js';
 import { SlackService } from '../slack/slack-service.js';
@@ -84,7 +87,9 @@ describe('Search Ranking Integration', () => {
   let originalSearchRankingEnabled: boolean;
 
   // Helper function to create complete infrastructure config
-  const createTestInfrastructureConfig = (overrides: Partial<InfrastructureConfig> = {}): InfrastructureConfig => ({
+  const createTestInfrastructureConfig = (
+    overrides: Partial<InfrastructureConfig> = {}
+  ): InfrastructureConfig => ({
     botToken: 'xoxb-test-token',
     userToken: 'xoxp-test-token',
     useUserTokenForRead: true,
@@ -97,13 +102,13 @@ describe('Search Ranking Integration', () => {
     cacheConfig: {
       channels: { max: 1000, ttl: 3600000, updateAgeOnGet: true },
       users: { max: 500, ttl: 1800000, updateAgeOnGet: true },
-      search: { 
-        maxQueries: 100, 
-        maxResults: 200, 
-        queryTTL: 900000, 
-        resultTTL: 900000, 
-        adaptiveTTL: true, 
-        enablePatternInvalidation: true 
+      search: {
+        maxQueries: 100,
+        maxResults: 200,
+        queryTTL: 900000,
+        resultTTL: 900000,
+        adaptiveTTL: true,
+        enablePatternInvalidation: true,
       },
       files: { max: 300, ttl: 7200000 },
       threads: { max: 200, ttl: 1800000, updateAgeOnGet: true },
@@ -244,7 +249,7 @@ describe('Search Ranking Integration', () => {
         messages: {
           matches: mockMessages.map((msg, index) => ({
             ...msg,
-            score: 1.0 - (index * 0.1), // Decreasing scores
+            score: 1.0 - index * 0.1, // Decreasing scores
           })),
           total: mockMessages.length,
         },
@@ -361,7 +366,7 @@ describe('Search Ranking Integration', () => {
         const slackService = new SlackService();
 
         const startTime = Date.now();
-        
+
         await slackService.searchMessages({
           query: 'test query',
           count: 50,
@@ -411,7 +416,7 @@ describe('Search Ranking Integration', () => {
 
         expect(result.content).toBeDefined();
         expect(result.isError).toBeFalsy();
-        
+
         // Should complete within reasonable time even with ranking
         // Increased threshold for test environment and ranking overhead
         expect(duration).toBeLessThan(500);
@@ -455,7 +460,7 @@ describe('Search Ranking Integration', () => {
 
         // Should handle configuration errors gracefully
         const services = createInfrastructureServices(infrastructureConfig);
-        
+
         // Should fallback to null relevance scorer on configuration error
         expect(services.relevanceScorer).toBeNull();
       });

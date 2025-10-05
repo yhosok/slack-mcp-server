@@ -18,12 +18,9 @@ import {
 } from '../slack/analysis/thread/action-extraction.js';
 
 import type { SlackMessage } from '../slack/types/index.js';
-import type { 
-  ActionItemConfig,
-} from '../slack/analysis/thread/types.js';
+import type { ActionItemConfig } from '../slack/analysis/thread/types.js';
 
 describe('Enhanced Japanese Action Extraction', () => {
-  
   describe('Bullet Point Detection', () => {
     const config = DEFAULT_BULLET_POINT_CONFIG;
 
@@ -65,7 +62,7 @@ describe('Enhanced Japanese Action Extraction', () => {
     test('should detect numbered patterns', () => {
       const testCases = [
         '1. First task',
-        '2) Second task', 
+        '2) Second task',
         '① 最初のタスク',
         '② 二番目のタスク',
         '③ 三番目のタスク',
@@ -96,7 +93,6 @@ describe('Enhanced Japanese Action Extraction', () => {
   });
 
   describe('Japanese Request Pattern Detection', () => {
-    
     test('should detect polite request patterns', () => {
       const testCases = [
         'タスクをお願いします',
@@ -137,10 +133,7 @@ describe('Enhanced Japanese Action Extraction', () => {
     });
 
     test('should detect task assignment patterns', () => {
-      const testCases = [
-        'このタスクを担当してください',
-        'バグ修正の件でお願いします',
-      ];
+      const testCases = ['このタスクを担当してください', 'バグ修正の件でお願いします'];
 
       for (const line of testCases) {
         const result = detectJapaneseRequests(line);
@@ -171,7 +164,7 @@ describe('Enhanced Japanese Action Extraction', () => {
     test('should score bullet points highly', () => {
       const line = '・タスクを完了お願いします';
       const result = scoreActionLine(line, config);
-      
+
       expect(result.score).toBeGreaterThan(1.0);
       expect(result.bulletPointInfo.hasBulletPoint).toBe(true);
       expect(result.requestPatternInfo.hasRequestPattern).toBe(true);
@@ -180,7 +173,7 @@ describe('Enhanced Japanese Action Extraction', () => {
     test('should score mentions and urgency keywords', () => {
       const urgentLine = '<@U123456> urgent task needs immediate attention!';
       const result = scoreActionLine(urgentLine, config);
-      
+
       expect(result.score).toBeGreaterThan(1.0);
       expect(result.hasMentions).toBe(true);
       expect(result.hasUrgencyKeywords).toBe(true);
@@ -190,16 +183,15 @@ describe('Enhanced Japanese Action Extraction', () => {
     test('should give higher scores to lines with multiple factors', () => {
       const highScoreLine = '・ <@U123456> 緊急対応お願いします！';
       const lowScoreLine = 'regular text without special patterns';
-      
+
       const highResult = scoreActionLine(highScoreLine, config);
       const lowResult = scoreActionLine(lowScoreLine, config);
-      
+
       expect(highResult.score).toBeGreaterThan(lowResult.score);
     });
   });
 
   describe('Conjugation Normalization Integration', () => {
-    
     test('should normalize Japanese conjugated verbs in action text', () => {
       const config = DEFAULT_ACTION_ITEM_CONFIG;
       const testCases = [
@@ -233,12 +225,11 @@ describe('Enhanced Japanese Action Extraction', () => {
   });
 
   describe('Enhanced Action Indicator Matching', () => {
-    
     test('should find conjugated Japanese action indicators', () => {
       const enableNormalization = true;
       const text = 'バグを修正しました。レビューしています。';
-      const indicators = ['修正', 'レビュー'];  // Use the base forms that are in ENHANCED_ACTION_INDICATORS
-      
+      const indicators = ['修正', 'レビュー']; // Use the base forms that are in ENHANCED_ACTION_INDICATORS
+
       const found = findActionIndicators(text, indicators, enableNormalization);
       expect(found.length).toBeGreaterThan(0);
     });
@@ -253,7 +244,11 @@ describe('Enhanced Japanese Action Extraction', () => {
       ];
 
       for (const text of businessTexts) {
-        const hasAction = containsActionIndicators(text, ENHANCED_ACTION_INDICATORS, enableNormalization);
+        const hasAction = containsActionIndicators(
+          text,
+          ENHANCED_ACTION_INDICATORS,
+          enableNormalization
+        );
         expect(hasAction).toBe(true);
       }
     });
@@ -261,13 +256,16 @@ describe('Enhanced Japanese Action Extraction', () => {
     test('should handle English action indicators normally', () => {
       const enableNormalization = true;
       const text = 'TODO: fix the bug and update documentation';
-      const hasAction = containsActionIndicators(text, ENHANCED_ACTION_INDICATORS, enableNormalization);
+      const hasAction = containsActionIndicators(
+        text,
+        ENHANCED_ACTION_INDICATORS,
+        enableNormalization
+      );
       expect(hasAction).toBe(true);
     });
   });
 
   describe('Full Message Processing', () => {
-    
     test('should extract action items from business Japanese messages', () => {
       const message: SlackMessage = {
         type: 'message',
@@ -281,14 +279,14 @@ describe('Enhanced Japanese Action Extraction', () => {
 
       const config = DEFAULT_ACTION_ITEM_CONFIG;
       const actionItems = extractActionItemsFromMessage(message, config);
-      
+
       expect(actionItems.length).toBeGreaterThan(0);
-      
+
       // Check that mentions were extracted
-      expect(actionItems.some(item => item.mentioned_users.length > 0)).toBe(true);
-      
+      expect(actionItems.some((item) => item.mentioned_users.length > 0)).toBe(true);
+
       // Check that priority was detected (緊急 = urgent)
-      expect(actionItems.some(item => item.priority === 'high')).toBe(true);
+      expect(actionItems.some((item) => item.priority === 'high')).toBe(true);
     });
 
     test('should prioritize lines with bullet points when scoring is enabled', () => {
@@ -302,12 +300,12 @@ describe('Enhanced Japanese Action Extraction', () => {
         ts: '1699564800.000100',
       };
 
-      const config = { 
-        ...DEFAULT_ACTION_ITEM_CONFIG, 
-        enableLineScoring: true 
+      const config = {
+        ...DEFAULT_ACTION_ITEM_CONFIG,
+        enableLineScoring: true,
       };
       const actionItems = extractActionItemsFromMessage(message, config);
-      
+
       // Should extract the bullet point line as action item
       expect(actionItems.length).toBeGreaterThan(0);
       expect(actionItems[0]?.text).toContain('重要なタスク');
@@ -337,7 +335,7 @@ describe('Enhanced Japanese Action Extraction', () => {
 
       const config = DEFAULT_ACTION_ITEM_CONFIG;
       const result = extractActionItemsFromMessages(messages, config);
-      
+
       expect(result.actionItems.length).toBeGreaterThan(0);
       expect(result.totalActionIndicators).toBeGreaterThan(0);
       expect(result.actionIndicatorsFound.length).toBeGreaterThan(0);
@@ -345,7 +343,6 @@ describe('Enhanced Japanese Action Extraction', () => {
   });
 
   describe('Backward Compatibility', () => {
-    
     test('should work with minimal configuration', () => {
       const minimalConfig: ActionItemConfig = {
         actionIndicators: ['todo', 'task'],

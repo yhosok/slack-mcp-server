@@ -1,19 +1,19 @@
 /**
  * Service Factory - Three-Layer Architecture Implementation
- * 
+ *
  * This factory implements the three-layer architecture that balances type safety with MCP protocol compliance:
- * 
+ *
  * ## Architecture Layers:
  * 1. **TypeSafeAPI Services** (internal) - Enhanced type safety with ServiceResult<T> discriminated unions
  * 2. **MCP Adapters** (bridge) - Convert ServiceResult<T> to MCPToolResult for protocol compliance
  * 3. **MCP Protocol** (external) - MCPToolResult format required by Model Context Protocol
- * 
+ *
  * ## Factory Responsibilities:
  * - Creates infrastructure services with dependency injection
  * - Instantiates TypeSafeAPI services for type safety
  * - Creates MCP adapters that bridge internal types to protocol format
  * - Provides method registry for SlackService facade consumption
- * 
+ *
  * ## Why This Architecture:
  * - MCPToolResult is required by MCP protocol specification (not legacy)
  * - TypeSafeAPI provides enhanced type safety with discriminated unions

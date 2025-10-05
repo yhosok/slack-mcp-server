@@ -4,13 +4,13 @@
  */
 
 import type { SlackMessage, ThreadParticipant } from '../../types/index.js';
-import type { 
-  UrgencyScore, 
-  ImportanceScore, 
-  UrgencyConfig, 
+import type {
+  UrgencyScore,
+  ImportanceScore,
+  UrgencyConfig,
   ImportanceConfig,
   PunctuationInfo,
-  TimeUrgencyInfo
+  TimeUrgencyInfo,
 } from './types.js';
 
 /**
@@ -210,7 +210,7 @@ export function calculateMessageCountFactor(
 export function detectConsecutivePunctuation(text: string): PunctuationInfo {
   // Find all consecutive punctuation runs (2 or more)
   const consecutivePunctuationRegex = /[!?！？]{2,}/g;
-  
+
   let hasConsecutivePunctuation = false;
   let maxConsecutiveCount = 0;
   const punctuationTypes: string[] = [];
@@ -221,10 +221,10 @@ export function detectConsecutivePunctuation(text: string): PunctuationInfo {
     hasConsecutivePunctuation = true;
     const matchText = match[0];
     const matchLength = matchText.length;
-    
+
     totalPunctuationCount += matchLength;
     maxConsecutiveCount = Math.max(maxConsecutiveCount, matchLength);
-    
+
     // Collect unique punctuation types from this match
     const uniqueChars = [...new Set(matchText.split(''))];
     for (const char of uniqueChars) {
@@ -284,18 +284,29 @@ export function detectTimeBasedUrgency(
   timeKeywords: readonly string[]
 ): TimeUrgencyInfo {
   const lowerText = text.toLowerCase();
-  
+
   const timeKeywordsFound: string[] = [];
   const deadlineIndicators: string[] = [];
   const meetingUrgency: string[] = [];
 
   // Categorize time-based keywords
-  const deadlinePatterns = ['deadline', 'due by', '期限', '本日中', '明日まで', '今日中', '午前中', '夕方まで', '週末まで', '月末まで'];
+  const deadlinePatterns = [
+    'deadline',
+    'due by',
+    '期限',
+    '本日中',
+    '明日まで',
+    '今日中',
+    '午前中',
+    '夕方まで',
+    '週末まで',
+    '月末まで',
+  ];
   const meetingPatterns = ['before meeting', 'call前', 'meeting前', '会議前'];
 
   for (const keyword of timeKeywords) {
     const lowerKeyword = keyword.toLowerCase();
-    
+
     // Use word boundary matching for English, character matching for Japanese
     const isJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(keyword);
     const regex = isJapanese
@@ -304,11 +315,11 @@ export function detectTimeBasedUrgency(
 
     if (regex.test(lowerText)) {
       timeKeywordsFound.push(keyword);
-      
+
       // Categorize the keyword
-      if (deadlinePatterns.some(pattern => pattern.toLowerCase() === lowerKeyword)) {
+      if (deadlinePatterns.some((pattern) => pattern.toLowerCase() === lowerKeyword)) {
         deadlineIndicators.push(keyword);
-      } else if (meetingPatterns.some(pattern => pattern.toLowerCase() === lowerKeyword)) {
+      } else if (meetingPatterns.some((pattern) => pattern.toLowerCase() === lowerKeyword)) {
         meetingUrgency.push(keyword);
       }
     }
@@ -351,7 +362,7 @@ export function calculateUrgencyScore(
   );
 
   // New time-based urgency analysis
-  const timeUrgencyInfo = config.timeBasedKeywords 
+  const timeUrgencyInfo = config.timeBasedKeywords
     ? detectTimeBasedUrgency(text, config.timeBasedKeywords)
     : {
         hasTimeBasedUrgency: false,
@@ -361,11 +372,14 @@ export function calculateUrgencyScore(
       };
 
   const timeBasedScore = timeUrgencyInfo.hasTimeBasedUrgency
-    ? (timeUrgencyInfo.timeKeywords.length * (config.timeBasedWeight ?? 0.15))
+    ? timeUrgencyInfo.timeKeywords.length * (config.timeBasedWeight ?? 0.15)
     : 0;
 
   // Combine all scores with cap at 1.0
-  const totalScore = Math.min(1, keywordScore + messageCountFactor + punctuationScore + timeBasedScore);
+  const totalScore = Math.min(
+    1,
+    keywordScore + messageCountFactor + punctuationScore + timeBasedScore
+  );
   const urgentKeywords = Array.from(keywordCounts.keys());
 
   return {
@@ -529,7 +543,7 @@ export function explainPriorityAnalysis(
     const timeInfo = urgencyScore.timeUrgencyInfo;
     explanation += `• Time sensitivity: ${timeInfo.timeKeywords.join(', ')} - `;
     explanation += `+${((urgencyScore.timeBasedScore ?? 0) * 100).toFixed(1)}% urgency\n`;
-    
+
     if (timeInfo.deadlineIndicators.length > 0) {
       explanation += `• Deadline indicators: ${timeInfo.deadlineIndicators.join(', ')}\n`;
     }

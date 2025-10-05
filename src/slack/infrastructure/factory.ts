@@ -39,10 +39,10 @@ export interface InfrastructureConfig {
   cacheEnabled: boolean;
   cacheConfig: CacheServiceConfig;
   // Search ranking configuration
-  searchRankingEnabled: boolean;  // Enable/disable advanced search ranking features
-  searchIndexTTL: number;         // Search index cache TTL in seconds
-  searchTimeDecayRate: number;    // Time decay rate for message recency scoring (0.001-1.0)
-  searchMaxIndexSize: number;     // Maximum search index size for memory management
+  searchRankingEnabled: boolean; // Enable/disable advanced search ranking features
+  searchIndexTTL: number; // Search index cache TTL in seconds
+  searchTimeDecayRate: number; // Time decay rate for message recency scoring (0.001-1.0)
+  searchMaxIndexSize: number; // Maximum search index size for memory management
 }
 
 /**
@@ -63,24 +63,30 @@ export interface InfrastructureServices {
 
 /**
  * Create RelevanceScorer configuration from infrastructure configuration
- * 
+ *
  * This factory function transforms infrastructure-level search ranking configuration
  * into the specific configuration format required by the RelevanceScorer class.
- * 
+ *
  * @param config - Infrastructure configuration containing search ranking settings
  * @returns RelevanceScorer configuration with validated and transformed values
  * @throws {Error} When configuration values are invalid (negative TTL, non-positive rates)
  */
-export const createRelevanceScorerConfig = (config: InfrastructureConfig): RelevanceScorerConfig => {
+export const createRelevanceScorerConfig = (
+  config: InfrastructureConfig
+): RelevanceScorerConfig => {
   // Validate configuration parameters
   if (config.searchIndexTTL < 0) {
     throw new Error(`Invalid search index TTL: ${config.searchIndexTTL}. Must be non-negative.`);
   }
   if (config.searchTimeDecayRate <= 0) {
-    throw new Error(`Invalid search time decay rate: ${config.searchTimeDecayRate}. Must be positive.`);
+    throw new Error(
+      `Invalid search time decay rate: ${config.searchTimeDecayRate}. Must be positive.`
+    );
   }
   if (config.searchMaxIndexSize <= 0) {
-    throw new Error(`Invalid search max index size: ${config.searchMaxIndexSize}. Must be positive.`);
+    throw new Error(
+      `Invalid search max index size: ${config.searchMaxIndexSize}. Must be positive.`
+    );
   }
 
   // Convert searchTimeDecayRate to timeDecayHalfLife using practical conversion
@@ -91,25 +97,25 @@ export const createRelevanceScorerConfig = (config: InfrastructureConfig): Relev
 
   return {
     weights: {
-      tfidf: 0.4,        // TF-IDF content relevance weight
-      timeDecay: 0.25,   // Message recency weight  
-      engagement: 0.2,   // User engagement (reactions, replies) weight
-      urgency: 0.1,      // Urgency keywords weight
-      importance: 0.05,  // Importance indicators weight
+      tfidf: 0.4, // TF-IDF content relevance weight
+      timeDecay: 0.25, // Message recency weight
+      engagement: 0.2, // User engagement (reactions, replies) weight
+      urgency: 0.1, // Urgency keywords weight
+      importance: 0.05, // Importance indicators weight
     },
     timeDecayHalfLife,
     miniSearchConfig: {
-      fields: ['text', 'user'],                           // Fields to index and search
-      storeFields: ['id', 'timestamp', 'threadTs'],       // Fields to store for retrieval
+      fields: ['text', 'user'], // Fields to index and search
+      storeFields: ['id', 'timestamp', 'threadTs'], // Fields to store for retrieval
       searchOptions: {
-        boost: { text: 2, user: 1.5 },                   // Field importance multipliers
-        fuzzy: 0.2,                                       // Fuzzy matching tolerance
+        boost: { text: 2, user: 1.5 }, // Field importance multipliers
+        fuzzy: 0.2, // Fuzzy matching tolerance
       },
     },
     engagementMetrics: {
-      reactionWeight: 0.3,   // Weight for message reactions in engagement score
-      replyWeight: 0.5,      // Weight for thread replies in engagement score
-      mentionWeight: 0.2,    // Weight for user mentions in engagement score
+      reactionWeight: 0.3, // Weight for message reactions in engagement score
+      replyWeight: 0.5, // Weight for thread replies in engagement score
+      mentionWeight: 0.2, // Weight for user mentions in engagement score
     },
     cacheTTL: config.searchIndexTTL * 1000, // Convert seconds to milliseconds for cache
   };
@@ -180,14 +186,18 @@ export const createInfrastructureServices = (
         clientManager: {
           getBotClient: () => clientManager.getClientForOperation('write'),
           getUserClient: () => clientManager.getClientForOperation('read'),
-          getClientForOperation: (operation: string) => clientManager.getClientForOperation(operation as 'read' | 'write'),
+          getClientForOperation: (operation: string) =>
+            clientManager.getClientForOperation(operation as 'read' | 'write'),
         },
         rateLimitService: {
-          trackRequest: (_tier: string) => { /* stub for demo */ },
+          trackRequest: (_tier: string) => {
+            /* stub for demo */
+          },
           getMetrics: () => rateLimitService.getMetrics(),
         },
         requestHandler: {
-          validateInput: <T>(schema: unknown, input: unknown) => validateInput(schema as z.ZodSchema<T>, input),
+          validateInput: <T>(schema: unknown, input: unknown) =>
+            validateInput(schema as z.ZodSchema<T>, input),
           handleRequest: async <T>(fn: () => Promise<T>) => await fn(),
         },
         userService: {
@@ -218,7 +228,9 @@ export const createInfrastructureServices = (
       // Log error but continue without relevance scoring to maintain backward compatibility
       // This ensures the application remains functional even if search ranking configuration is invalid
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.warn(`Failed to initialize relevance scorer: ${errorMessage}. Continuing without advanced search ranking.`);
+      console.warn(
+        `Failed to initialize relevance scorer: ${errorMessage}. Continuing without advanced search ranking.`
+      );
       relevanceScorer = null;
     }
   }

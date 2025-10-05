@@ -20,8 +20,12 @@ import {
   type SearchQueryOptions,
   type ParsedSearchQuery,
 } from '../../utils/search-query-parser.js';
-import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
+import {
+  applyRelevanceScoring,
+  normalizeSearchResults,
+} from '../../utils/relevance-integration.js';
 import { validateDateParameters } from '../../../utils/date-validation.js';
+import { convertDateToTimestamp } from '../../../utils/date-converter.js';
 import type { FileService, FileServiceDependencies } from './types.js';
 import {
   createServiceSuccess,
@@ -477,6 +481,22 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
 
       const client = deps.clientManager.getClientForOperation('read');
 
+      // Convert date parameters to timestamps if provided
+      let ts_from: string | undefined;
+      let ts_to: string | undefined;
+
+      if (input.after_date) {
+        ts_from = convertDateToTimestamp(input.after_date, false); // 00:00:00 UTC
+      } else if (input.ts_from) {
+        ts_from = input.ts_from;
+      }
+
+      if (input.before_date) {
+        ts_to = convertDateToTimestamp(input.before_date, true); // 23:59:59 UTC
+      } else if (input.ts_to) {
+        ts_to = input.ts_to;
+      }
+
       // Use unified pagination implementation for Slack files API (page-based)
       let currentPage = input.page || 1;
 
@@ -485,8 +505,8 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
           const listArgs: FilesListArguments = {
             channel: input.channel,
             user: input.user,
-            ts_from: input.ts_from,
-            ts_to: input.ts_to,
+            ts_from,
+            ts_to,
             types: input.types,
             count: input.count || 100,
             page: currentPage,
@@ -597,64 +617,67 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
    *
    * REFACTORED: Now uses shared service method factory to eliminate duplication
    */
-  const getFileInfo = createServiceMethod({
-    schema: GetFileInfoSchema,
-    operation: 'read',
-    handler: async (input, { client }: ServiceMethodContext) => {
-      const result = await client.files.info({
-        file: input.file_id,
-      });
+  const getFileInfo = createServiceMethod(
+    {
+      schema: GetFileInfoSchema,
+      operation: 'read',
+      handler: async (input, { client }: ServiceMethodContext) => {
+        const result = await client.files.info({
+          file: input.file_id,
+        });
 
-      if (!result.file) {
-        throw new Error(`File with ID '${input.file_id}' not found or not accessible`);
-      }
-
-      // Get file comments if requested
-      let comments: Array<{ comment: string; user: string; timestamp: number; id: string }> = [];
-      if (input.include_comments) {
-        try {
-          // Note: files.comments is deprecated, skip for now
-          comments = [];
-        } catch {
-          // Comments API not available or deprecated
-          comments = [];
+        if (!result.file) {
+          throw new Error(`File with ID '${input.file_id}' not found or not accessible`);
         }
-      }
 
-      // Create TypeSafeAPI-compliant output
-      return enforceServiceOutput({
-        id: result.file.id || '',
-        name: result.file.name || '',
-        title: result.file.title || '',
-        mimetype: result.file.mimetype,
-        filetype: result.file.filetype,
-        size: result.file.size,
-        url: result.file.url_private,
-        downloadUrl: result.file.url_private_download,
-        previewUrl: result.file.preview,
-        thumbnailUrl: result.file.thumb_360,
-        channels: result.file.channels,
-        groups: result.file.groups,
-        ims: result.file.ims,
-        user: result.file.user,
-        username: result.file.username,
-        timestamp: result.file.timestamp,
-        created: result.file.created,
-        isPublic: result.file.public_url_shared,
-        isExternal: result.file.is_external,
-        hasRichPreview: result.file.has_rich_preview,
-        comments: comments.map((comment) => ({
-          id: comment.id,
-          user: comment.user,
-          comment: comment.comment,
-          timestamp: comment.timestamp,
-        })),
-      });
+        // Get file comments if requested
+        let comments: Array<{ comment: string; user: string; timestamp: number; id: string }> = [];
+        if (input.include_comments) {
+          try {
+            // Note: files.comments is deprecated, skip for now
+            comments = [];
+          } catch {
+            // Comments API not available or deprecated
+            comments = [];
+          }
+        }
+
+        // Create TypeSafeAPI-compliant output
+        return enforceServiceOutput({
+          id: result.file.id || '',
+          name: result.file.name || '',
+          title: result.file.title || '',
+          mimetype: result.file.mimetype,
+          filetype: result.file.filetype,
+          size: result.file.size,
+          url: result.file.url_private,
+          downloadUrl: result.file.url_private_download,
+          previewUrl: result.file.preview,
+          thumbnailUrl: result.file.thumb_360,
+          channels: result.file.channels,
+          groups: result.file.groups,
+          ims: result.file.ims,
+          user: result.file.user,
+          username: result.file.username,
+          timestamp: result.file.timestamp,
+          created: result.file.created,
+          isPublic: result.file.public_url_shared,
+          isExternal: result.file.is_external,
+          hasRichPreview: result.file.has_rich_preview,
+          comments: comments.map((comment) => ({
+            id: comment.id,
+            user: comment.user,
+            comment: comment.comment,
+            timestamp: comment.timestamp,
+          })),
+        });
+      },
+      successMessage: 'File information retrieved successfully',
+      methodName: 'getFileInfo',
+      errorPrefix: 'Failed to retrieve file information',
     },
-    successMessage: 'File information retrieved successfully',
-    methodName: 'getFileInfo',
-    errorPrefix: 'Failed to retrieve file information',
-  }, { clientManager: deps.clientManager });
+    { clientManager: deps.clientManager }
+  );
 
   /**
    * Delete a file (where permitted) using TypeSafeAPI + ts-pattern type safety
@@ -664,30 +687,33 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
    *
    * REFACTORED: Now uses shared service method factory to eliminate duplication
    */
-  const deleteFile = createServiceMethod({
-    schema: DeleteFileSchema,
-    operation: 'write',
-    handler: async (input, { client }: ServiceMethodContext) => {
-      const result = await client.files.delete({
-        file: input.file_id,
-      });
+  const deleteFile = createServiceMethod(
+    {
+      schema: DeleteFileSchema,
+      operation: 'write',
+      handler: async (input, { client }: ServiceMethodContext) => {
+        const result = await client.files.delete({
+          file: input.file_id,
+        });
 
-      if (!result.ok) {
-        throw new Error(`Failed to delete file: ${result.error || 'Unknown error'}`);
-      }
+        if (!result.ok) {
+          throw new Error(`Failed to delete file: ${result.error || 'Unknown error'}`);
+        }
 
-      // Create TypeSafeAPI-compliant output
-      return enforceServiceOutput({
-        success: true,
-        fileId: input.file_id,
-        message: 'File deleted successfully',
-        timestamp: new Date().toISOString(),
-      });
+        // Create TypeSafeAPI-compliant output
+        return enforceServiceOutput({
+          success: true,
+          fileId: input.file_id,
+          message: 'File deleted successfully',
+          timestamp: new Date().toISOString(),
+        });
+      },
+      successMessage: 'File deleted successfully',
+      methodName: 'deleteFile',
+      errorPrefix: 'Failed to delete file',
     },
-    successMessage: 'File deleted successfully',
-    methodName: 'deleteFile',
-    errorPrefix: 'Failed to delete file',
-  }, { clientManager: deps.clientManager });
+    { clientManager: deps.clientManager }
+  );
 
   /**
    * Share an existing file to additional channels using TypeSafeAPI + ts-pattern type safety
@@ -1052,11 +1078,11 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       const resolveChannelName = async (channelId: string): Promise<string> => {
         try {
           const channelInfo = await client.conversations.info({ channel: channelId });
-          
+
           if (channelInfo.ok && channelInfo.channel?.name) {
             return channelInfo.channel.name;
           }
-          
+
           // Fallback to channel ID if name resolution fails
           return channelId;
         } catch {
@@ -1068,7 +1094,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       /**
        * Build advanced file search query using the search query parser
        * Supports complex queries with operators, boolean logic, and proper escaping
-       * 
+       *
        * @param options - Query building options with base query and filters
        * @returns Enhanced search query with proper Slack syntax
        */
@@ -1095,44 +1121,50 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             maxQueryLength: 500,
             enableBooleanOperators: true,
             enableGrouping: true,
-            channelNameMap
+            channelNameMap,
           };
 
           // Parse the base query first
           const parseResult = parseSearchQuery(options.baseQuery, parserOptions);
 
           let finalQuery: ParsedSearchQuery;
-          
+
           if (parseResult.success) {
             // Use parsed query as base
             finalQuery = parseResult.query;
           } else {
             // Fallback to simple query structure for legacy compatibility
             finalQuery = {
-              terms: options.baseQuery.trim().split(/\s+/).filter(t => t.length > 0),
+              terms: options.baseQuery
+                .trim()
+                .split(/\s+/)
+                .filter((t) => t.length > 0),
               phrases: [],
               operators: [],
               booleanOperators: [],
               groups: [],
-              raw: options.baseQuery
+              raw: options.baseQuery,
             };
           }
 
           // Add additional operators from options if not already present in parsed query
-          const existingOperators = new Set(finalQuery.operators.map(op => op.type));
+          const existingOperators = new Set(finalQuery.operators.map((op) => op.type));
 
           // Add file type operator - maintain legacy OR logic for multiple types
           if (options.types && !existingOperators.has('filetype')) {
-            const types = options.types.split(',').map(t => t.trim()).filter(t => t.length > 0);
+            const types = options.types
+              .split(',')
+              .map((t) => t.trim())
+              .filter((t) => t.length > 0);
             if (types.length === 1) {
               finalQuery.operators.push({
                 type: 'filetype',
                 value: types[0] || '',
-                field: 'file_type'
+                field: 'file_type',
               });
             } else if (types.length > 1) {
               // For multiple file types, add as a single grouped term to maintain OR logic
-              const typeQuery = types.map(t => `filetype:${t}`).join(' OR ');
+              const typeQuery = types.map((t) => `filetype:${t}`).join(' OR ');
               finalQuery.terms.push(`(${typeQuery})`);
             }
           }
@@ -1143,7 +1175,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             finalQuery.operators.push({
               type: 'in',
               value: `#${resolvedName}`,
-              field: 'channel'
+              field: 'channel',
             });
           }
 
@@ -1152,7 +1184,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             finalQuery.operators.push({
               type: 'from',
               value: `<@${options.user}>`,
-              field: 'user'
+              field: 'user',
             });
           }
 
@@ -1161,7 +1193,7 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             finalQuery.operators.push({
               type: 'after',
               value: options.after,
-              field: 'date'
+              field: 'date',
             });
           }
 
@@ -1169,18 +1201,17 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             finalQuery.operators.push({
               type: 'before',
               value: options.before,
-              field: 'date'
+              field: 'date',
             });
           }
 
           // Build the final query
           return buildSlackSearchQuery(finalQuery, parserOptions);
-
         } catch (error) {
           // Fallback to simple query building for any errors
           logger.warn('Advanced file search query building failed, falling back to simple query', {
             error: error instanceof Error ? error.message : 'Unknown error',
-            baseQuery: options.baseQuery
+            baseQuery: options.baseQuery,
           });
 
           // Simple fallback implementation
@@ -1189,7 +1220,10 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
             parts.push(options.baseQuery.trim());
           }
           if (options.types) {
-            const types = options.types.split(',').map(t => `filetype:${t.trim()}`).join(' OR ');
+            const types = options.types
+              .split(',')
+              .map((t) => `filetype:${t.trim()}`)
+              .join(' OR ');
             parts.push(`(${types})`);
           }
           if (options.channel) {

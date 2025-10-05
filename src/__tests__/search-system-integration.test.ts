@@ -7,7 +7,7 @@ const parseMCPResult = (result: MCPToolResult) => {
   if (!firstContent || firstContent.type !== 'text') {
     throw new Error('Expected text content in MCP result');
   }
-  
+
   if (result.isError) {
     const errorData = JSON.parse(firstContent.text);
     return {
@@ -31,7 +31,7 @@ const resetModulesWithMocks = (config?: any) => {
   jest.resetModules();
   jest.doMock('@slack/web-api', () => ({
     WebClient: jest.fn().mockImplementation(() => createMockWebClient()),
-    LogLevel: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' }
+    LogLevel: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' },
   }));
   if (config) {
     jest.doMock('../config/index.js', () => config);
@@ -229,8 +229,8 @@ jest.mock('@slack/web-api', () => ({
     DEBUG: 'debug',
     INFO: 'info',
     WARN: 'warn',
-    ERROR: 'error'
-  }
+    ERROR: 'error',
+  },
 }));
 
 // Mock logger
@@ -251,10 +251,10 @@ describe('Search System Integration', () => {
     // Clear all mocks before each test
     jest.clearAllMocks();
     jest.resetModules();
-    
+
     // Mock config for this test
     jest.doMock('../config/index.js', () => createMockConfig(true));
-    
+
     // Dynamic import to get fresh instance with mocked config
     const { SlackService: ImportedSlackService } = await import('../slack/slack-service.js');
     SlackService = ImportedSlackService;
@@ -278,7 +278,7 @@ describe('Search System Integration', () => {
         expect(parsed.data).toBeDefined();
         expect(parsed.data.messages).toBeDefined();
         expect(Array.isArray(parsed.data.messages)).toBe(true);
-        
+
         // Verify that search was called with correct parameters
         const mockWebClient = createMockWebClient();
         expect(mockWebClient.search.messages).toBeDefined();
@@ -293,7 +293,7 @@ describe('Search System Integration', () => {
         const parsed = parseMCPResult(result);
         expect(parsed.statusCode).toBe('10000');
         expect(parsed.data.messages).toBeDefined();
-        
+
         // Should have processed results through ranking system
         expect(parsed.message).toContain('successfully');
       });
@@ -301,7 +301,7 @@ describe('Search System Integration', () => {
       it('should work with search ranking disabled', async () => {
         // Reset modules and mock config with ranking disabled
         resetModulesWithMocks(createMockConfig(false));
-        
+
         const { SlackService: DisabledRankingService } = await import('../slack/slack-service.js');
         const disabledService = new DisabledRankingService();
 
@@ -390,7 +390,7 @@ describe('Search System Integration', () => {
     it('should work when SEARCH_RANKING_ENABLED=false', async () => {
       // Create new service instance with ranking disabled
       resetModulesWithMocks(createMockConfig(false));
-      
+
       const { SlackService: DisabledService } = await import('../slack/slack-service.js');
       const service = new DisabledService();
 
@@ -446,7 +446,7 @@ describe('Search System Integration', () => {
             messages: jest.fn<any>().mockRejectedValue(new Error('API Error')),
           },
         })),
-        LogLevel: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' }
+        LogLevel: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' },
       }));
       jest.doMock('../config/index.js', () => createMockConfig(true));
 
@@ -459,7 +459,7 @@ describe('Search System Integration', () => {
       });
 
       const parsed = parseMCPResult(result);
-expect(parsed.statusCode).toBe('10001');
+      expect(parsed.statusCode).toBe('10001');
       expect(parsed.message).toContain('error');
     });
 
@@ -471,7 +471,7 @@ expect(parsed.statusCode).toBe('10001');
 
       // Should handle empty query appropriately
       const parsed = parseMCPResult(result);
-expect(['10001', '10000']).toContain(parsed.statusCode);
+      expect(['10001', '10000']).toContain(parsed.statusCode);
     });
 
     it('should handle search timeout scenarios', async () => {
@@ -480,12 +480,12 @@ expect(['10001', '10000']).toContain(parsed.statusCode);
       jest.doMock('@slack/web-api', () => ({
         WebClient: jest.fn().mockImplementation(() => ({
           search: {
-            messages: jest.fn().mockImplementation(() => 
-              new Promise(resolve => setTimeout(resolve, 100))
-            ),
+            messages: jest
+              .fn()
+              .mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100))),
           },
         })),
-        LogLevel: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' }
+        LogLevel: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' },
       }));
       jest.doMock('../config/index.js', () => createMockConfig(true));
 
@@ -534,7 +534,7 @@ expect(['10001', '10000']).toContain(parsed.statusCode);
       const duration = Date.now() - startTime;
 
       // All should complete
-      results.forEach(result => {
+      results.forEach((result) => {
         const parsed = parseMCPResult(result);
         expect(['10000', '10001'].includes(parsed.statusCode)).toBe(true);
       });
@@ -566,7 +566,7 @@ expect(['10001', '10000']).toContain(parsed.statusCode);
             }),
           },
         })),
-        LogLevel: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' }
+        LogLevel: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' },
       }));
       jest.doMock('../config/index.js', () => createMockConfig(true));
 
@@ -594,7 +594,7 @@ expect(['10001', '10000']).toContain(parsed.statusCode);
           query: `test query ${i}`,
           count: 10,
         });
-        
+
         const parsed = parseMCPResult(result);
         expect(['10000', '10001'].includes(parsed.statusCode)).toBe(true);
       }
@@ -606,7 +606,7 @@ expect(['10001', '10000']).toContain(parsed.statusCode);
     it('should handle search cache appropriately', async () => {
       // Perform same search multiple times to test caching
       const query = { query: 'repeated search', count: 5 };
-      
+
       const results = await Promise.all([
         slackService.searchMessages(query),
         slackService.searchMessages(query),
@@ -614,8 +614,8 @@ expect(['10001', '10000']).toContain(parsed.statusCode);
       ]);
 
       // All should succeed (or fail consistently)
-      const statusCodes = results.map(r => parseMCPResult(r).statusCode);
-      expect(statusCodes.every(code => code === statusCodes[0])).toBe(true);
+      const statusCodes = results.map((r) => parseMCPResult(r).statusCode);
+      expect(statusCodes.every((code) => code === statusCodes[0])).toBe(true);
     });
   });
 
@@ -687,7 +687,7 @@ expect(['10001', '10000']).toContain(parsed.statusCode);
       const parsed = parseMCPResult(result);
       // Thread search might fail due to complex validation requirements
       expect(['10000', '10001'].includes(parsed.statusCode)).toBe(true);
-      
+
       // Result should include thread analysis capabilities when successful
       if (parsed.statusCode === '10000') {
         expect(parsed.data).toBeDefined();
@@ -717,7 +717,7 @@ expect(['10001', '10000']).toContain(parsed.statusCode);
             }),
           },
         })),
-        LogLevel: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' }
+        LogLevel: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' },
       }));
       jest.doMock('../config/index.js', () => createMockConfig(true));
 

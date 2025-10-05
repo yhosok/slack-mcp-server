@@ -836,7 +836,7 @@ export const createReactionServiceTypeSafeAPI = (
       return match(searchResult)
         .with({ success: true }, (success) => {
           // Transform messages from MessageSearchResult to FindMessagesByReactionsResult format
-          const transformedMessages = success.data.messages.map(msg => ({
+          const transformedMessages = success.data.messages.map((msg) => ({
             channel: msg.channel || '',
             channelName: '', // Message service doesn't provide channel names in search results
             text: msg.text || '',
@@ -885,8 +885,8 @@ export const createReactionServiceTypeSafeAPI = (
   const buildReactionSearchQuery = (
     input: ReturnType<typeof FindMessagesByReactionsSchema.parse>
   ): string => {
-    const reactionQueries = input.reactions.map(reaction => `has:${reaction}`);
-    
+    const reactionQueries = input.reactions.map((reaction) => `has:${reaction}`);
+
     if (input.match_type === 'all') {
       // AND logic: all reactions must be present
       return reactionQueries.join(' ');

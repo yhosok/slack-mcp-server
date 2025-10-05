@@ -5,11 +5,7 @@
  */
 
 import type { SlackMessage } from '../../types/index.js';
-import type {
-  TopicExtractionResult,
-  TopicExtractionConfig,
-  KeywordAnalysis,
-} from './types.js';
+import type { TopicExtractionResult, TopicExtractionConfig, KeywordAnalysis } from './types.js';
 import {
   JAPANESE_STOP_WORDS,
   isJapaneseChar,
@@ -39,9 +35,7 @@ export const DEFAULT_TOPIC_CONFIG: TopicExtractionConfig = {
 
 // Note: Functions moved to shared utilities for reuse but re-exported here for backward compatibility
 // Re-export core functions that were originally in this module
-export {
-  cleanText,
-} from '../shared/text-processing/text-cleaner.js';
+export { cleanText } from '../shared/text-processing/text-cleaner.js';
 
 export {
   detectLanguageContent,

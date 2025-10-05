@@ -1054,13 +1054,14 @@ describe('ReactionService - Reaction Operations', () => {
       // Arrange - Configure messageService to return error (simulating no user token)
       const mockErrorResult = {
         success: false,
-        error: 'searchMessages requires a user token. Bot tokens cannot use search API. Please either:\n1. Set USE_USER_TOKEN_FOR_READ=true and provide SLACK_USER_TOKEN (xoxp-*), or\n2. Use channel-specific search instead',
+        error:
+          'searchMessages requires a user token. Bot tokens cannot use search API. Please either:\n1. Set USE_USER_TOKEN_FOR_READ=true and provide SLACK_USER_TOKEN (xoxp-*), or\n2. Use channel-specific search instead',
         statusCode: 401,
         message: 'Search API requires user token with search:read scope',
       };
 
       mockMessageService.searchMessages.mockResolvedValue(mockErrorResult);
-      
+
       // Act - Try workspace search without user token (no channel provided)
       const result = await reactionService.findMessagesByReactions(validWorkspaceArgs);
 

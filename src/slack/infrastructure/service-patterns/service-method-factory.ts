@@ -170,15 +170,10 @@ export const createServiceMethod = <TInput, TOutput extends ServiceOutput>(
           operationType: config.operation,
         });
 
-        return createTypedServiceError(
-          'API_ERROR',
-          error.message,
-          errorPrefix,
-          {
-            method: methodName,
-            operationType: config.operation,
-          }
-        );
+        return createTypedServiceError('API_ERROR', error.message, errorPrefix, {
+          method: methodName,
+          operationType: config.operation,
+        });
       }
 
       // Handle validation errors
@@ -235,7 +230,7 @@ export interface PaginatedServiceMethodConfig<TInput, TOutput extends ServiceOut
 export const createPaginatedServiceMethod = <TInput, TOutput extends ServiceOutput>(
   config: PaginatedServiceMethodConfig<TInput, TOutput>,
   deps: ServiceMethodDependencies
-): (args: unknown) => Promise<ServiceResult<TOutput>> => {
+): ((args: unknown) => Promise<ServiceResult<TOutput>>) => {
   // For now, just delegate to the regular createServiceMethod
   // The pagination logic is handled within the handler function
   return createServiceMethod(config, deps);
@@ -255,7 +250,10 @@ export interface CrudMethodConfig<TInput, TOutput extends ServiceOutput> {
   /** Resource name for automatic message generation */
   resourceName: string;
   /** Slack API method to call */
-  slackMethod: (client: ReturnType<SlackClientManager['getClientForOperation']>, input: TInput) => Promise<unknown>;
+  slackMethod: (
+    client: ReturnType<SlackClientManager['getClientForOperation']>,
+    input: TInput
+  ) => Promise<unknown>;
   /** Transform Slack API response to service output */
   transform: (response: unknown, input: TInput) => TOutput;
 }
@@ -266,7 +264,7 @@ export interface CrudMethodConfig<TInput, TOutput extends ServiceOutput> {
 export const createCrudMethod = <TInput, TOutput extends ServiceOutput>(
   config: CrudMethodConfig<TInput, TOutput>,
   deps: ServiceMethodDependencies
-): (args: unknown) => Promise<ServiceResult<TOutput>> => {
+): ((args: unknown) => Promise<ServiceResult<TOutput>>) => {
   const operationMap = {
     create: 'write' as const,
     read: 'read' as const,

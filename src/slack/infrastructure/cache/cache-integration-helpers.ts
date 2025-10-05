@@ -1,12 +1,12 @@
 /**
  * @fileoverview Cache integration helpers for service implementations
- * 
+ *
  * Provides utility functions and patterns for integrating caching into domain services:
  * - Safe cache operations with graceful degradation
  * - Common caching patterns (get-or-fetch, invalidation strategies)
  * - Cache key generation utilities
  * - Performance tracking and metrics integration
- * 
+ *
  * Created: 2025-08-19
  * Architecture Integration: TDD Refactor phase for cache system integration
  */
@@ -56,7 +56,7 @@ export class CacheKeyBuilder {
   static channel(operation: string, params: Record<string, unknown>): string {
     const sortedParams = Object.keys(params)
       .sort()
-      .map(key => `${key}:${params[key]}`)
+      .map((key) => `${key}:${params[key]}`)
       .join('|');
     return `channels:${operation}:${sortedParams}`;
   }
@@ -67,8 +67,13 @@ export class CacheKeyBuilder {
   static user(operation: string, userId?: string, params?: Record<string, unknown>): string {
     const baseKey = `users:${operation}`;
     if (userId) {
-      const paramStr = params ? 
-        '|' + Object.keys(params).sort().map(k => `${k}:${params[k]}`).join('|') : '';
+      const paramStr = params
+        ? '|' +
+          Object.keys(params)
+            .sort()
+            .map((k) => `${k}:${params[k]}`)
+            .join('|')
+        : '';
       return `${baseKey}:${userId}${paramStr}`;
     }
     return baseKey;
@@ -78,8 +83,13 @@ export class CacheKeyBuilder {
    * Generate cache key for search operations
    */
   static search(operation: string, query: string, params?: Record<string, unknown>): string {
-    const paramStr = params ? 
-      '|' + Object.keys(params).sort().map(k => `${k}:${params[k]}`).join('|') : '';
+    const paramStr = params
+      ? '|' +
+        Object.keys(params)
+          .sort()
+          .map((k) => `${k}:${params[k]}`)
+          .join('|')
+      : '';
     return `search:${operation}:${query}${paramStr}`;
   }
 
@@ -89,7 +99,7 @@ export class CacheKeyBuilder {
   static file(operation: string, params: Record<string, unknown>): string {
     const sortedParams = Object.keys(params)
       .sort()
-      .map(key => `${key}:${params[key]}`)
+      .map((key) => `${key}:${params[key]}`)
       .join('|');
     return `files:${operation}:${sortedParams}`;
   }
@@ -97,7 +107,12 @@ export class CacheKeyBuilder {
   /**
    * Generate cache key for thread operations
    */
-  static thread(operation: string, channelId?: string, threadTs?: string, params?: Record<string, unknown>): string {
+  static thread(
+    operation: string,
+    channelId?: string,
+    threadTs?: string,
+    params?: Record<string, unknown>
+  ): string {
     let key = `threads:${operation}`;
     if (channelId) {
       key += `:${channelId}`;
@@ -106,7 +121,10 @@ export class CacheKeyBuilder {
       }
     }
     if (params) {
-      const paramStr = Object.keys(params).sort().map(k => `${k}:${params[k]}`).join('|');
+      const paramStr = Object.keys(params)
+        .sort()
+        .map((k) => `${k}:${params[k]}`)
+        .join('|');
       key += `|${paramStr}`;
     }
     return key;
@@ -164,7 +182,10 @@ export class CacheIntegrationHelper {
       return freshData;
     } catch (error) {
       // Log cache error but continue with direct fetch
-      logger.warn(`Cache operation failed for key: ${cacheKey}, falling back to direct fetch:`, error);
+      logger.warn(
+        `Cache operation failed for key: ${cacheKey}, falling back to direct fetch:`,
+        error
+      );
       return await fetchFunction();
     }
   }
@@ -189,7 +210,7 @@ export class CacheIntegrationHelper {
               await searchCache.invalidatePattern({
                 type: 'query_pattern',
                 value: key,
-                reason: `Direct key invalidation: ${key}`
+                reason: `Direct key invalidation: ${key}`,
               });
             } else {
               // LRU caches have delete method
@@ -208,7 +229,7 @@ export class CacheIntegrationHelper {
           await searchCache.invalidatePattern({
             type: 'query_pattern',
             value: pattern,
-            reason: `Pattern invalidation: ${pattern}`
+            reason: `Pattern invalidation: ${pattern}`,
           });
           logger.debug(`Invalidated cache pattern: ${pattern}`);
         }
@@ -255,7 +276,9 @@ export class CacheIntegrationHelper {
   // Private Helper Methods
   // ============================================================================
 
-  private getCacheInstance(cacheType: 'channels' | 'users' | 'search' | 'files' | 'threads'): unknown | null {
+  private getCacheInstance(
+    cacheType: 'channels' | 'users' | 'search' | 'files' | 'threads'
+  ): unknown | null {
     if (!this.cacheService) return null;
 
     switch (cacheType) {
@@ -274,7 +297,9 @@ export class CacheIntegrationHelper {
     }
   }
 
-  private determineCacheType(key: string): 'channels' | 'users' | 'search' | 'files' | 'threads' | null {
+  private determineCacheType(
+    key: string
+  ): 'channels' | 'users' | 'search' | 'files' | 'threads' | null {
     if (key.startsWith('channels:')) return 'channels';
     if (key.startsWith('users:')) return 'users';
     if (key.startsWith('search:')) return 'search';
@@ -291,6 +316,8 @@ export class CacheIntegrationHelper {
 /**
  * Create cache integration helper for use in services
  */
-export function createCacheIntegrationHelper(cacheService: CacheService | null): CacheIntegrationHelper {
+export function createCacheIntegrationHelper(
+  cacheService: CacheService | null
+): CacheIntegrationHelper {
   return new CacheIntegrationHelper(cacheService);
 }

@@ -158,7 +158,7 @@ export interface ReactionService {
  * MCP protocol interface for tool result compatibility with reactions
  *
  * MCP-compatible interface that wraps TypeSafeAPI service results in the
- * MCPToolResult format required by the Model Context Protocol. Used by 
+ * MCPToolResult format required by the Model Context Protocol. Used by
  * SlackService facade to maintain MCP protocol compliance while
  * leveraging TypeSafeAPI type safety internally.
  *

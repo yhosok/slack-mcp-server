@@ -244,7 +244,9 @@ describe('SlackService.getChannelInfo', () => {
     // Parse TypeSafeAPI JSON error response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.statusCode).toBe('10001');
-    expect(content.message).toBe('Failed to retrieve channel information: Unexpected error occurred');
+    expect(content.message).toBe(
+      'Failed to retrieve channel information: Unexpected error occurred'
+    );
     expect(content.error).toBe('Channel not found');
   });
 
@@ -272,7 +274,9 @@ describe('SlackService.getChannelInfo', () => {
     // Parse TypeSafeAPI JSON error response
     const content = JSON.parse(extractTextContent(result.content[0]) || '{}');
     expect(content.statusCode).toBe('10001');
-    expect(content.message).toBe('Failed to retrieve channel information: Unexpected error occurred');
+    expect(content.message).toBe(
+      'Failed to retrieve channel information: Unexpected error occurred'
+    );
     expect(content.error).toBe('Channel not found');
   });
 
@@ -292,7 +296,9 @@ describe('SlackService.getChannelInfo', () => {
 
     const result2 = await slackService.getChannelInfo({ channel: '' });
     expect(result2.isError).toBe(true);
-    expect(extractTextContent(result2.content[0])).toContain('Failed to retrieve channel information');
+    expect(extractTextContent(result2.content[0])).toContain(
+      'Failed to retrieve channel information'
+    );
   });
 
   it('should handle direct message channel', async () => {

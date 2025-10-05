@@ -229,7 +229,10 @@ describe('Analysis Layer Functions', () => {
     });
 
     test('should format thread analysis', async () => {
-      const comprehensiveResult = await performComprehensiveAnalysis(mockMessages, mockParticipants);
+      const comprehensiveResult = await performComprehensiveAnalysis(
+        mockMessages,
+        mockParticipants
+      );
 
       // Create mock ThreadAnalysis object
       const mockAnalysis = {

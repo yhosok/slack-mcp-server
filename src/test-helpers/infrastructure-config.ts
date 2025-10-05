@@ -1,6 +1,6 @@
 /**
  * Test helpers for infrastructure configuration
- * 
+ *
  * Provides utility functions to create test infrastructure configurations
  * that include all required properties including the new search ranking config.
  */
@@ -9,7 +9,7 @@ import type { InfrastructureConfig } from '../slack/infrastructure/index.js';
 
 /**
  * Create a default infrastructure configuration for testing
- * 
+ *
  * @param overrides - Partial configuration to override defaults
  * @returns Complete infrastructure configuration suitable for testing
  */
@@ -53,7 +53,7 @@ export function createTestInfrastructureConfig(
 
 /**
  * Create infrastructure configuration with search ranking enabled
- * 
+ *
  * @param overrides - Partial configuration to override defaults
  * @returns Infrastructure configuration with search ranking enabled
  */

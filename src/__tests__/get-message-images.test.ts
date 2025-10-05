@@ -1,11 +1,11 @@
 /**
  * TDD Green Phase - Get Message Images Test Suite
- * 
+ *
  * Test Status: 🟢 GREEN PHASE - Implementation complete, tests should PASS
- * 
+ *
  * Purpose: Comprehensive test coverage for get_message_images MCP tool
  * Expected Behavior: ALL TESTS SHOULD PASS with complete implementation
- * 
+ *
  * Test Coverage:
  * ✅ Basic image retrieval from message
  * ✅ Image data inclusion option
@@ -49,7 +49,7 @@ jest.mock('../config/index.js', () => ({
     SEARCH_INDEX_TTL: 900,
     SEARCH_TIME_DECAY_RATE: 0.01,
     SEARCH_MAX_INDEX_SIZE: 10000,
-  }
+  },
 }));
 
 // Create a shared mock WebClient instance with proper typing
@@ -127,20 +127,20 @@ jest.mock('../utils/logger.js', () => ({
 const getTextContent = (result: MCPToolResult): string => {
   expect(result.content).toBeDefined();
   expect(result.content.length).toBeGreaterThan(0);
-  
+
   const firstContent = result.content[0];
   expect(firstContent).toBeDefined();
-  
+
   if (!firstContent) {
     throw new Error('First content is undefined');
   }
-  
+
   expect(firstContent.type).toBe('text');
-  
+
   if (firstContent.type === 'text') {
     return (firstContent as MCPTextContent).text;
   }
-  
+
   throw new Error('Expected text content but got different type');
 };
 
@@ -161,7 +161,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
     MockWebClientInstance = createMockWebClient();
     slackService = new SlackService();
     jest.clearAllMocks();
-    
+
     // Reset fetch mock if it exists
     if (global.fetch && jest.isMockFunction(global.fetch)) {
       // @ts-expect-error - Mock access for testing
@@ -174,17 +174,19 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Arrange
       MockWebClientInstance.conversations.history.mockResolvedValueOnce({
         ok: true,
-        messages: [{
-          ts: '1234567890.123456',
-          user: 'U1234567890',
-          text: 'Test message without images'
-        }]
+        messages: [
+          {
+            ts: '1234567890.123456',
+            user: 'U1234567890',
+            text: 'Test message without images',
+          },
+        ],
       });
 
       const args = {
         channel: 'C1234567890',
         message_ts: '1234567890.123456',
-        include_image_data: false
+        include_image_data: false,
       };
 
       // Act
@@ -199,9 +201,9 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
     test('should succeed - MCP tool get_message_images is registered', async () => {
       // This test now passes because the tool is in the ALL_TOOLS array
       const { ALL_TOOLS } = await import('../mcp/tools.js');
-      
-      const getMessageImagesTool = ALL_TOOLS.find(tool => tool.name === 'get_message_images');
-      
+
+      const getMessageImagesTool = ALL_TOOLS.find((tool) => tool.name === 'get_message_images');
+
       expect(getMessageImagesTool).toBeDefined();
       expect(getMessageImagesTool?.name).toBe('get_message_images');
       expect(getMessageImagesTool?.description).toBe('Get all images from a specific message');
@@ -213,27 +215,33 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Mock setup for successful image retrieval
       MockWebClientInstance.conversations.history.mockResolvedValueOnce({
         ok: true,
-        messages: [{
-          ts: '1234567890.123456',
-          user: 'U1234567890',
-          text: 'Check out this screenshot!',
-          files: [{
-            id: 'F1234567890',
-            name: 'screenshot.png',
-            url_private: 'https://files.slack.com/files-pri/T12345-F1234567890/screenshot.png',
-            url_private_download: 'https://files.slack.com/files-pri/T12345-F1234567890/download/screenshot.png',
-            mimetype: 'image/png',
-            filetype: 'png',
-            size: 1024000,
-            thumb_360: 'https://files.slack.com/files-tmb/T12345-F1234567890-abc123/screenshot_360.png'
-          }]
-        }]
+        messages: [
+          {
+            ts: '1234567890.123456',
+            user: 'U1234567890',
+            text: 'Check out this screenshot!',
+            files: [
+              {
+                id: 'F1234567890',
+                name: 'screenshot.png',
+                url_private: 'https://files.slack.com/files-pri/T12345-F1234567890/screenshot.png',
+                url_private_download:
+                  'https://files.slack.com/files-pri/T12345-F1234567890/download/screenshot.png',
+                mimetype: 'image/png',
+                filetype: 'png',
+                size: 1024000,
+                thumb_360:
+                  'https://files.slack.com/files-tmb/T12345-F1234567890-abc123/screenshot_360.png',
+              },
+            ],
+          },
+        ],
       });
 
       const args = {
         channel: 'C1234567890',
         message_ts: '1234567890.123456',
-        include_image_data: false
+        include_image_data: false,
       };
 
       // Act
@@ -242,7 +250,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(false);
-      
+
       const parsedData = parseJSONResponse(result);
       expect(parsedData.data).toHaveProperty('channel', 'C1234567890');
       expect(parsedData.data).toHaveProperty('message_ts', '1234567890.123456');
@@ -250,7 +258,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       expect(parsedData.data).toHaveProperty('total_images');
       expect(parsedData.data.images).toHaveLength(1);
       expect(parsedData.data.total_images).toBe(1);
-      
+
       const image = parsedData.data.images[0];
       expect(image).toHaveProperty('id', 'F1234567890');
       expect(image).toHaveProperty('name', 'screenshot.png');
@@ -266,17 +274,19 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Mock message without files
       MockWebClientInstance.conversations.history.mockResolvedValueOnce({
         ok: true,
-        messages: [{
-          ts: '1234567890.123456',
-          user: 'U1234567890',
-          text: 'Just a text message with no images'
-        }]
+        messages: [
+          {
+            ts: '1234567890.123456',
+            user: 'U1234567890',
+            text: 'Just a text message with no images',
+          },
+        ],
       });
 
       const args = {
         channel: 'C1234567890',
         message_ts: '1234567890.123456',
-        include_image_data: false
+        include_image_data: false,
       };
 
       // Act
@@ -285,7 +295,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(false);
-      
+
       const parsedData = parseJSONResponse(result);
       expect(parsedData.data).toHaveProperty('channel', 'C1234567890');
       expect(parsedData.data).toHaveProperty('message_ts', '1234567890.123456');
@@ -298,26 +308,31 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Mock message with image file
       MockWebClientInstance.conversations.history.mockResolvedValueOnce({
         ok: true,
-        messages: [{
-          ts: '1234567890.123456',
-          user: 'U1234567890',
-          text: 'Image with data',
-          files: [{
-            id: 'F1234567890',
-            name: 'diagram.jpg',
-            url_private: 'https://files.slack.com/files-pri/T12345-F1234567890/diagram.jpg',
-            url_private_download: 'https://files.slack.com/files-pri/T12345-F1234567890/download/diagram.jpg',
-            mimetype: 'image/jpeg',
-            filetype: 'jpg',
-            size: 2048000
-          }]
-        }]
+        messages: [
+          {
+            ts: '1234567890.123456',
+            user: 'U1234567890',
+            text: 'Image with data',
+            files: [
+              {
+                id: 'F1234567890',
+                name: 'diagram.jpg',
+                url_private: 'https://files.slack.com/files-pri/T12345-F1234567890/diagram.jpg',
+                url_private_download:
+                  'https://files.slack.com/files-pri/T12345-F1234567890/download/diagram.jpg',
+                mimetype: 'image/jpeg',
+                filetype: 'jpg',
+                size: 2048000,
+              },
+            ],
+          },
+        ],
       });
 
       // Mock Base64 image data download
       const mockArrayBuffer = new ArrayBuffer(8);
       const mockBase64 = Buffer.from(mockArrayBuffer).toString('base64');
-      
+
       // Mock fetch for image data download
       // @ts-expect-error - Jest mock creation for testing
       const mockFetch = jest.fn().mockResolvedValueOnce({
@@ -330,7 +345,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       const args = {
         channel: 'C1234567890',
         message_ts: '1234567890.123456',
-        include_image_data: true
+        include_image_data: true,
       };
 
       // Act
@@ -339,7 +354,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(false);
-      
+
       const parsedData = parseJSONResponse(result);
       expect(parsedData.data.images).toHaveLength(1);
       expect(parsedData.data.images[0]).toHaveProperty('image_data', mockBase64);
@@ -349,35 +364,37 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Mock message with multiple image files
       MockWebClientInstance.conversations.history.mockResolvedValueOnce({
         ok: true,
-        messages: [{
-          ts: '1234567890.123456',
-          user: 'U1234567890',
-          text: 'Multiple screenshots',
-          files: [
-            {
-              id: 'F1234567890',
-              name: 'screenshot1.png',
-              url_private: 'https://files.slack.com/files-pri/T12345-F1234567890/screenshot1.png',
-              mimetype: 'image/png',
-              filetype: 'png',
-              size: 1024000
-            },
-            {
-              id: 'F1234567891',
-              name: 'screenshot2.jpg',
-              url_private: 'https://files.slack.com/files-pri/T12345-F1234567891/screenshot2.jpg',
-              mimetype: 'image/jpeg',
-              filetype: 'jpg',
-              size: 1536000
-            }
-          ]
-        }]
+        messages: [
+          {
+            ts: '1234567890.123456',
+            user: 'U1234567890',
+            text: 'Multiple screenshots',
+            files: [
+              {
+                id: 'F1234567890',
+                name: 'screenshot1.png',
+                url_private: 'https://files.slack.com/files-pri/T12345-F1234567890/screenshot1.png',
+                mimetype: 'image/png',
+                filetype: 'png',
+                size: 1024000,
+              },
+              {
+                id: 'F1234567891',
+                name: 'screenshot2.jpg',
+                url_private: 'https://files.slack.com/files-pri/T12345-F1234567891/screenshot2.jpg',
+                mimetype: 'image/jpeg',
+                filetype: 'jpg',
+                size: 1536000,
+              },
+            ],
+          },
+        ],
       });
 
       const args = {
         channel: 'C1234567890',
         message_ts: '1234567890.123456',
-        include_image_data: false
+        include_image_data: false,
       };
 
       // Act
@@ -386,16 +403,16 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(false);
-      
+
       const parsedData = parseJSONResponse(result);
       expect(parsedData.data.images).toHaveLength(2);
       expect(parsedData.data.total_images).toBe(2);
-      
+
       const image1 = parsedData.data.images[0];
       expect(image1).toHaveProperty('id', 'F1234567890');
       expect(image1).toHaveProperty('name', 'screenshot1.png');
       expect(image1).toHaveProperty('mimetype', 'image/png');
-      
+
       const image2 = parsedData.data.images[1];
       expect(image2).toHaveProperty('id', 'F1234567891');
       expect(image2).toHaveProperty('name', 'screenshot2.jpg');
@@ -406,43 +423,45 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Mock message with mixed file types (images and non-images)
       MockWebClientInstance.conversations.history.mockResolvedValueOnce({
         ok: true,
-        messages: [{
-          ts: '1234567890.123456',
-          user: 'U1234567890',
-          text: 'Mixed files - images and documents',
-          files: [
-            {
-              id: 'F1234567890',
-              name: 'image.png',
-              url_private: 'https://files.slack.com/files-pri/T12345-F1234567890/image.png',
-              mimetype: 'image/png',
-              filetype: 'png',
-              size: 1024000
-            },
-            {
-              id: 'F1234567891',
-              name: 'document.pdf',
-              url_private: 'https://files.slack.com/files-pri/T12345-F1234567891/document.pdf',
-              mimetype: 'application/pdf',
-              filetype: 'pdf',
-              size: 2048000
-            },
-            {
-              id: 'F1234567892',
-              name: 'photo.gif',
-              url_private: 'https://files.slack.com/files-pri/T12345-F1234567892/photo.gif',
-              mimetype: 'image/gif',
-              filetype: 'gif',
-              size: 512000
-            }
-          ]
-        }]
+        messages: [
+          {
+            ts: '1234567890.123456',
+            user: 'U1234567890',
+            text: 'Mixed files - images and documents',
+            files: [
+              {
+                id: 'F1234567890',
+                name: 'image.png',
+                url_private: 'https://files.slack.com/files-pri/T12345-F1234567890/image.png',
+                mimetype: 'image/png',
+                filetype: 'png',
+                size: 1024000,
+              },
+              {
+                id: 'F1234567891',
+                name: 'document.pdf',
+                url_private: 'https://files.slack.com/files-pri/T12345-F1234567891/document.pdf',
+                mimetype: 'application/pdf',
+                filetype: 'pdf',
+                size: 2048000,
+              },
+              {
+                id: 'F1234567892',
+                name: 'photo.gif',
+                url_private: 'https://files.slack.com/files-pri/T12345-F1234567892/photo.gif',
+                mimetype: 'image/gif',
+                filetype: 'gif',
+                size: 512000,
+              },
+            ],
+          },
+        ],
       });
 
       const args = {
         channel: 'C1234567890',
         message_ts: '1234567890.123456',
-        include_image_data: false
+        include_image_data: false,
       };
 
       // Act
@@ -451,17 +470,17 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(false);
-      
+
       const parsedData = parseJSONResponse(result);
       expect(parsedData.data.images).toHaveLength(2); // Only PNG and GIF, not PDF
       expect(parsedData.data.total_images).toBe(2);
-      
+
       // Verify only image files are included
       const imageTypes = parsedData.data.images.map((img: any) => img.mimetype);
       expect(imageTypes).toContain('image/png');
       expect(imageTypes).toContain('image/gif');
       expect(imageTypes).not.toContain('application/pdf');
-      
+
       const imageNames = parsedData.data.images.map((img: any) => img.name);
       expect(imageNames).toContain('image.png');
       expect(imageNames).toContain('photo.gif');
@@ -479,7 +498,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       const args = {
         channel: 'INVALID_CHANNEL',
         message_ts: '1234567890.123456',
-        include_image_data: false
+        include_image_data: false,
       };
 
       // Act
@@ -488,7 +507,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(true);
-      
+
       const textContent = getTextContent(result);
       expect(textContent).toContain('Failed to get message images');
     });
@@ -502,7 +521,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       const args = {
         channel: 'C1234567890',
         message_ts: 'invalid_timestamp',
-        include_image_data: false
+        include_image_data: false,
       };
 
       // Act
@@ -511,7 +530,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(true);
-      
+
       const textContent = getTextContent(result);
       expect(textContent).toContain('Failed to get message images');
     });
@@ -520,13 +539,13 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Mock empty response
       MockWebClientInstance.conversations.history.mockResolvedValueOnce({
         ok: true,
-        messages: []
+        messages: [],
       });
 
       const args = {
         channel: 'C1234567890',
         message_ts: '9999999999.999999',
-        include_image_data: false
+        include_image_data: false,
       };
 
       // Act
@@ -535,7 +554,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(true);
-      
+
       const textContent = getTextContent(result);
       expect(textContent).toContain('Message not found');
     });
@@ -545,7 +564,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
     test('should succeed - missing required channel parameter', async () => {
       const args = {
         message_ts: '1234567890.123456',
-        include_image_data: false
+        include_image_data: false,
       };
 
       // Act
@@ -554,7 +573,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(true);
-      
+
       const textContent = getTextContent(result);
       expect(textContent).toContain('channel: Required');
     });
@@ -562,7 +581,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
     test('should succeed - missing required message_ts parameter', async () => {
       const args = {
         channel: 'C1234567890',
-        include_image_data: false
+        include_image_data: false,
       };
 
       // Act
@@ -571,7 +590,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(true);
-      
+
       const textContent = getTextContent(result);
       expect(textContent).toContain('message_ts: Required');
     });
@@ -580,7 +599,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       const args = {
         channel: 'C1234567890',
         message_ts: '1234567890.123456',
-        include_image_data: 'invalid_boolean'
+        include_image_data: 'invalid_boolean',
       };
 
       // Act
@@ -589,7 +608,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(true);
-      
+
       const textContent = getTextContent(result);
       expect(textContent).toContain('Expected boolean');
     });
@@ -600,52 +619,64 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Mock successful response
       MockWebClientInstance.conversations.history.mockResolvedValueOnce({
         ok: true,
-        messages: [{
-          ts: '1234567890.123456',
-          user: 'U1234567890',
-          text: 'Image message',
-          files: [{
-            id: 'F1234567890',
-            name: 'test.png',
-            url_private: 'https://files.slack.com/test.png',
-            url_private_download: 'https://files.slack.com/download/test.png',
-            mimetype: 'image/png',
-            filetype: 'png',
-            size: 1024000
-          }]
-        }]
-      });
-
-      const args = {
-        channel: 'C1234567890',
-        message_ts: '1234567890.123456',
-        include_image_data: false
-      };
-
-      // Expected response format (TypeSafeAPI pattern)
-      const expectedResponse: MCPToolResult = {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            statusCode: "10000",
-            message: "Retrieved 1 image from message",
-            data: {
-              channel: 'C1234567890',
-              message_ts: '1234567890.123456',
-              images: [{
+        messages: [
+          {
+            ts: '1234567890.123456',
+            user: 'U1234567890',
+            text: 'Image message',
+            files: [
+              {
                 id: 'F1234567890',
                 name: 'test.png',
                 url_private: 'https://files.slack.com/test.png',
                 url_private_download: 'https://files.slack.com/download/test.png',
                 mimetype: 'image/png',
                 filetype: 'png',
-                size: 1024000
-              }],
-              total_images: 1
-            }
-          }, null, 2)
-        }],
-        isError: false
+                size: 1024000,
+              },
+            ],
+          },
+        ],
+      });
+
+      const args = {
+        channel: 'C1234567890',
+        message_ts: '1234567890.123456',
+        include_image_data: false,
+      };
+
+      // Expected response format (TypeSafeAPI pattern)
+      const expectedResponse: MCPToolResult = {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                statusCode: '10000',
+                message: 'Retrieved 1 image from message',
+                data: {
+                  channel: 'C1234567890',
+                  message_ts: '1234567890.123456',
+                  images: [
+                    {
+                      id: 'F1234567890',
+                      name: 'test.png',
+                      url_private: 'https://files.slack.com/test.png',
+                      url_private_download: 'https://files.slack.com/download/test.png',
+                      mimetype: 'image/png',
+                      filetype: 'png',
+                      size: 1024000,
+                    },
+                  ],
+                  total_images: 1,
+                },
+              },
+              null,
+              2
+            ),
+          },
+        ],
+        isError: false,
       };
 
       // Act
@@ -666,30 +697,34 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       });
       // @ts-expect-error - Mock assignment for testing
       global.fetch = mockFetch;
-      
+
       // Mock message with image
       MockWebClientInstance.conversations.history.mockResolvedValueOnce({
         ok: true,
-        messages: [{
-          ts: '1234567890.123456',
-          user: 'U1234567890',
-          text: 'Image with data',
-          files: [{
-            id: 'F1234567890',
-            name: 'test.png',
-            url_private: 'https://files.slack.com/test.png',
-            url_private_download: 'https://files.slack.com/download/test.png',
-            mimetype: 'image/png',
-            filetype: 'png',
-            size: 1024000
-          }]
-        }]
+        messages: [
+          {
+            ts: '1234567890.123456',
+            user: 'U1234567890',
+            text: 'Image with data',
+            files: [
+              {
+                id: 'F1234567890',
+                name: 'test.png',
+                url_private: 'https://files.slack.com/test.png',
+                url_private_download: 'https://files.slack.com/download/test.png',
+                mimetype: 'image/png',
+                filetype: 'png',
+                size: 1024000,
+              },
+            ],
+          },
+        ],
       });
 
       const args = {
         channel: 'C1234567890',
         message_ts: '1234567890.123456',
-        include_image_data: true
+        include_image_data: true,
       };
 
       // Act
@@ -698,7 +733,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result.isError).toBe(false);
-      
+
       // Parse the JSON response to check for image_data
       const parsedData = parseJSONResponse(result);
       expect(parsedData.data.images[0]).toHaveProperty('image_data');
@@ -710,22 +745,24 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       // Mock successful response
       MockWebClientInstance.conversations.history.mockResolvedValueOnce({
         ok: true,
-        messages: [{
-          ts: '1234567890.123456',
-          user: 'U1234567890',
-          text: 'No images here'
-        }]
+        messages: [
+          {
+            ts: '1234567890.123456',
+            user: 'U1234567890',
+            text: 'No images here',
+          },
+        ],
       });
 
       const args = {
         channel: 'C1234567890',
         message_ts: '1234567890.123456',
-        include_image_data: false
+        include_image_data: false,
       };
 
       // Call through the SlackService to test MCP integration
       const service = new SlackService();
-      
+
       // Act
       const result = await service.getMessageImages(args);
 
@@ -733,7 +770,7 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
       expect(result.isError).toBe(false);
-      
+
       const parsedData = parseJSONResponse(result);
       expect(parsedData.data).toHaveProperty('channel');
       expect(parsedData.data).toHaveProperty('message_ts');
@@ -746,9 +783,9 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
 /**
  * GREEN PHASE TEST SUMMARY
  * =========================
- * 
+ *
  * 🟢 ALL TESTS SHOULD NOW PASS
- * 
+ *
  * Implemented Components:
  * ✅ MCP Tool Definition (GET_MESSAGE_IMAGES_TOOL in tools.ts)
  * ✅ Zod Validation Schema (GetMessageImagesSchema in validation.ts)
@@ -758,16 +795,16 @@ describe('TDD Green Phase: get_message_images Tool Implementation', () => {
  * ✅ Type Definitions (MessageImagesOutput type)
  * ✅ Image Filtering Logic (PNG, JPG, GIF, etc.)
  * ✅ Base64 Image Data Retrieval (when include_image_data: true)
- * 
+ *
  * Test Coverage Areas:
  * ✅ Basic functionality verification
- * ✅ Error handling scenarios  
+ * ✅ Error handling scenarios
  * ✅ Input validation requirements
  * ✅ Response format specifications
  * ✅ TypeSafeAPI pattern compliance
  * ✅ Multiple image handling
  * ✅ Image type filtering
  * ✅ MCP protocol integration
- * 
+ *
  * Status: 🟢 GREEN PHASE COMPLETE - All functionality implemented and tested
  */

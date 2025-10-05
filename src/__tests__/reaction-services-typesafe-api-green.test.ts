@@ -581,7 +581,7 @@ describe('Reaction Services TypeSafeAPI + ts-pattern Implementation (Green Phase
       // Test that findMessagesByReactions supports workspace-wide search
       type _WorkspaceSearchSupported = FindMessagesByReactionsResult; // Implemented with proper types
       type _FindMessagesByReactionsReturn = ReturnType<ReactionService['findMessagesByReactions']>;
-      
+
       // The findMessagesByReactions method now supports workspace-wide search and returns proper types
       const workspaceSearchHasTypeSafety = true; // GREEN: Now implemented
       const shouldHaveWorkspaceSearchTypes = true; // Target requirement
@@ -594,7 +594,7 @@ describe('Reaction Services TypeSafeAPI + ts-pattern Implementation (Green Phase
 
       // findMessagesByReactions output includes searchMethod field with proper type discrimination
       type _SearchMethodDiscriminator = 'channel_history' | 'workspace_search'; // Now properly typed in FindMessagesByReactionsOutput
-      
+
       // The searchMethod field in FindMessagesByReactionsOutput discriminates between search methods
       const hasSearchMethodDiscrimination = true; // GREEN: Implemented in FindMessagesByReactionsOutput
       const shouldHaveSearchMethodTypes = true; // Target requirement
@@ -607,7 +607,7 @@ describe('Reaction Services TypeSafeAPI + ts-pattern Implementation (Green Phase
 
       // findMessagesByReactions returns FindMessagesByReactionsResult = ServiceResult<FindMessagesByReactionsOutput>
       type _SearchResultType = ReturnType<ReactionService['findMessagesByReactions']>; // Promise<FindMessagesByReactionsResult>
-      
+
       const searchOperationsReturnServiceResults = true; // GREEN: Implemented with ServiceResult types
       const shouldReturnServiceResults = true; // TypeSafeAPI requirement
 

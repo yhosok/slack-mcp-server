@@ -141,29 +141,29 @@ describe('Schema Conversion', () => {
     it('should correctly convert ListChannelsSchema with pagination parameters', () => {
       const result = createMCPTool('list_channels', 'List channels', ListChannelsSchema);
       const properties = result.inputSchema.properties;
-      
+
       // Test pagination parameters
       expect(properties?.limit).toBeDefined();
       expect(properties?.cursor).toBeDefined();
       expect(properties?.fetch_all_pages).toBeDefined();
       expect(properties?.max_pages).toBeDefined();
       expect(properties?.max_items).toBeDefined();
-      
+
       // Test name filter parameter
       expect(properties?.name_filter).toBeDefined();
-      
+
       const limitProp = properties?.limit as JSONSchema7;
       const fetchAllPagesProp = properties?.fetch_all_pages as JSONSchema7;
       const nameFilterProp = properties?.name_filter as JSONSchema7;
-      
+
       expect(limitProp?.type).toBe('number');
       expect(limitProp?.minimum).toBe(1);
       expect(limitProp?.maximum).toBe(200);
       expect(limitProp?.default).toBe(100);
-      
+
       expect(fetchAllPagesProp?.type).toBe('boolean');
       expect(fetchAllPagesProp?.default).toBe(false);
-      
+
       expect(nameFilterProp?.type).toBe('string');
       expect(result.inputSchema.additionalProperties).toBe(false);
     });

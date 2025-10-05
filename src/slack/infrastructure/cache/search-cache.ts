@@ -1,6 +1,6 @@
 /**
  * @fileoverview Search-specific caching functionality with query normalization
- * 
+ *
  * Provides advanced search result caching with:
  * - Query normalization and complexity analysis
  * - Adaptive TTL based on query complexity
@@ -8,17 +8,17 @@
  * - Batch operations for multiple queries
  * - Memory-efficient search result storage
  * - Integration with existing search-query-parser
- * 
+ *
  * Created: 2025-08-19
  * TDD Green Phase: Implementation to make search cache tests pass
  */
 
 import { LRUCacheWrapper, type LRUCacheConfig } from './lru-cache.js';
-import { 
-  parseSearchQuery, 
-  buildSlackSearchQuery as _buildSlackSearchQuery, 
+import {
+  parseSearchQuery,
+  buildSlackSearchQuery as _buildSlackSearchQuery,
   type ParsedSearchQuery,
-  type QueryParseResult
+  type QueryParseResult,
 } from '../../utils/search-query-parser.js';
 import crypto from 'crypto';
 
@@ -152,12 +152,12 @@ export class SearchQueryNormalizer {
     phrases: 2,
     operators: 3,
     booleanOperators: 4,
-    groups: 5
+    groups: 5,
   };
 
   /**
    * Normalize a search query into a consistent form for caching
-   * 
+   *
    * @param query - Raw search query string
    * @returns Normalized search query object
    * @throws {Error} When query cannot be parsed
@@ -166,30 +166,30 @@ export class SearchQueryNormalizer {
     try {
       // Parse the query using existing parser
       const parseResult: QueryParseResult = parseSearchQuery(query.trim());
-      
+
       if (!parseResult.success) {
         throw new Error(`Query parsing failed: ${parseResult.error.message}`);
       }
 
       const parsed = parseResult.query;
-      
+
       // Create normalized representation by sorting and standardizing components
       const normalizedParts: string[] = [];
-      
+
       // Add terms (sorted for consistency)
       if (parsed.terms?.length > 0) {
         const sortedTerms = [...parsed.terms].sort();
         normalizedParts.push(...sortedTerms);
       }
-      
+
       // Add phrases (sorted for consistency)
       if (parsed.phrases?.length > 0) {
         const sortedPhrases = [...parsed.phrases].sort();
-        sortedPhrases.forEach(phrase => {
+        sortedPhrases.forEach((phrase) => {
           normalizedParts.push(`"${phrase}"`);
         });
       }
-      
+
       // Add operators (sorted by type then value for consistency)
       const sortedOperators = [...(parsed.operators || [])].sort((a, b) => {
         if (a.type !== b.type) {
@@ -197,28 +197,28 @@ export class SearchQueryNormalizer {
         }
         return a.value.localeCompare(b.value);
       });
-      
-      sortedOperators.forEach(op => {
+
+      sortedOperators.forEach((op) => {
         normalizedParts.push(`${op.type}:${op.value}`);
       });
-      
+
       // Add boolean operators in a consistent way
       if (parsed.booleanOperators?.length > 0) {
         // Sort by position to maintain logical structure
         const sortedBoolOps = [...parsed.booleanOperators].sort((a, b) => a.position - b.position);
-        sortedBoolOps.forEach(boolOp => {
+        sortedBoolOps.forEach((boolOp) => {
           normalizedParts.push(boolOp.type);
         });
       }
-      
+
       const normalizedQuery = normalizedParts.join(' ').toLowerCase().trim();
-      
+
       // Extract metadata for cache decisions
       const channels = this.extractChannels(parsed);
       const users = this.extractUsers(parsed);
       const dateRange = this.extractDateRange(parsed);
-      const operators = sortedOperators.map(op => op.type);
-      
+      const operators = sortedOperators.map((op) => op.type);
+
       // Calculate complexity
       const complexity = this.calculateComplexity({
         raw: query,
@@ -228,12 +228,12 @@ export class SearchQueryNormalizer {
         channels,
         users,
         dateRange,
-        operators
+        operators,
       });
-      
+
       // Generate hash for cache key
       const hash = this.generateHash(normalizedQuery, { channels, users, dateRange, operators });
-      
+
       return {
         raw: query.trim(),
         normalized: normalizedQuery,
@@ -242,17 +242,18 @@ export class SearchQueryNormalizer {
         channels,
         users,
         dateRange,
-        operators
+        operators,
       };
-      
     } catch (error) {
-      throw new Error(`Query normalization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Query normalization failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
   /**
    * Calculate the complexity level of a search query
-   * 
+   *
    * @param query - Search query object
    * @returns Complexity level
    */
@@ -297,16 +298,13 @@ export class SearchQueryNormalizer {
 
   /**
    * Generate a cache key for a normalized query
-   * 
+   *
    * @param query - Search query object
    * @param options - Additional options that affect cache key
    * @returns Cache key string
    */
   generateCacheKey(query: SearchQuery, options?: SearchCacheOptions): string {
-    const keyParts = [
-      query.hash,
-      query.complexity
-    ];
+    const keyParts = [query.hash, query.complexity];
 
     // Include options in cache key if provided
     if (options) {
@@ -322,10 +320,10 @@ export class SearchQueryNormalizer {
    */
   private extractChannels(parsed: ParsedSearchQuery): string[] | undefined {
     const channels = parsed.operators
-      ?.filter(op => op.type === 'in')
-      .map(op => op.value.replace(/^#/, ''))
+      ?.filter((op) => op.type === 'in')
+      .map((op) => op.value.replace(/^#/, ''))
       .filter(Boolean);
-    
+
     return channels && channels.length > 0 ? channels : undefined;
   }
 
@@ -334,10 +332,10 @@ export class SearchQueryNormalizer {
    */
   private extractUsers(parsed: ParsedSearchQuery): string[] | undefined {
     const users = parsed.operators
-      ?.filter(op => op.type === 'from')
-      .map(op => op.value.replace(/^@/, ''))
+      ?.filter((op) => op.type === 'from')
+      .map((op) => op.value.replace(/^@/, ''))
       .filter(Boolean);
-    
+
     return users && users.length > 0 ? users : undefined;
   }
 
@@ -345,8 +343,9 @@ export class SearchQueryNormalizer {
    * Extract date range from parsed query
    */
   private extractDateRange(parsed: ParsedSearchQuery): { start?: Date; end?: Date } | undefined {
-    const dateOps = parsed.operators?.filter(op => op.type === 'after' || op.type === 'before') || [];
-    
+    const dateOps =
+      parsed.operators?.filter((op) => op.type === 'after' || op.type === 'before') || [];
+
     if (dateOps.length === 0) {
       return undefined;
     }
@@ -354,7 +353,7 @@ export class SearchQueryNormalizer {
     let start: Date | undefined;
     let end: Date | undefined;
 
-    dateOps.forEach(op => {
+    dateOps.forEach((op) => {
       try {
         const date = new Date(op.value);
         if (!isNaN(date.getTime())) {
@@ -369,7 +368,7 @@ export class SearchQueryNormalizer {
       }
     });
 
-    return (start || end) ? { start, end } : undefined;
+    return start || end ? { start, end } : undefined;
   }
 
   /**
@@ -392,7 +391,7 @@ export class SearchCache {
   private readonly cache: LRUCacheWrapper<string, SearchResult>;
   private readonly queryNormalizer: SearchQueryNormalizer;
   private readonly config: SearchCacheConfig;
-  
+
   // Metrics tracking
   private metrics = {
     queryHits: 0,
@@ -402,12 +401,12 @@ export class SearchCache {
     invalidations: 0,
     adaptiveTTLAdjustments: 0,
     complexitySum: 0,
-    queryCount: 0
+    queryCount: 0,
   };
 
   /**
    * Create a new search cache instance
-   * 
+   *
    * @param config - Search cache configuration
    * @throws {Error} When configuration is invalid
    */
@@ -424,7 +423,7 @@ export class SearchCache {
         const metadataSize = JSON.stringify(value.metadata).length * 2;
         const querySize = JSON.stringify(value.query).length * 2;
         const keySize = key.length * 2;
-        
+
         return resultSize + metadataSize + querySize + keySize + 100; // Add overhead
       } catch {
         return 1000; // Fallback size if serialization fails
@@ -442,7 +441,7 @@ export class SearchCache {
         if (reason === 'evict' && config.enablePatternInvalidation) {
           // Track evictions for metrics
         }
-      }
+      },
     };
 
     this.cache = new LRUCacheWrapper(cacheConfig);
@@ -450,7 +449,7 @@ export class SearchCache {
 
   /**
    * Get cached search results for a query
-   * 
+   *
    * @param query - Search query string
    * @param options - Additional search options
    * @returns Cached search result or null if not found
@@ -459,9 +458,9 @@ export class SearchCache {
     try {
       const normalizedQuery = this.queryNormalizer.normalize(query);
       const cacheKey = this.queryNormalizer.generateCacheKey(normalizedQuery, options);
-      
+
       const cachedResult = this.cache.get(cacheKey);
-      
+
       if (cachedResult) {
         this.metrics.resultHits++;
         return cachedResult;
@@ -478,19 +477,23 @@ export class SearchCache {
 
   /**
    * Cache search results for a query
-   * 
+   *
    * @param query - Search query string
    * @param results - Search results to cache
    * @param options - Additional search options and metadata
    */
-  async set(query: string, results: Record<string, unknown>[], options?: SearchCacheOptions): Promise<void> {
+  async set(
+    query: string,
+    results: Record<string, unknown>[],
+    options?: SearchCacheOptions
+  ): Promise<void> {
     try {
       const normalizedQuery = this.queryNormalizer.normalize(query);
       const cacheKey = this.queryNormalizer.generateCacheKey(normalizedQuery, options);
-      
+
       // Limit result set size to prevent memory issues
       const limitedResults = results.slice(0, this.config.maxResults);
-      
+
       const searchResult: SearchResult = {
         query: normalizedQuery,
         results: limitedResults,
@@ -498,9 +501,9 @@ export class SearchCache {
           totalCount: options?.totalCount || results.length,
           hasMore: options?.hasMore || false,
           searchTime: options?.searchTime || 0,
-          timestamp: new Date()
+          timestamp: new Date(),
         },
-        cacheKey
+        cacheKey,
       };
 
       // Calculate adaptive TTL if enabled
@@ -511,10 +514,9 @@ export class SearchCache {
       }
 
       this.cache.set(cacheKey, searchResult, { ttl });
-      
+
       // Update complexity metrics
       this.updateComplexityMetrics(normalizedQuery.complexity);
-      
     } catch {
       // Silently ignore cache set failures to prevent disrupting search functionality
     }
@@ -522,27 +524,33 @@ export class SearchCache {
 
   /**
    * Get multiple cached search results in batch
-   * 
+   *
    * @param queries - Array of search query strings
    * @returns Map of query strings to cached results (or null if not cached)
    */
   async getBatch(queries: string[]): Promise<Map<string, SearchResult | null>> {
     const results = new Map<string, SearchResult | null>();
-    
+
     for (const query of queries) {
       const result = await this.get(query);
       results.set(query, result);
     }
-    
+
     return results;
   }
 
   /**
    * Cache multiple search results in batch
-   * 
+   *
    * @param entries - Array of query-result pairs to cache
    */
-  async setBatch(entries: Array<{ query: string; results: Record<string, unknown>[]; options?: SearchCacheOptions }>): Promise<void> {
+  async setBatch(
+    entries: Array<{
+      query: string;
+      results: Record<string, unknown>[];
+      options?: SearchCacheOptions;
+    }>
+  ): Promise<void> {
     for (const entry of entries) {
       await this.set(entry.query, entry.results, entry.options);
     }
@@ -550,7 +558,7 @@ export class SearchCache {
 
   /**
    * Invalidate cache entries matching a pattern
-   * 
+   *
    * @param pattern - Invalidation pattern specification
    * @returns Number of entries invalidated
    */
@@ -561,11 +569,11 @@ export class SearchCache {
 
     let invalidated = 0;
     const cacheMetrics = this.cache.getMetrics();
-    
+
     // Get all cache entries to check against pattern
     // Note: This is a simplified implementation - in a real system,
     // you might want to maintain an index of cache keys by pattern
-    
+
     // For now, we'll clear the entire cache for pattern invalidation
     // In a production system, you'd iterate through keys and match patterns
     if (pattern.type === 'channel' || pattern.type === 'user' || pattern.type === 'date') {
@@ -579,7 +587,7 @@ export class SearchCache {
 
   /**
    * Invalidate all cache entries for a specific channel
-   * 
+   *
    * @param channelId - Channel ID to invalidate
    * @returns Number of entries invalidated
    */
@@ -587,13 +595,13 @@ export class SearchCache {
     return this.invalidatePattern({
       type: 'channel',
       value: channelId,
-      reason: `Channel ${channelId} invalidation`
+      reason: `Channel ${channelId} invalidation`,
     });
   }
 
   /**
    * Invalidate all cache entries for a specific user
-   * 
+   *
    * @param userId - User ID to invalidate
    * @returns Number of entries invalidated
    */
@@ -601,18 +609,18 @@ export class SearchCache {
     return this.invalidatePattern({
       type: 'user',
       value: userId,
-      reason: `User ${userId} invalidation`
+      reason: `User ${userId} invalidation`,
     });
   }
 
   /**
    * Get comprehensive cache metrics
-   * 
+   *
    * @returns Search cache metrics and statistics
    */
   getMetrics(): SearchCacheMetrics {
     const cacheMetrics = this.cache.getMetrics();
-    
+
     return {
       queryHits: this.metrics.queryHits,
       queryMisses: this.metrics.queryMisses,
@@ -621,8 +629,8 @@ export class SearchCache {
       invalidations: this.metrics.invalidations,
       adaptiveTTLAdjustments: this.metrics.adaptiveTTLAdjustments,
       memoryUsage: cacheMetrics.memoryUsage,
-      avgQueryComplexity: this.metrics.queryCount > 0 ? 
-        this.metrics.complexitySum / this.metrics.queryCount : 0
+      avgQueryComplexity:
+        this.metrics.queryCount > 0 ? this.metrics.complexitySum / this.metrics.queryCount : 0,
     };
   }
 
@@ -646,13 +654,13 @@ export class SearchCache {
       invalidations: 0,
       adaptiveTTLAdjustments: 0,
       complexitySum: 0,
-      queryCount: 0
+      queryCount: 0,
     };
   }
 
   /**
    * Validate search cache configuration
-   * 
+   *
    * @param config - Configuration to validate
    * @throws {Error} When configuration is invalid
    */
@@ -660,19 +668,19 @@ export class SearchCache {
     if (!config.maxQueries || config.maxQueries <= 0) {
       throw new Error('maxQueries must be a positive number');
     }
-    
+
     if (!config.maxResults || config.maxResults <= 0) {
       throw new Error('maxResults must be a positive number');
     }
-    
+
     if (config.queryTTL < 0) {
       throw new Error('queryTTL must be non-negative');
     }
-    
+
     if (config.resultTTL < 0) {
       throw new Error('resultTTL must be non-negative');
     }
-    
+
     if (config.memoryLimit !== undefined && config.memoryLimit < 0) {
       throw new Error('memoryLimit must be non-negative');
     }
@@ -680,13 +688,13 @@ export class SearchCache {
 
   /**
    * Calculate adaptive TTL based on query complexity
-   * 
+   *
    * @param query - Normalized search query
    * @returns TTL in milliseconds
    */
   private calculateAdaptiveTTL(query: SearchQuery): number {
     const baseTTL = this.config.resultTTL;
-    
+
     switch (query.complexity) {
       case 'simple':
         return baseTTL * 3; // 3x longer for simple queries
@@ -701,18 +709,18 @@ export class SearchCache {
 
   /**
    * Update complexity metrics
-   * 
+   *
    * @param complexity - Query complexity level
    */
   private updateComplexityMetrics(complexity: SearchQuery['complexity']): void {
     this.metrics.queryCount++;
-    
+
     const complexityScore = {
-      'simple': 1,
-      'moderate': 2,
-      'complex': 3
+      simple: 1,
+      moderate: 2,
+      complex: 3,
     }[complexity];
-    
+
     this.metrics.complexitySum += complexityScore;
   }
 }
