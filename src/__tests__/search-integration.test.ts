@@ -1,11 +1,11 @@
 /**
  * Integration Tests for Search Service Relevance Scoring
- * 
+ *
  * This test suite verifies the integration of RelevanceScorer into the three main search services:
  * - searchMessages (message-service.ts)
- * - searchThreads (thread-service.ts) 
+ * - searchThreads (thread-service.ts)
  * - searchFiles (file-service.ts)
- * 
+ *
  * Test Categories:
  * 1. Integration with relevance scoring enabled
  * 2. Configuration toggle behavior
@@ -151,7 +151,7 @@ describe('Search Service Relevance Scoring Integration', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Create mock WebClient
     mockWebClient = {
       search: {
@@ -174,7 +174,7 @@ describe('Search Service Relevance Scoring Integration', () => {
     mockWebClient.search.messages.mockResolvedValue(mockSearchMessagesResult as any);
     mockWebClient.search.files.mockResolvedValue(mockSearchFilesResult as any);
     mockWebClient.search.all.mockResolvedValue(mockSearchMessagesResult as any);
-    
+
     mockWebClient.conversations.info.mockResolvedValue({
       ok: true,
       channel: { id: 'C123456', name: 'general' },
@@ -288,15 +288,19 @@ describe('Search Service Relevance Scoring Integration', () => {
     });
 
     // Mock WebClient injection
-    jest.spyOn(infrastructureWithScoring.clientManager, 'getClientForOperation').mockReturnValue(mockWebClient);
-    jest.spyOn(infrastructureWithoutScoring.clientManager, 'getClientForOperation').mockReturnValue(mockWebClient);
+    jest
+      .spyOn(infrastructureWithScoring.clientManager, 'getClientForOperation')
+      .mockReturnValue(mockWebClient);
+    jest
+      .spyOn(infrastructureWithoutScoring.clientManager, 'getClientForOperation')
+      .mockReturnValue(mockWebClient);
   });
 
   describe('searchMessages Integration', () => {
     it('should apply relevance scoring when enabled', async () => {
       // FAILING TEST: This will fail because searchMessages doesn't integrate RelevanceScorer yet
       const messageService = createMessageService(infrastructureWithScoring);
-      
+
       const result = await messageService.searchMessages({
         query: 'important deadline project',
         count: 10,
@@ -306,7 +310,7 @@ describe('Search Service Relevance Scoring Integration', () => {
       if (result.success) {
         const messages = result.data.messages;
         expect(messages).toHaveLength(3);
-        
+
         // EXPECTATION: Messages should be re-ranked by relevance
         // The message with "Important message about project deadline" should rank higher
         // than "Simple hello message" for query "important deadline project"
@@ -317,7 +321,7 @@ describe('Search Service Relevance Scoring Integration', () => {
 
     it('should preserve original order when relevance scoring disabled', async () => {
       const messageService = createMessageService(infrastructureWithoutScoring);
-      
+
       const result = await messageService.searchMessages({
         query: 'important deadline project',
         count: 10,
@@ -335,14 +339,14 @@ describe('Search Service Relevance Scoring Integration', () => {
       // FAILING TEST: This will fail because error handling isn't implemented yet
       const faultyScorer = new RelevanceScorer();
       jest.spyOn(faultyScorer, 'reRankResults').mockRejectedValue(new Error('Scorer failed'));
-      
+
       const infraWithFaultyScorer = {
         ...infrastructureWithScoring,
         relevanceScorer: faultyScorer,
       };
-      
+
       const messageService = createMessageService(infraWithFaultyScorer);
-      
+
       const result = await messageService.searchMessages({
         query: 'test query',
         count: 10,
@@ -357,7 +361,7 @@ describe('Search Service Relevance Scoring Integration', () => {
 
     it('should handle empty query with relevance scoring', async () => {
       const messageService = createMessageService(infrastructureWithScoring);
-      
+
       const result = await messageService.searchMessages({
         query: '',
         count: 10,
@@ -373,7 +377,7 @@ describe('Search Service Relevance Scoring Integration', () => {
     it('should meet performance requirements', async () => {
       // FAILING TEST: Performance monitoring not implemented yet
       const messageService = createMessageService(infrastructureWithScoring);
-      
+
       const startTime = performance.now();
       const result = await messageService.searchMessages({
         query: 'test performance',
@@ -392,7 +396,7 @@ describe('Search Service Relevance Scoring Integration', () => {
     it('should apply relevance scoring to thread results when enabled', async () => {
       // FAILING TEST: This will fail because searchThreads doesn't integrate RelevanceScorer yet
       const threadService = createThreadService(infrastructureWithScoring);
-      
+
       const result = await threadService.searchThreads({
         query: 'important project discussion',
         limit: 10,
@@ -402,7 +406,7 @@ describe('Search Service Relevance Scoring Integration', () => {
       if (result.success) {
         const threads = result.data.results;
         expect(threads.length).toBeGreaterThan(0);
-        
+
         // EXPECTATION: Threads should be re-ranked by relevance
         // More relevant threads should appear first
       }
@@ -410,7 +414,7 @@ describe('Search Service Relevance Scoring Integration', () => {
 
     it('should preserve original order when relevance scoring disabled for threads', async () => {
       const threadService = createThreadService(infrastructureWithoutScoring);
-      
+
       const result = await threadService.searchThreads({
         query: 'important project discussion',
         limit: 10,
@@ -426,15 +430,17 @@ describe('Search Service Relevance Scoring Integration', () => {
     it('should handle RelevanceScorer errors gracefully in thread search', async () => {
       // FAILING TEST: This will fail because error handling isn't implemented yet
       const faultyScorer = new RelevanceScorer();
-      jest.spyOn(faultyScorer, 'reRankResults').mockRejectedValue(new Error('Thread scorer failed'));
-      
+      jest
+        .spyOn(faultyScorer, 'reRankResults')
+        .mockRejectedValue(new Error('Thread scorer failed'));
+
       const infraWithFaultyScorer = {
         ...infrastructureWithScoring,
         relevanceScorer: faultyScorer,
       };
-      
+
       const threadService = createThreadService(infraWithFaultyScorer);
-      
+
       const result = await threadService.searchThreads({
         query: 'test thread query',
         limit: 10,
@@ -449,7 +455,7 @@ describe('Search Service Relevance Scoring Integration', () => {
     it('should apply relevance scoring to file results when enabled', async () => {
       // FAILING TEST: This will fail because searchFiles doesn't integrate RelevanceScorer yet
       const fileService = createFileService(infrastructureWithScoring);
-      
+
       const result = await fileService.searchFiles({
         query: 'important document',
         count: 10,
@@ -459,7 +465,7 @@ describe('Search Service Relevance Scoring Integration', () => {
       if (result.success) {
         const files = result.data.results;
         expect(files).toHaveLength(2);
-        
+
         // EXPECTATION: Files should be re-ranked by relevance
         // The file with "important-document.pdf" should rank higher
         // than "regular-file.txt" for query "important document"
@@ -469,7 +475,7 @@ describe('Search Service Relevance Scoring Integration', () => {
 
     it('should preserve original order when relevance scoring disabled for files', async () => {
       const fileService = createFileService(infrastructureWithoutScoring);
-      
+
       const result = await fileService.searchFiles({
         query: 'important document',
         count: 10,
@@ -486,14 +492,14 @@ describe('Search Service Relevance Scoring Integration', () => {
       // FAILING TEST: This will fail because error handling isn't implemented yet
       const faultyScorer = new RelevanceScorer();
       jest.spyOn(faultyScorer, 'reRankResults').mockRejectedValue(new Error('File scorer failed'));
-      
+
       const infraWithFaultyScorer = {
         ...infrastructureWithScoring,
         relevanceScorer: faultyScorer,
       };
-      
+
       const fileService = createFileService(infraWithFaultyScorer);
-      
+
       const result = await fileService.searchFiles({
         query: 'test file query',
         count: 10,
@@ -519,12 +525,12 @@ describe('Search Service Relevance Scoring Integration', () => {
       // Test that services work with both configurations
       const messageServiceWithScoring = createMessageService(infrastructureWithScoring);
       const messageServiceWithoutScoring = createMessageService(infrastructureWithoutScoring);
-      
+
       const resultWithScoring = await messageServiceWithScoring.searchMessages({
         query: 'test',
         count: 10,
       });
-      
+
       const resultWithoutScoring = await messageServiceWithoutScoring.searchMessages({
         query: 'test',
         count: 10,
@@ -540,7 +546,7 @@ describe('Search Service Relevance Scoring Integration', () => {
       // Currently search services don't enable debug logging by default
       // This test verifies the operation completes successfully even without logging
       const messageService = createMessageService(infrastructureWithScoring);
-      
+
       const result = await messageService.searchMessages({
         query: 'test logging',
         count: 10,
@@ -555,7 +561,7 @@ describe('Search Service Relevance Scoring Integration', () => {
 
     it('should not impact performance when relevance scoring is disabled', async () => {
       const messageService = createMessageService(infrastructureWithoutScoring);
-      
+
       const startTime = performance.now();
       await messageService.searchMessages({
         query: 'performance test',

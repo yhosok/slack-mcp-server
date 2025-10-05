@@ -16,6 +16,7 @@ import {
   type SearchQueryOptions,
 } from '../../utils/search-query-parser.js';
 import { validateDateParameters } from '../../../utils/date-validation.js';
+import { convertDateToTimestamp } from '../../../utils/date-converter.js';
 import type { MessageService, MessageServiceDependencies } from './types.js';
 import {
   formatSendMessageResponse,
@@ -33,9 +34,7 @@ import {
   createServiceMethod,
   type ServiceMethodContext,
 } from '../../infrastructure/service-patterns/index.js';
-import {
-  createCacheIntegrationHelper,
-} from '../../infrastructure/cache/cache-integration-helpers.js';
+import { createCacheIntegrationHelper } from '../../infrastructure/cache/cache-integration-helpers.js';
 import type {
   MessageSearchResult,
   ChannelHistoryResult,
@@ -46,7 +45,10 @@ import type {
   ListChannelsOutput,
   MessageImagesOutput,
 } from '../../types/outputs/messages.js';
-import { applyRelevanceScoring, normalizeSearchResults } from '../../utils/relevance-integration.js';
+import {
+  applyRelevanceScoring,
+  normalizeSearchResults,
+} from '../../utils/relevance-integration.js';
 import { CONFIG } from '../../../config/index.js';
 
 // Export types for external use
@@ -101,41 +103,44 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
    *
    * REFACTORED: Now uses shared service method factory to eliminate duplication
    */
-  const sendMessage = createServiceMethod({
-    schema: SendMessageSchema,
-    operation: 'write',
-    handler: async (input, { client }: ServiceMethodContext) => {
-      const result = await client.chat.postMessage({
-        channel: input.channel,
-        text: input.text,
-        thread_ts: input.thread_ts,
-      });
+  const sendMessage = createServiceMethod(
+    {
+      schema: SendMessageSchema,
+      operation: 'write',
+      handler: async (input, { client }: ServiceMethodContext) => {
+        const result = await client.chat.postMessage({
+          channel: input.channel,
+          text: input.text,
+          thread_ts: input.thread_ts,
+        });
 
-      if (!result.ok) {
-        throw new Error(`Failed to send message: ${result.error || 'Unknown error'}`);
-      }
+        if (!result.ok) {
+          throw new Error(`Failed to send message: ${result.error || 'Unknown error'}`);
+        }
 
-      // Create TypeSafeAPI-compliant output using existing formatter
-      const formattedResponse = await formatSendMessageResponse({
-        success: true,
-        timestamp: result.ts,
-        channel: result.channel,
-        message: result.message,
-      });
+        // Create TypeSafeAPI-compliant output using existing formatter
+        const formattedResponse = await formatSendMessageResponse({
+          success: true,
+          timestamp: result.ts,
+          channel: result.channel,
+          message: result.message,
+        });
 
-      // Ensure ServiceOutput compliance and create type-safe success result
-      return enforceServiceOutput({
-        success: true,
-        channel: result.channel || input.channel,
-        ts: result.ts || '',
-        message: 'Message sent successfully',
-        ...formattedResponse,
-      });
+        // Ensure ServiceOutput compliance and create type-safe success result
+        return enforceServiceOutput({
+          success: true,
+          channel: result.channel || input.channel,
+          ts: result.ts || '',
+          message: 'Message sent successfully',
+          ...formattedResponse,
+        });
+      },
+      successMessage: 'Message sent successfully',
+      methodName: 'sendMessage',
+      errorPrefix: 'Failed to send message',
     },
-    successMessage: 'Message sent successfully',
-    methodName: 'sendMessage',
-    errorPrefix: 'Failed to send message',
-  }, { clientManager: deps.clientManager });
+    { clientManager: deps.clientManager }
+  );
 
   /**
    * List channels in the workspace with TypeSafeAPI + ts-pattern type safety
@@ -229,6 +234,22 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
 
       const client = deps.clientManager.getClientForOperation('read');
 
+      // Convert date parameters to timestamps if provided
+      let oldest: string | undefined;
+      let latest: string | undefined;
+
+      if (input.after_date) {
+        oldest = convertDateToTimestamp(input.after_date, false); // 00:00:00 UTC
+      } else if (input.oldest_ts) {
+        oldest = input.oldest_ts;
+      }
+
+      if (input.before_date) {
+        latest = convertDateToTimestamp(input.before_date, true); // 23:59:59 UTC
+      } else if (input.latest_ts) {
+        latest = input.latest_ts;
+      }
+
       // Use unified pagination implementation
       const paginationResult = await executePagination(input, {
         fetchPage: async (cursor?: string) => {
@@ -236,8 +257,8 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
             channel: input.channel,
             limit: input.limit,
             cursor,
-            oldest: input.oldest,
-            latest: input.latest,
+            oldest,
+            latest,
           });
 
           if (!result.messages) {
@@ -281,11 +302,13 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
             edited: message.edited,
             // Filter files to include only image types (jpeg, png, gif)
             files: message.files
-              ? message.files.filter(file => 
-                  // Check mimetype for image types
-                  (file.mimetype && ['image/jpeg', 'image/png', 'image/gif'].includes(file.mimetype)) ||
-                  // Check filetype for image extensions
-                  (file.filetype && ['jpg', 'jpeg', 'png', 'gif'].includes(file.filetype))
+              ? message.files.filter(
+                  (file) =>
+                    // Check mimetype for image types
+                    (file.mimetype &&
+                      ['image/jpeg', 'image/png', 'image/gif'].includes(file.mimetype)) ||
+                    // Check filetype for image extensions
+                    (file.filetype && ['jpg', 'jpeg', 'png', 'gif'].includes(file.filetype))
                 )
               : undefined,
             // Phase 5: Add user-friendly display name with graceful fallback
@@ -326,7 +349,6 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       );
     }
   };
-
 
   /**
    * Search for messages in the workspace with TypeSafeAPI + ts-pattern type safety
@@ -370,7 +392,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
             allowedOperators: ['in', 'from', 'has', 'after', 'before', 'is', 'during'],
             maxQueryLength: 500,
             enableBooleanOperators: true,
-            enableGrouping: true
+            enableGrouping: true,
           };
 
           // Parse the query first
@@ -380,19 +402,19 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
             const parsedQuery = parseResult.query;
 
             // Add date operators from parameters if not already present
-            if (after && !parsedQuery.operators.some(op => op.type === 'after')) {
+            if (after && !parsedQuery.operators.some((op) => op.type === 'after')) {
               parsedQuery.operators.push({
                 type: 'after',
                 value: after,
-                field: 'date'
+                field: 'date',
               });
             }
 
-            if (before && !parsedQuery.operators.some(op => op.type === 'before')) {
+            if (before && !parsedQuery.operators.some((op) => op.type === 'before')) {
               parsedQuery.operators.push({
                 type: 'before',
                 value: before,
-                field: 'date'
+                field: 'date',
               });
             }
 
@@ -402,18 +424,20 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
             // Fallback to legacy query building with dates
             logger.debug('Advanced message search query parsing failed, using legacy mode', {
               error: parseResult.error.message,
-              query
+              query,
             });
 
             return buildLegacyQueryWithDates(query, after, before);
           }
-
         } catch (error) {
           // Final fallback to legacy query building for any errors
-          logger.warn('Advanced message search query building failed, falling back to legacy mode', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            query
-          });
+          logger.warn(
+            'Advanced message search query building failed, falling back to legacy mode',
+            {
+              error: error instanceof Error ? error.message : 'Unknown error',
+              query,
+            }
+          );
 
           return buildLegacyQueryWithDates(query, after, before);
         }
@@ -469,7 +493,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
 
       // Process search results and create TypeSafeAPI-compliant output
       const searchResults = result.messages.matches || [];
-      
+
       // Extract unique user IDs from search results
       const uniqueUserIds = [
         ...new Set(
@@ -492,9 +516,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
         channel: match.channel?.id || '',
         permalink: match.permalink || '',
         // Phase 5: Add user-friendly display name with graceful fallback
-        userDisplayName: match.user
-          ? displayNameMap.get(match.user) || match.user
-          : undefined,
+        userDisplayName: match.user ? displayNameMap.get(match.user) || match.user : undefined,
       }));
 
       // Phase 2: Apply relevance scoring to search results when enabled
@@ -540,38 +562,41 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
    *
    * REFACTORED: Now uses shared service method factory to eliminate duplication
    */
-  const getChannelInfo = createServiceMethod({
-    schema: GetChannelInfoSchema,
-    operation: 'read',
-    handler: async (input, { client }: ServiceMethodContext) => {
-      const result = await client.conversations.info({
-        channel: input.channel,
-      });
+  const getChannelInfo = createServiceMethod(
+    {
+      schema: GetChannelInfoSchema,
+      operation: 'read',
+      handler: async (input, { client }: ServiceMethodContext) => {
+        const result = await client.conversations.info({
+          channel: input.channel,
+        });
 
-      if (!result.channel) {
-        throw new Error('Channel not found');
-      }
+        if (!result.channel) {
+          throw new Error('Channel not found');
+        }
 
-      // Create TypeSafeAPI-compliant output
-      return enforceServiceOutput({
-        id: result.channel.id || '',
-        name: result.channel.name || '',
-        isChannel: result.channel.is_channel,
-        isGroup: result.channel.is_group,
-        isPrivate: result.channel.is_private,
-        isArchived: result.channel.is_archived,
-        created: result.channel.created,
-        creator: result.channel.creator,
-        topic: result.channel.topic,
-        purpose: result.channel.purpose,
-        memberCount: result.channel.num_members,
-        members: (result.channel as { members?: string[] })?.members,
-      });
+        // Create TypeSafeAPI-compliant output
+        return enforceServiceOutput({
+          id: result.channel.id || '',
+          name: result.channel.name || '',
+          isChannel: result.channel.is_channel,
+          isGroup: result.channel.is_group,
+          isPrivate: result.channel.is_private,
+          isArchived: result.channel.is_archived,
+          created: result.channel.created,
+          creator: result.channel.creator,
+          topic: result.channel.topic,
+          purpose: result.channel.purpose,
+          memberCount: result.channel.num_members,
+          members: (result.channel as { members?: string[] })?.members,
+        });
+      },
+      successMessage: 'Channel information retrieved successfully',
+      methodName: 'getChannelInfo',
+      errorPrefix: 'Failed to retrieve channel information',
     },
-    successMessage: 'Channel information retrieved successfully',
-    methodName: 'getChannelInfo',
-    errorPrefix: 'Failed to retrieve channel information',
-  }, { clientManager: deps.clientManager });
+    { clientManager: deps.clientManager }
+  );
 
   /**
    * Get all images from a specific message with TypeSafeAPI + ts-pattern type safety
@@ -625,12 +650,18 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       });
 
       if (!result.messages || result.messages.length === 0) {
-        return createServiceError('Message not found', 'Requested message does not exist or is not accessible');
+        return createServiceError(
+          'Message not found',
+          'Requested message does not exist or is not accessible'
+        );
       }
 
       const message = result.messages[0];
       if (!message) {
-        return createServiceError('Message not found', 'Requested message does not exist or is not accessible');
+        return createServiceError(
+          'Message not found',
+          'Requested message does not exist or is not accessible'
+        );
       }
 
       // Check if message has any files
@@ -647,18 +678,28 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       }
 
       // Filter files to only include image types
-      const imageFiles = message.files.filter(file => {
+      const imageFiles = message.files.filter((file) => {
         // Check mimetype for image types
         if (file.mimetype && file.mimetype.startsWith('image/')) {
           return true;
         }
-        
+
         // Fallback: check file extension for common image types
         if (file.filetype) {
-          const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'tiff', 'ico'];
+          const imageExtensions = [
+            'png',
+            'jpg',
+            'jpeg',
+            'gif',
+            'webp',
+            'bmp',
+            'svg',
+            'tiff',
+            'ico',
+          ];
           return imageExtensions.includes(file.filetype.toLowerCase());
         }
-        
+
         return false;
       });
 
@@ -687,7 +728,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
               // Download image data from Slack's private URL
               const response = await fetch(file.url_private, {
                 headers: {
-                  'Authorization': `Bearer ${CONFIG.SLACK_BOT_TOKEN}`,
+                  Authorization: `Bearer ${CONFIG.SLACK_BOT_TOKEN}`,
                 },
               });
 
@@ -723,7 +764,7 @@ export const createMessageService = (deps: MessageServiceDependencies): MessageS
       });
 
       return createServiceSuccess(
-        output, 
+        output,
         `Retrieved ${images.length} image${images.length === 1 ? '' : 's'} from message`
       );
     } catch (error) {

@@ -1,11 +1,11 @@
 /**
  * TDD Green Phase: Tests that verify the fixes for critical thread search bugs
- * 
+ *
  * This test suite validates that the three critical bugs have been fixed:
  * 1. **Channel reference fix**: Uses proper `in:#channel_name` syntax
  * 2. **Participant logic fix**: Correctly handles AND vs OR logic for participants
  * 3. **Thread identification fix**: Properly identifies thread parent timestamps
- * 
+ *
  * These tests should PASS with the current implementation to prove the bugs are fixed.
  */
 
@@ -127,7 +127,14 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
       cacheConfig: {
         channels: { max: 100, ttl: 300000, updateAgeOnGet: true },
         users: { max: 100, ttl: 300000, updateAgeOnGet: true },
-        search: { maxQueries: 10, maxResults: 10, queryTTL: 300000, resultTTL: 300000, adaptiveTTL: false, enablePatternInvalidation: false },
+        search: {
+          maxQueries: 10,
+          maxResults: 10,
+          queryTTL: 300000,
+          resultTTL: 300000,
+          adaptiveTTL: false,
+          enablePatternInvalidation: false,
+        },
         files: { max: 50, ttl: 300000 },
         threads: { max: 50, ttl: 300000, updateAgeOnGet: true },
         enableMetrics: false,
@@ -311,7 +318,7 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
       });
 
       const parsedResult = parseResponse(result);
-      
+
       // FIXED: Should correctly filter out threads that don't have ALL participants
       expect(parsedResult.threads).toEqual([]);
     });
@@ -321,7 +328,7 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
     it('should correctly identify thread parent from search results with thread_ts', async () => {
       const threadParentTs = '1699564800.000100';
       const replyTs = '1699564860.000200';
-      
+
       // Mock search result that is a reply (has thread_ts)
       const mockSearchResults: any[] = [
         {
@@ -359,11 +366,11 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
       });
 
       const parsedResult = parseResponse(result);
-      
+
       // FIXED: Should now successfully find the thread using correct thread timestamp
       expect(parsedResult.threads).toHaveLength(1);
       expect(parsedResult.threads[0].threadTs).toBe(threadParentTs);
-      
+
       // Verify it called conversations.replies with the correct thread parent timestamp
       expect(mockWebClientInstance.conversations.replies).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -374,7 +381,7 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
 
     it('should handle search results without thread_ts (thread parents)', async () => {
       const threadParentTs = '1699564800.000100';
-      
+
       // Mock search result that is a thread parent (no thread_ts)
       const mockSearchResults: any[] = [
         {
@@ -397,7 +404,12 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
         ok: true,
         messages: [
           { ts: threadParentTs, user: testUserId1, text: 'This is a thread parent' },
-          { ts: '1699564801.000100', user: testUserId2, text: 'This is a reply', thread_ts: threadParentTs },
+          {
+            ts: '1699564801.000100',
+            user: testUserId2,
+            text: 'This is a reply',
+            thread_ts: threadParentTs,
+          },
         ],
       });
 
@@ -406,11 +418,11 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
       });
 
       const parsedResult = parseResponse(result);
-      
+
       // FIXED: Should successfully handle thread parents (messages without thread_ts)
       expect(parsedResult.threads).toHaveLength(1);
       expect(parsedResult.threads[0].threadTs).toBe(threadParentTs);
-      
+
       // Should call with the message timestamp when no thread_ts is present
       expect(mockWebClientInstance.conversations.replies).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -425,7 +437,7 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
       const threadParentTs = '1699564800.000100';
       const reply1Ts = '1699564860.000200';
       const reply2Ts = '1699564920.000300';
-      
+
       // Realistic search result: user searched and got a thread reply
       const mockSearchResult = {
         ok: true,
@@ -475,20 +487,20 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
 
       // All fixes working together - user now gets correct results
       expect(parsedResult.threads).toHaveLength(1);
-      
+
       // Fix 1: Correct participant query (no channel filter in this cross-channel test)
       expect(capturedQuery).toContain('from:<@');
       expect(capturedQuery).not.toContain('in:<#'); // No channel in cross-channel search
-      
+
       // Fix 2: Correct participant logic (search for first, filter programmatically)
       expect(capturedQuery).toContain(`from:<@${testUserId1}>`);
       expect(capturedQuery).not.toContain(`from:<@${testUserId2}>`);
-      
+
       // Fix 3: Correct thread identification (uses thread_ts, not reply ts)
       expect(mockWebClientInstance.conversations.replies).toHaveBeenCalledWith(
         expect.objectContaining({ ts: threadParentTs })
       );
-      
+
       // Result contains the expected thread with all participants
       const foundThread = parsedResult.threads[0];
       expect(foundThread.threadTs).toBe(threadParentTs);
@@ -545,7 +557,12 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
         ok: true,
         messages: [
           { ts: '1699564860.000200', user: testUserId1, text: 'Valid message' },
-          { ts: '1699564861.000201', user: testUserId2, text: 'Reply message', thread_ts: '1699564860.000200' },
+          {
+            ts: '1699564861.000201',
+            user: testUserId2,
+            text: 'Reply message',
+            thread_ts: '1699564860.000200',
+          },
         ],
       });
 
@@ -554,7 +571,7 @@ describe('Thread Service Search Fixes - TDD Green Phase', () => {
       });
 
       const parsedResult = parseResponse(result);
-      
+
       // Should handle malformed results gracefully and return valid ones
       expect(parsedResult.threads).toHaveLength(1);
     });

@@ -1,9 +1,9 @@
 /**
  * TDD Red Phase: DisplayName Conversion Tests
- * 
+ *
  * These tests verify that searchMessages and searchThreads properly convert
  * user IDs to display names, following the successful pattern from getChannelHistory.
- * 
+ *
  * This test file is designed to FAIL with the current implementation to demonstrate
  * the missing displayName conversion functionality.
  */
@@ -121,14 +121,14 @@ describe('TDD Red Phase: DisplayName Conversion', () => {
     // Mock users.info for display name resolution
     mockWebClientInstance.users.info.mockImplementation((args: any) => {
       const userMap: Record<string, string> = {
-        'U123456': 'John Doe',
-        'U789012': 'Jane Smith',
-        'U345678': 'Bob Wilson',
+        U123456: 'John Doe',
+        U789012: 'Jane Smith',
+        U345678: 'Bob Wilson',
       };
-      
+
       const userId = args.user;
       const displayName = userMap[userId] || `User ${userId}`;
-      
+
       return Promise.resolve({
         ok: true,
         user: {
@@ -183,14 +183,14 @@ describe('TDD Red Phase: DisplayName Conversion', () => {
       // Assert: Parse the JSON response
       const responseText = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(responseText);
-      
+
       // TDD Red: These assertions should FAIL with current implementation
       expect(parsedResult.data.messages).toHaveLength(2);
-      
+
       // This will fail because userDisplayName is not being added
       expect(parsedResult.data.messages[0]).toHaveProperty('userDisplayName');
       expect(parsedResult.data.messages[0].userDisplayName).toBe('John Doe');
-      
+
       expect(parsedResult.data.messages[1]).toHaveProperty('userDisplayName');
       expect(parsedResult.data.messages[1].userDisplayName).toBe('Jane Smith');
     });
@@ -223,7 +223,7 @@ describe('TDD Red Phase: DisplayName Conversion', () => {
       // Assert
       const responseText = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(responseText);
-      
+
       // This should fail because userDisplayName is not implemented
       expect(parsedResult.data.messages[0]).toHaveProperty('userDisplayName');
       expect(parsedResult.data.messages[0].userDisplayName).toBe('User U999999'); // Fallback
@@ -285,14 +285,14 @@ describe('TDD Red Phase: DisplayName Conversion', () => {
       // Assert: Parse the result
       const responseText = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(responseText);
-      
+
       // TDD Red: These assertions should FAIL with current implementation
       expect(parsedResult.data.results).toHaveLength(1);
-      
+
       // This will fail because userDisplayName is not being added to search results
       expect(parsedResult.data.results[0]).toHaveProperty('userDisplayName');
       expect(parsedResult.data.results[0].userDisplayName).toBe('John Doe');
-      
+
       // Verify parentMessage also has userDisplayName
       if (parsedResult.data.results[0].parentMessage?.user) {
         expect(parsedResult.data.results[0].parentMessage).toHaveProperty('userDisplayName');
@@ -332,13 +332,13 @@ describe('TDD Red Phase: DisplayName Conversion', () => {
       // Assert: This should PASS (demonstrating the correct pattern)
       const responseText = extractTextContent(result.content?.[0]);
       const parsedResult = JSON.parse(responseText);
-      
+
       // This should pass because getChannelHistory implements displayName conversion
       expect(parsedResult.data.messages).toHaveLength(2);
       expect(parsedResult.data.messages[0]).toHaveProperty('userDisplayName');
       expect(parsedResult.data.messages[0].userDisplayName).toBe('John Doe');
       expect(parsedResult.data.messages[1].userDisplayName).toBe('Jane Smith');
-      
+
       // This demonstrates the pattern that searchMessages and searchThreads should follow
     });
   });

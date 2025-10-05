@@ -51,13 +51,14 @@ export function formatDistributionStats(
   if (totalFiles === 0) return config.emptyMessage;
 
   // Sort by count or size as specified
-  const sortFn = config.sortBy === 'size'
-    ? (a: [string, DistributionStats], b: [string, DistributionStats]): number => b[1].size_bytes - a[1].size_bytes
-    : (a: [string, DistributionStats], b: [string, DistributionStats]): number => b[1].count - a[1].count;
+  const sortFn =
+    config.sortBy === 'size'
+      ? (a: [string, DistributionStats], b: [string, DistributionStats]): number =>
+          b[1].size_bytes - a[1].size_bytes
+      : (a: [string, DistributionStats], b: [string, DistributionStats]): number =>
+          b[1].count - a[1].count;
 
-  const entries = Object.entries(distribution)
-    .sort(sortFn)
-    .slice(0, config.maxItems);
+  const entries = Object.entries(distribution).sort(sortFn).slice(0, config.maxItems);
 
   const lines = entries.map(([key, stats]) => {
     const baseText = `${key}: ${formatNumber(stats.count, 0)} files, ${formatBytes(stats.size_bytes)}`;

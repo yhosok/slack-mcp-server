@@ -1,6 +1,6 @@
 /**
  * Tests for ParticipantTransformationService
- * 
+ *
  * Validates the centralized participant building logic that replaces
  * duplicated code across multiple thread service functions.
  */
@@ -170,7 +170,8 @@ describe('ParticipantTransformationService', () => {
         .mockResolvedValueOnce({ success: true, data: mockUser1, message: 'User retrieved' })
         .mockResolvedValueOnce({ success: true, data: mockUser2, message: 'User retrieved' });
 
-      const result = await participantTransformationService.buildParticipantsFromMessages(mockMessages);
+      const result =
+        await participantTransformationService.buildParticipantsFromMessages(mockMessages);
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -183,7 +184,7 @@ describe('ParticipantTransformationService', () => {
         expect(metadata.fallbackUsers).toBe(0);
 
         // Check first participant (U1234567890 - has 2 messages)
-        const participant1 = participants.find(p => p.user_id === 'U1234567890');
+        const participant1 = participants.find((p) => p.user_id === 'U1234567890');
         expect(participant1).toBeDefined();
         expect(participant1?.username).toBe('john.doe');
         expect(participant1?.real_name).toBe('John Doe');
@@ -192,7 +193,7 @@ describe('ParticipantTransformationService', () => {
         expect(participant1?.is_bot).toBe(false);
 
         // Check second participant (U0987654321 - has 1 message)
-        const participant2 = participants.find(p => p.user_id === 'U0987654321');
+        const participant2 = participants.find((p) => p.user_id === 'U0987654321');
         expect(participant2).toBeDefined();
         expect(participant2?.username).toBe('jane.smith');
         expect(participant2?.real_name).toBe('Jane Smith');
@@ -202,7 +203,10 @@ describe('ParticipantTransformationService', () => {
       }
 
       // Verify bulk operations were used
-      expect(mockInfrastructureUserService.bulkGetDisplayNames).toHaveBeenCalledWith(['U1234567890', 'U0987654321']);
+      expect(mockInfrastructureUserService.bulkGetDisplayNames).toHaveBeenCalledWith([
+        'U1234567890',
+        'U0987654321',
+      ]);
       expect(mockDomainUserService.getUserInfo).toHaveBeenCalledTimes(2);
     });
 
@@ -218,9 +222,14 @@ describe('ParticipantTransformationService', () => {
       // Mock one successful and one failed user lookup
       mockDomainUserService.getUserInfo
         .mockResolvedValueOnce({ success: true, data: mockUser1, message: 'User retrieved' })
-        .mockResolvedValueOnce({ success: false, error: 'User not found', message: 'User not found' });
+        .mockResolvedValueOnce({
+          success: false,
+          error: 'User not found',
+          message: 'User not found',
+        });
 
-      const result = await participantTransformationService.buildParticipantsFromMessages(mockMessages);
+      const result =
+        await participantTransformationService.buildParticipantsFromMessages(mockMessages);
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -232,12 +241,12 @@ describe('ParticipantTransformationService', () => {
         expect(metadata.fallbackUsers).toBe(1);
 
         // First user should have complete info
-        const participant1 = participants.find(p => p.user_id === 'U1234567890');
+        const participant1 = participants.find((p) => p.user_id === 'U1234567890');
         expect(participant1?.username).toBe('john.doe');
         expect(participant1?.is_admin).toBe(true);
 
         // Second user should have fallback info
-        const participant2 = participants.find(p => p.user_id === 'U0987654321');
+        const participant2 = participants.find((p) => p.user_id === 'U0987654321');
         expect(participant2?.username).toBe('U0987654321');
         expect(participant2?.is_admin).toBe(false);
         expect(participant2?.real_name).toBe('');
@@ -268,7 +277,8 @@ describe('ParticipantTransformationService', () => {
         .mockResolvedValueOnce({ success: true, data: mockUser1, message: 'User retrieved' })
         .mockResolvedValueOnce({ success: true, data: mockUser2, message: 'User retrieved' });
 
-      const result = await participantTransformationService.buildParticipantsFromMessages(mockMessages);
+      const result =
+        await participantTransformationService.buildParticipantsFromMessages(mockMessages);
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -333,7 +343,11 @@ describe('ParticipantTransformationService', () => {
       // Mock domain user service responses
       mockDomainUserService.getUserInfo
         .mockResolvedValueOnce({ success: true, data: mockUser1, message: 'User retrieved' })
-        .mockResolvedValueOnce({ success: false, error: 'User not found', message: 'User not found' });
+        .mockResolvedValueOnce({
+          success: false,
+          error: 'User not found',
+          message: 'User not found',
+        });
 
       const result = await participantTransformationService.getEnhancedUserInfoForExport(userIds);
 
@@ -382,8 +396,11 @@ describe('ParticipantTransformationService', () => {
       );
 
       // Mock all user lookups to fail
-      mockDomainUserService.getUserInfo
-        .mockResolvedValue({ success: false, error: 'User not found', message: 'User not found' });
+      mockDomainUserService.getUserInfo.mockResolvedValue({
+        success: false,
+        error: 'User not found',
+        message: 'User not found',
+      });
 
       const result = await participantTransformationService.getEnhancedUserInfoForExport(userIds);
 

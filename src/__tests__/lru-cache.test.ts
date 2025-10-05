@@ -1,7 +1,7 @@
 /**
  * @fileoverview Unit tests for LRU Cache wrapper implementation
  * Tests comprehensive LRU cache functionality with TTL, size constraints, and metrics
- * 
+ *
  * Created: 2025-08-19
  * TDD Red Phase: Tests written before implementation to drive development
  */
@@ -10,7 +10,10 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 
 // Import the actual implementation
 import { LRUCacheWrapper } from '../slack/infrastructure/cache/index.js';
-import type { LRUCacheConfig, CacheMetrics as _CacheMetrics } from '../slack/infrastructure/cache/index.js';
+import type {
+  LRUCacheConfig,
+  CacheMetrics as _CacheMetrics,
+} from '../slack/infrastructure/cache/index.js';
 
 describe('LRU Cache Wrapper', () => {
   let cache: LRUCacheWrapper<string, unknown>;
@@ -26,13 +29,13 @@ describe('LRU Cache Wrapper', () => {
       const config: LRUCacheConfig = {
         max: 100,
         ttl: 60000, // 1 minute
-        updateAgeOnGet: true
+        updateAgeOnGet: true,
       };
 
       expect(() => {
         cache = new LRUCacheWrapper(config);
       }).not.toThrow();
-      
+
       expect(cache).toBeInstanceOf(LRUCacheWrapper);
       expect(cache.max).toBe(100);
     });
@@ -41,13 +44,13 @@ describe('LRU Cache Wrapper', () => {
       const config: LRUCacheConfig = {
         max: 50,
         maxSize: 1024 * 1024, // 1MB
-        sizeCalculation: (value: any) => JSON.stringify(value).length
+        sizeCalculation: (value: any) => JSON.stringify(value).length,
       };
 
       expect(() => {
         cache = new LRUCacheWrapper(config);
       }).not.toThrow();
-      
+
       expect(cache).toBeInstanceOf(LRUCacheWrapper);
       expect(cache.max).toBe(50);
     });
@@ -56,13 +59,13 @@ describe('LRU Cache Wrapper', () => {
       const disposeFn = jest.fn();
       const config: LRUCacheConfig = {
         max: 100,
-        dispose: disposeFn
+        dispose: disposeFn,
       };
 
       expect(() => {
         cache = new LRUCacheWrapper(config);
       }).not.toThrow();
-      
+
       expect(cache).toBeInstanceOf(LRUCacheWrapper);
     });
 
@@ -71,10 +74,10 @@ describe('LRU Cache Wrapper', () => {
         { max: 0 },
         { max: -1 },
         { max: 100, ttl: -1 },
-        { max: 100, maxSize: -1 }
+        { max: 100, maxSize: -1 },
       ];
 
-      invalidConfigs.forEach(config => {
+      invalidConfigs.forEach((config) => {
         expect(() => {
           new LRUCacheWrapper(config);
         }).toThrow();
@@ -90,7 +93,7 @@ describe('LRU Cache Wrapper', () => {
     it('should set and get values', () => {
       const result = cache.set('key1', 'value1');
       expect(result).toBe(true);
-      
+
       const value = cache.get('key1');
       expect(value).toBe('value1');
     });
@@ -102,7 +105,7 @@ describe('LRU Cache Wrapper', () => {
 
     it('should check key existence', () => {
       cache.set('key1', 'value1');
-      
+
       expect(cache.has('key1')).toBe(true);
       expect(cache.has('nonexistent')).toBe(false);
     });
@@ -110,11 +113,11 @@ describe('LRU Cache Wrapper', () => {
     it('should delete keys', () => {
       cache.set('key1', 'value1');
       expect(cache.has('key1')).toBe(true);
-      
+
       const deleted = cache.delete('key1');
       expect(deleted).toBe(true);
       expect(cache.has('key1')).toBe(false);
-      
+
       // Deleting non-existent key should return false
       const deletedAgain = cache.delete('key1');
       expect(deletedAgain).toBe(false);
@@ -124,7 +127,7 @@ describe('LRU Cache Wrapper', () => {
       cache.set('key1', 'value1');
       cache.set('key2', 'value2');
       expect(cache.size).toBe(2);
-      
+
       cache.clear();
       expect(cache.size).toBe(0);
       expect(cache.has('key1')).toBe(false);
@@ -150,13 +153,13 @@ describe('LRU Cache Wrapper', () => {
     it('should expire entries after TTL', async () => {
       const testCache = new LRUCacheWrapper({ max: 100, ttl: 50 }); // 50ms TTL
       testCache.set('key1', 'value1');
-      
+
       // Should be available immediately
       expect(testCache.get('key1')).toBe('value1');
-      
+
       // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Should be expired now
       expect(testCache.get('key1')).toBeUndefined();
     });
@@ -164,7 +167,7 @@ describe('LRU Cache Wrapper', () => {
     it('should purge stale entries on demand', () => {
       const testCache = new LRUCacheWrapper({ max: 100, ttl: 1000 });
       testCache.set('key1', 'value1');
-      
+
       expect(() => {
         testCache.purgeStale();
       }).not.toThrow();
@@ -172,21 +175,20 @@ describe('LRU Cache Wrapper', () => {
   });
 
   describe('Size-Based Eviction (LRU Behavior)', () => {
-
     it('should evict least recently used items when max size exceeded', () => {
       const testCache = new LRUCacheWrapper({ max: 3 });
-      
+
       // Fill cache to capacity
       testCache.set('key1', 'value1');
       testCache.set('key2', 'value2');
       testCache.set('key3', 'value3');
-      
+
       expect(testCache.size).toBe(3);
       expect(testCache.has('key1')).toBe(true);
-      
+
       // Adding one more should evict the least recently used (key1)
       testCache.set('key4', 'value4');
-      
+
       expect(testCache.size).toBe(3);
       expect(testCache.has('key1')).toBe(false); // Should be evicted
       expect(testCache.has('key2')).toBe(true);
@@ -196,17 +198,17 @@ describe('LRU Cache Wrapper', () => {
 
     it('should update access order on get when updateAgeOnGet is true', () => {
       const testCache = new LRUCacheWrapper({ max: 3, updateAgeOnGet: true });
-      
+
       testCache.set('key1', 'value1');
       testCache.set('key2', 'value2');
       testCache.set('key3', 'value3');
-      
+
       // Access key1 to make it most recently used
       testCache.get('key1');
-      
+
       // Add new item - should evict key2 (now least recently used)
       testCache.set('key4', 'value4');
-      
+
       expect(testCache.has('key1')).toBe(true); // Should still be there
       expect(testCache.has('key2')).toBe(false); // Should be evicted
       expect(testCache.has('key3')).toBe(true);
@@ -217,15 +219,15 @@ describe('LRU Cache Wrapper', () => {
   describe('Memory Size Constraints', () => {
     it('should calculate memory size using sizeCalculation function', () => {
       const sizeCalculation = jest.fn((value: any) => JSON.stringify(value).length);
-      
+
       const testCache = new LRUCacheWrapper({
         max: 100,
         maxSize: 1024,
-        sizeCalculation
+        sizeCalculation,
       });
-      
+
       testCache.set('key1', { data: 'test' });
-      
+
       expect(sizeCalculation).toHaveBeenCalledWith({ data: 'test' }, 'key1');
     });
 
@@ -233,20 +235,20 @@ describe('LRU Cache Wrapper', () => {
       const testCache = new LRUCacheWrapper({
         max: 10,
         maxSize: 50, // 50 bytes limit
-        sizeCalculation: (value: any) => JSON.stringify(value).length
+        sizeCalculation: (value: any) => JSON.stringify(value).length,
       });
-      
+
       // Add small items first
       testCache.set('key1', 'x'); // ~3 bytes
       testCache.set('key2', 'y'); // ~3 bytes
-      
+
       expect(testCache.has('key1')).toBe(true);
       expect(testCache.has('key2')).toBe(true);
-      
+
       // Add a large item that should cause eviction
       const largeData = 'x'.repeat(45); // 45 bytes, forcing eviction
       testCache.set('key3', largeData);
-      
+
       // key3 should be in cache, and some older items may be evicted
       expect(testCache.has('key3')).toBe(true);
       // At least one of the earlier items should be gone due to size limit
@@ -259,32 +261,32 @@ describe('LRU Cache Wrapper', () => {
   describe('Dispose Callbacks', () => {
     it('should call dispose callback on eviction', () => {
       const disposeFn = jest.fn();
-      
+
       const testCache = new LRUCacheWrapper({
         max: 2,
-        dispose: disposeFn
+        dispose: disposeFn,
       });
-      
+
       testCache.set('key1', 'value1');
       testCache.set('key2', 'value2');
-      
+
       // This should trigger eviction of key1
       testCache.set('key3', 'value3');
-      
+
       expect(disposeFn).toHaveBeenCalledWith('value1', 'key1', 'evict');
     });
 
     it('should call dispose callback on manual deletion', () => {
       const disposeFn = jest.fn();
-      
+
       const testCache = new LRUCacheWrapper({
         max: 100,
-        dispose: disposeFn
+        dispose: disposeFn,
       });
-      
+
       testCache.set('key1', 'value1');
       testCache.delete('key1');
-      
+
       expect(disposeFn).toHaveBeenCalledWith('value1', 'key1', 'delete');
     });
   });
@@ -292,17 +294,17 @@ describe('LRU Cache Wrapper', () => {
   describe('Cache Metrics and Statistics', () => {
     it('should track cache metrics', () => {
       const testCache = new LRUCacheWrapper({ max: 100, ttl: 60000 });
-      
+
       const initialMetrics = testCache.getMetrics();
       expect(initialMetrics.hits).toBe(0);
       expect(initialMetrics.misses).toBe(0);
       expect(initialMetrics.sets).toBe(0);
       expect(initialMetrics.size).toBe(0);
-      
+
       testCache.set('key1', 'value1');
       testCache.get('key1'); // hit
       testCache.get('nonexistent'); // miss
-      
+
       const finalMetrics = testCache.getMetrics();
       expect(finalMetrics.hits).toBe(1);
       expect(finalMetrics.misses).toBe(1);
@@ -312,15 +314,15 @@ describe('LRU Cache Wrapper', () => {
 
     it('should calculate hit rate correctly', () => {
       const testCache = new LRUCacheWrapper({ max: 100 });
-      
+
       testCache.set('key1', 'value1');
       testCache.set('key2', 'value2');
-      
+
       // 2 hits, 1 miss = 66.67% hit rate
       testCache.get('key1'); // hit
       testCache.get('key2'); // hit
       testCache.get('key3'); // miss
-      
+
       const metrics = testCache.getMetrics();
       expect(metrics.hitRate).toBeCloseTo(66.67, 2);
     });
@@ -329,27 +331,27 @@ describe('LRU Cache Wrapper', () => {
       const testCache = new LRUCacheWrapper({
         max: 100,
         maxSize: 1024,
-        sizeCalculation: (value: any) => JSON.stringify(value).length
+        sizeCalculation: (value: any) => JSON.stringify(value).length,
       });
-      
+
       testCache.set('key1', { data: 'test' });
-      
+
       const metrics = testCache.getMetrics();
       expect(metrics.memoryUsage).toBeGreaterThan(0);
     });
 
     it('should reset metrics', () => {
       const testCache = new LRUCacheWrapper({ max: 100, ttl: 60000 });
-      
+
       testCache.set('key1', 'value1');
       testCache.get('key1');
-      
+
       let metrics = testCache.getMetrics();
       expect(metrics.hits).toBe(1);
       expect(metrics.sets).toBe(1);
-      
+
       testCache.resetMetrics();
-      
+
       metrics = testCache.getMetrics();
       expect(metrics.hits).toBe(0);
       expect(metrics.sets).toBe(0);
@@ -360,12 +362,12 @@ describe('LRU Cache Wrapper', () => {
   describe('Error Handling', () => {
     it('should handle cache overflow gracefully', () => {
       const testCache = new LRUCacheWrapper({ max: 2 });
-      
+
       // Fill beyond capacity - should handle gracefully
       testCache.set('key1', 'value1');
       testCache.set('key2', 'value2');
       testCache.set('key3', 'value3'); // Should evict key1
-      
+
       expect(testCache.size).toBe(2);
       expect(testCache.has('key1')).toBe(false);
       expect(testCache.has('key2')).toBe(true);
@@ -374,7 +376,7 @@ describe('LRU Cache Wrapper', () => {
 
     it('should handle invalid keys gracefully', () => {
       const testCache = new LRUCacheWrapper({ max: 100 });
-      
+
       // These should not throw
       expect(testCache.get(null as any)).toBeUndefined();
       expect(testCache.has(undefined as any)).toBe(false);
@@ -389,9 +391,9 @@ describe('LRU Cache Wrapper', () => {
       const testCache = new LRUCacheWrapper({
         max: 100,
         maxSize: 1024,
-        sizeCalculation: faultySizeCalc
+        sizeCalculation: faultySizeCalc,
       });
-      
+
       // Should handle error gracefully
       const result = testCache.set('key1', 'value1');
       expect(result).toBe(false);
@@ -402,7 +404,7 @@ describe('LRU Cache Wrapper', () => {
     it('should maintain type safety for keys and values', () => {
       // Type safety tests - these will be compile-time checks
       type _TestCache = LRUCacheWrapper<string, { id: number; name: string }>;
-      
+
       // This ensures the generic types are properly constrained
       expect(true).toBe(true);
     });

@@ -30,7 +30,7 @@ import type { SlackMessage } from '../slack/types/index.js';
 
 describe('DecisionExtractor', () => {
   let extractor: DecisionExtractor;
-  
+
   beforeEach(() => {
     extractor = new DecisionExtractor();
     jest.clearAllMocks();
@@ -75,7 +75,7 @@ describe('DecisionExtractor', () => {
           'selected the vendor',
         ];
 
-        testCases.forEach(text => {
+        testCases.forEach((text) => {
           const message: SlackMessage = {
             text: `Team has ${text}`,
             ts: '1234567890.123456',
@@ -113,7 +113,7 @@ describe('DecisionExtractor', () => {
           '最終的に決めました',
         ];
 
-        testCases.forEach(text => {
+        testCases.forEach((text) => {
           const message: SlackMessage = {
             text,
             ts: '1234567890.123456',
@@ -180,10 +180,15 @@ describe('DecisionExtractor', () => {
       it('should handle empty or null text', () => {
         const messages = [
           { text: '', ts: '1234567890.123456', user: 'U123456', type: 'message' as const },
-          { text: undefined as any, ts: '1234567890.123456', user: 'U123456', type: 'message' as const },
+          {
+            text: undefined as any,
+            ts: '1234567890.123456',
+            user: 'U123456',
+            type: 'message' as const,
+          },
         ];
 
-        messages.forEach(message => {
+        messages.forEach((message) => {
           expect(extractor.isDecisionMessage(message)).toBe(false);
         });
       });
@@ -199,10 +204,10 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           expect(result.decisions).toHaveLength(1);
           expect(result.decisions[0]?.confidence).toBeGreaterThan(0.8);
         });
@@ -215,10 +220,10 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           expect(result.decisions).toHaveLength(1);
           expect(result.decisions[0]?.confidence).toBeGreaterThan(0.8);
         });
@@ -233,10 +238,10 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           expect(result.decisions).toHaveLength(1);
           expect(result.decisions[0]?.confidence).toBeGreaterThan(0.5);
           expect(result.decisions[0]?.confidence).toBeLessThan(0.8);
@@ -250,10 +255,10 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           expect(result.decisions).toHaveLength(1);
           expect(result.decisions[0]?.confidence).toBeGreaterThan(0.8);
         });
@@ -266,10 +271,10 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           expect(result.decisions).toHaveLength(1);
           expect(result.decisions[0]?.confidence).toBeGreaterThan(0.7);
         });
@@ -282,10 +287,10 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           expect(result.decisions).toHaveLength(1);
           expect(result.decisions[0]?.confidence).toBeGreaterThan(0.6);
         });
@@ -300,10 +305,10 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           // Should be filtered out due to low confidence (< 0.7)
           expect(result.decisions).toHaveLength(0);
         });
@@ -316,10 +321,10 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           expect(result.decisions).toHaveLength(1);
           expect(result.decisions[0]?.confidence).toBeGreaterThan(0.7);
         });
@@ -335,10 +340,10 @@ describe('DecisionExtractor', () => {
           ts: '1234567890.123456',
           user: 'U123456',
           type: 'message',
-        }
+        },
       ];
 
-      return extractor.extractDecisions(messages).then(result => {
+      return extractor.extractDecisions(messages).then((result) => {
         expect(result.decisions).toHaveLength(1);
         const keywords = result.decisions[0]?.keywords;
         expect(keywords).toContain('decided');
@@ -354,10 +359,10 @@ describe('DecisionExtractor', () => {
           ts: '1234567890.123456',
           user: 'U123456',
           type: 'message',
-        }
+        },
       ];
 
-      return extractor.extractDecisions(messages).then(result => {
+      return extractor.extractDecisions(messages).then((result) => {
         expect(result.decisions).toHaveLength(1);
         const keywords = result.decisions[0]?.keywords;
         expect(keywords).toContain('決定');
@@ -373,13 +378,13 @@ describe('DecisionExtractor', () => {
           ts: '1234567890.123456',
           user: 'U123456',
           type: 'message',
-        }
+        },
       ];
 
-      return extractor.extractDecisions(messages).then(result => {
+      return extractor.extractDecisions(messages).then((result) => {
         expect(result.decisions).toHaveLength(1);
         const keywords = result.decisions[0]?.keywords;
-        const decidedCount = keywords?.filter(k => k === 'decided').length;
+        const decidedCount = keywords?.filter((k) => k === 'decided').length;
         expect(decidedCount).toBe(1); // Should appear only once
       });
     });
@@ -393,10 +398,10 @@ describe('DecisionExtractor', () => {
           ts: '1234567890.123456',
           user: 'U123456',
           type: 'message',
-        }
+        },
       ];
 
-      return extractor.extractDecisions(messages).then(result => {
+      return extractor.extractDecisions(messages).then((result) => {
         expect(result.decisions).toHaveLength(1);
         expect(result.decisions[0]?.language).toBe('en');
       });
@@ -409,10 +414,10 @@ describe('DecisionExtractor', () => {
           ts: '1234567890.123456',
           user: 'U123456',
           type: 'message',
-        }
+        },
       ];
 
-      return extractor.extractDecisions(messages).then(result => {
+      return extractor.extractDecisions(messages).then((result) => {
         expect(result.decisions).toHaveLength(1);
         expect(result.decisions[0]?.language).toBe('ja');
       });
@@ -425,10 +430,10 @@ describe('DecisionExtractor', () => {
           ts: '1234567890.123456',
           user: 'U123456',
           type: 'message',
-        }
+        },
       ];
 
-      return extractor.extractDecisions(messages).then(result => {
+      return extractor.extractDecisions(messages).then((result) => {
         expect(result.decisions).toHaveLength(1);
         expect(result.decisions[0]?.language).toBe('ja');
       });
@@ -446,11 +451,11 @@ describe('DecisionExtractor', () => {
             type: 'message',
           },
           {
-            text: 'Agreed, let\'s finalize this decision',
+            text: "Agreed, let's finalize this decision",
             ts: '1234567890.123457',
             user: 'U789012',
             type: 'message',
-          }
+          },
         ];
 
         const args = {
@@ -459,10 +464,10 @@ describe('DecisionExtractor', () => {
           messages,
         };
 
-        return extractor.extractDecisionsForThread(args).then(result => {
+        return extractor.extractDecisionsForThread(args).then((result) => {
           expect(result.decisionsMade).toBeDefined();
           expect(result.decisionsMade.length).toBeGreaterThan(0);
-          
+
           const firstDecision = result.decisionsMade?.[0];
           expect(firstDecision?.decision).toBe('DECISION: We will use the new framework');
           expect(firstDecision?.participant).toBe('U123456');
@@ -478,7 +483,7 @@ describe('DecisionExtractor', () => {
           messages: [],
         };
 
-        return extractor.extractDecisionsForThread(args).then(result => {
+        return extractor.extractDecisionsForThread(args).then((result) => {
           expect(result.decisionsMade).toEqual([]);
         });
       });
@@ -492,16 +497,16 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
         const args = { messages };
 
-        return extractor.extractDecisionsService(args).then(result => {
+        return extractor.extractDecisionsService(args).then((result) => {
           expect(result.success).toBe(true);
           expect(result.statusCode).toBe(200);
           expect(result.message).toBe('Decisions extracted successfully');
-          
+
           if (result.success) {
             expect(result.data.decisions).toHaveLength(1);
             expect(result.data.totalMessages).toBe(1);
@@ -510,7 +515,7 @@ describe('DecisionExtractor', () => {
       });
 
       it('should return error for invalid arguments', () => {
-        return extractor.extractDecisionsService(null).then(result => {
+        return extractor.extractDecisionsService(null).then((result) => {
           expect(result.success).toBe(false);
           expect(result.statusCode).toBe(400);
           expect(result.success).toBe(false);
@@ -523,7 +528,7 @@ describe('DecisionExtractor', () => {
       it('should return error for non-array messages', () => {
         const args = { messages: 'not an array' };
 
-        return extractor.extractDecisionsService(args).then(result => {
+        return extractor.extractDecisionsService(args).then((result) => {
           expect(result.success).toBe(false);
           expect(result.statusCode).toBe(400);
           expect(result.success).toBe(false);
@@ -540,14 +545,14 @@ describe('DecisionExtractor', () => {
 
         const args = { messages: [] };
 
-        return extractor.extractDecisionsService(args).then(result => {
+        return extractor.extractDecisionsService(args).then((result) => {
           expect(result.success).toBe(false);
           expect(result.statusCode).toBe(500);
           expect(result.success).toBe(false);
           if (!result.success) {
             expect(result.error).toContain('Failed to extract decisions: Test error');
           }
-          
+
           // Restore original method
           extractor.extractDecisions = originalExtractDecisions;
         });
@@ -559,7 +564,7 @@ describe('DecisionExtractor', () => {
     describe('Large Message Sets', () => {
       it('should handle large message arrays efficiently', () => {
         const startTime = Date.now();
-        
+
         // Create 1000 messages with varied decision content
         const messages: SlackMessage[] = Array.from({ length: 1000 }, (_, i) => ({
           text: i % 10 === 0 ? `DECISION: Decision number ${i}` : `Regular message ${i}`,
@@ -568,12 +573,12 @@ describe('DecisionExtractor', () => {
           type: 'message',
         }));
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           const duration = Date.now() - startTime;
-          
+
           // Should complete within reasonable time (< 1000ms for 1000 messages)
           expect(duration).toBeLessThan(1000);
-          
+
           // Should extract approximately 100 decisions (every 10th message)
           expect(result.decisions.length).toBeCloseTo(100, -1);
           expect(result.totalMessages).toBe(1000);
@@ -583,14 +588,14 @@ describe('DecisionExtractor', () => {
 
     describe('Edge Cases', () => {
       it('should handle empty messages array', () => {
-        return extractor.extractDecisions([]).then(result => {
+        return extractor.extractDecisions([]).then((result) => {
           expect(result.decisions).toEqual([]);
           expect(result.totalMessages).toBe(0);
         });
       });
 
       it('should handle null messages array', () => {
-        return extractor.extractDecisions(null as any).then(result => {
+        return extractor.extractDecisions(null as any).then((result) => {
           expect(result.decisions).toEqual([]);
           expect(result.totalMessages).toBe(0);
         });
@@ -603,10 +608,10 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           expect(result.decisions).toEqual([]);
           expect(result.totalMessages).toBe(1);
         });
@@ -619,10 +624,10 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           expect(result.decisions).toEqual([]);
           expect(result.totalMessages).toBe(1);
         });
@@ -636,10 +641,10 @@ describe('DecisionExtractor', () => {
             ts: '1234567890.123456',
             user: 'U123456',
             type: 'message',
-          }
+          },
         ];
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           // Should process valid messages and skip invalid ones
           expect(result.decisions).toHaveLength(1);
           expect(result.totalMessages).toBe(2);
@@ -658,9 +663,9 @@ describe('DecisionExtractor', () => {
 
         const startTime = Date.now();
 
-        return extractor.extractDecisions(messages).then(result => {
+        return extractor.extractDecisions(messages).then((result) => {
           const duration = Date.now() - startTime;
-          
+
           // Should complete within 100ms for 100 messages
           expect(duration).toBeLessThan(100);
           expect(result.totalMessages).toBe(100);
@@ -691,19 +696,19 @@ describe('DecisionExtractor', () => {
           type: 'message',
         },
         {
-          text: 'Sounds good, I\'ll finalize the documentation',
+          text: "Sounds good, I'll finalize the documentation",
           ts: '1234567890.123453',
           user: 'U123456',
           type: 'message',
-        }
+        },
       ];
 
-      return extractor.extractDecisions(messages).then(result => {
+      return extractor.extractDecisions(messages).then((result) => {
         expect(result.decisions).toHaveLength(2); // DECISION and finalize
         expect(result.totalMessages).toBe(4);
-        
+
         // The formal decision should have highest confidence
-        const formalDecision = result.decisions.find(d => d.text.includes('DECISION:'));
+        const formalDecision = result.decisions.find((d) => d.text.includes('DECISION:'));
         expect(formalDecision).toBeDefined();
         expect(formalDecision!.confidence).toBeGreaterThan(0.8);
       });
@@ -728,18 +733,18 @@ describe('DecisionExtractor', () => {
           ts: '1234567890.123452',
           user: 'U345678',
           type: 'message',
-        }
+        },
       ];
 
-      return extractor.extractDecisions(messages).then(result => {
+      return extractor.extractDecisions(messages).then((result) => {
         expect(result.decisions).toHaveLength(2); // 決定 and 承認
         expect(result.totalMessages).toBe(3);
-        
+
         const decisions = result.decisions;
-        expect(decisions.every(d => d.language === 'ja')).toBe(true);
-        
+        expect(decisions.every((d) => d.language === 'ja')).toBe(true);
+
         // Formal decision marker should have high confidence
-        const formalDecision = decisions.find(d => d.text.includes('決定：'));
+        const formalDecision = decisions.find((d) => d.text.includes('決定：'));
         expect(formalDecision).toBeDefined();
         expect(formalDecision!.confidence).toBeGreaterThan(0.8);
       });

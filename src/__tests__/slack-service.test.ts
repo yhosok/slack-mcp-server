@@ -699,7 +699,9 @@ describe('SlackService', () => {
           });
 
           expect(result.isError).toBe(true);
-          expect(extractTextContent(result.content?.[0])).toContain('before date must be after the after date');
+          expect(extractTextContent(result.content?.[0])).toContain(
+            'before date must be after the after date'
+          );
         });
 
         it('should handle relative date formats', async () => {

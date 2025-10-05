@@ -15,8 +15,8 @@ import {
 jest.mock('../config/index.js', () => ({
   CONFIG: {
     SLACK_BOT_TOKEN: 'xoxb-mock-token',
-    LOG_LEVEL: 'warn'
-  }
+    LOG_LEVEL: 'warn',
+  },
 }));
 
 // Mock logger to avoid config dependencies
@@ -25,8 +25,8 @@ jest.mock('../utils/logger.js', () => ({
     warn: jest.fn(),
     error: jest.fn(),
     info: jest.fn(),
-    debug: jest.fn()
-  }
+    debug: jest.fn(),
+  },
 }));
 
 describe('Concurrent Processing Utilities', () => {
@@ -40,7 +40,9 @@ describe('Concurrent Processing Utilities', () => {
   describe('processConcurrently', () => {
     it('should process items concurrently and return successful results', async () => {
       const items = [1, 2, 3, 4, 5];
-      const processor = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => item * 2);
+      const processor = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => item * 2);
 
       const result = await processConcurrently(items, processor);
 
@@ -54,12 +56,14 @@ describe('Concurrent Processing Utilities', () => {
 
     it('should handle errors gracefully when failFast is false', async () => {
       const items = [1, 2, 3, 4, 5];
-      const processor = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => {
-        if (item === 3) {
-          throw new Error(`Error processing ${item}`);
-        }
-        return item * 2;
-      });
+      const processor = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => {
+          if (item === 3) {
+            throw new Error(`Error processing ${item}`);
+          }
+          return item * 2;
+        });
 
       const result = await processConcurrently(items, processor, { failFast: false });
 
@@ -74,16 +78,18 @@ describe('Concurrent Processing Utilities', () => {
 
     it('should throw error immediately when failFast is true', async () => {
       const items = [1, 2, 3, 4, 5];
-      const processor = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => {
-        if (item === 3) {
-          throw new Error(`Error processing ${item}`);
-        }
-        return item * 2;
-      });
+      const processor = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => {
+          if (item === 3) {
+            throw new Error(`Error processing ${item}`);
+          }
+          return item * 2;
+        });
 
-      await expect(
-        processConcurrently(items, processor, { failFast: true })
-      ).rejects.toThrow('Error processing 3');
+      await expect(processConcurrently(items, processor, { failFast: true })).rejects.toThrow(
+        'Error processing 3'
+      );
     });
 
     it('should respect concurrency limits', async () => {
@@ -91,16 +97,18 @@ describe('Concurrent Processing Utilities', () => {
       let activeCount = 0;
       let maxActiveCount = 0;
 
-      const processor = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => {
-        activeCount++;
-        maxActiveCount = Math.max(maxActiveCount, activeCount);
-        
-        // Simulate async work
-        await new Promise(resolve => setTimeout(resolve, 10));
-        
-        activeCount--;
-        return item * 2;
-      });
+      const processor = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => {
+          activeCount++;
+          maxActiveCount = Math.max(maxActiveCount, activeCount);
+
+          // Simulate async work
+          await new Promise((resolve) => setTimeout(resolve, 10));
+
+          activeCount--;
+          return item * 2;
+        });
 
       await processConcurrently(items, processor, { concurrency: 2 });
 
@@ -110,16 +118,18 @@ describe('Concurrent Processing Utilities', () => {
     it('should call custom error handler', async () => {
       const items = [1, 2, 3];
       const errorHandler = jest.fn();
-      const processor = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => {
-        if (item === 2) {
-          throw new Error(`Error processing ${item}`);
-        }
-        return item * 2;
-      });
+      const processor = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => {
+          if (item === 2) {
+            throw new Error(`Error processing ${item}`);
+          }
+          return item * 2;
+        });
 
-      await processConcurrently(items, processor, { 
-        failFast: false, 
-        errorHandler 
+      await processConcurrently(items, processor, {
+        failFast: false,
+        errorHandler,
       });
 
       expect(errorHandler).toHaveBeenCalledWith(
@@ -132,11 +142,13 @@ describe('Concurrent Processing Utilities', () => {
   describe('processConcurrentlyInBatches', () => {
     it('should process items in batches', async () => {
       const items = Array.from({ length: 10 }, (_, i) => i + 1);
-      const processor = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => item * 2);
+      const processor = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => item * 2);
 
       const result = await processConcurrentlyInBatches(
-        items, 
-        processor, 
+        items,
+        processor,
         3, // batch size
         { concurrency: 2 }
       );
@@ -149,16 +161,18 @@ describe('Concurrent Processing Utilities', () => {
 
     it('should handle errors across batches', async () => {
       const items = [1, 2, 3, 4, 5, 6];
-      const processor = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => {
-        if (item === 2 || item === 5) {
-          throw new Error(`Error processing ${item}`);
-        }
-        return item * 2;
-      });
+      const processor = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => {
+          if (item === 2 || item === 5) {
+            throw new Error(`Error processing ${item}`);
+          }
+          return item * 2;
+        });
 
       const result = await processConcurrentlyInBatches(
-        items, 
-        processor, 
+        items,
+        processor,
         3, // batch size
         { failFast: false }
       );
@@ -173,7 +187,9 @@ describe('Concurrent Processing Utilities', () => {
   describe('mapConcurrently', () => {
     it('should map items preserving order', async () => {
       const items = [1, 2, 3, 4, 5];
-      const mapper = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => item * 2);
+      const mapper = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => item * 2);
 
       const result = await mapConcurrently(items, mapper);
 
@@ -182,12 +198,14 @@ describe('Concurrent Processing Utilities', () => {
 
     it('should return undefined for failed items', async () => {
       const items = [1, 2, 3, 4, 5];
-      const mapper = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => {
-        if (item === 3) {
-          throw new Error(`Error processing ${item}`);
-        }
-        return item * 2;
-      });
+      const mapper = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => {
+          if (item === 3) {
+            throw new Error(`Error processing ${item}`);
+          }
+          return item * 2;
+        });
 
       const result = await mapConcurrently(items, mapper, { failFast: false });
 
@@ -198,7 +216,9 @@ describe('Concurrent Processing Utilities', () => {
   describe('filterConcurrently', () => {
     it('should filter items concurrently', async () => {
       const items = [1, 2, 3, 4, 5, 6];
-      const predicate = jest.fn<(item: number, index: number) => Promise<boolean>>().mockImplementation(async (item: number) => item % 2 === 0);
+      const predicate = jest
+        .fn<(item: number, index: number) => Promise<boolean>>()
+        .mockImplementation(async (item: number) => item % 2 === 0);
 
       const result = await filterConcurrently(items, predicate);
 
@@ -208,12 +228,14 @@ describe('Concurrent Processing Utilities', () => {
 
     it('should handle predicate failures', async () => {
       const items = [1, 2, 3, 4, 5];
-      const predicate = jest.fn<(item: number, index: number) => Promise<boolean>>().mockImplementation(async (item: number) => {
-        if (item === 3) {
-          throw new Error(`Error checking ${item}`);
-        }
-        return item % 2 === 0;
-      });
+      const predicate = jest
+        .fn<(item: number, index: number) => Promise<boolean>>()
+        .mockImplementation(async (item: number) => {
+          if (item === 3) {
+            throw new Error(`Error checking ${item}`);
+          }
+          return item % 2 === 0;
+        });
 
       const result = await filterConcurrently(items, predicate, { failFast: false });
 
@@ -240,7 +262,7 @@ describe('Concurrent Processing Utilities', () => {
       expect(cache.get('key1')).toBe(100);
 
       // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
 
       expect(cache.get('key1')).toBeUndefined();
     });
@@ -250,11 +272,11 @@ describe('Concurrent Processing Utilities', () => {
 
       cache.set('key1', 100);
       cache.set('key2', 200);
-      
+
       expect(cache.size()).toBe(2);
-      
+
       cache.clear();
-      
+
       expect(cache.size()).toBe(0);
       expect(cache.get('key1')).toBeUndefined();
       expect(cache.get('key2')).toBeUndefined();
@@ -265,11 +287,11 @@ describe('Concurrent Processing Utilities', () => {
 
       cache.set('key1', 100);
       cache.set('key2', 200);
-      
+
       expect(cache.size()).toBe(2);
 
       // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 60));
 
       // Size check should clean expired entries
       expect(cache.size()).toBe(0);
@@ -280,11 +302,13 @@ describe('Concurrent Processing Utilities', () => {
     it('should process items faster with higher concurrency', async () => {
       const items = Array.from({ length: 20 }, (_, i) => i + 1);
       const delayMs = 50;
-      
-      const processor = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => {
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-        return item * 2;
-      });
+
+      const processor = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          return item * 2;
+        });
 
       // Low concurrency
       const start1 = Date.now();

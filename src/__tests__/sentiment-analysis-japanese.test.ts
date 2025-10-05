@@ -67,7 +67,7 @@ describe('Japanese Sentiment Analysis', () => {
     test('countJapaneseWordOccurrences should count correctly', () => {
       const text = '良い良い素晴らしい';
       const words = ['良い', '素晴らしい', '最高'];
-      
+
       const count = countJapaneseWordOccurrences(text, words);
       expect(count).toBe(3); // 良い appears twice, 素晴らしい once
     });
@@ -75,7 +75,7 @@ describe('Japanese Sentiment Analysis', () => {
     test('should handle overlapping Japanese words', () => {
       const text = '素晴らしい素晴らしい作業';
       const words = ['素晴らしい'];
-      
+
       const count = countJapaneseWordOccurrences(text, words);
       expect(count).toBe(2);
     });
@@ -83,7 +83,7 @@ describe('Japanese Sentiment Analysis', () => {
     test('should not count non-existent words', () => {
       const text = '良い仕事です';
       const words = ['悪い', 'ひどい'];
-      
+
       const count = countJapaneseWordOccurrences(text, words);
       expect(count).toBe(0);
     });
@@ -103,7 +103,7 @@ describe('Japanese Sentiment Analysis', () => {
     test('should handle various negation forms', () => {
       const text = '良くない、素晴らしくありません、最高じゃない、完璧ではない';
       const negationPatterns = ['ない', 'ません', 'じゃない', 'ではない'];
-      
+
       const result = processNegationPatterns(text, negationPatterns, 4, 0);
       // Note: The text has overlapping patterns (e.g., 'じゃない' contains 'ない')
       // so the count will be higher than 4
@@ -114,7 +114,7 @@ describe('Japanese Sentiment Analysis', () => {
     test('should not over-adjust for minor negations', () => {
       const text = '良いですが、少し問題があります';
       const negationPatterns = ['ない'];
-      
+
       const result = processNegationPatterns(text, negationPatterns, 1, 1);
       // Should not flip sentiment for minor negation
       expect(result.adjustedPositiveCount).toBe(1);
@@ -123,7 +123,7 @@ describe('Japanese Sentiment Analysis', () => {
 
     test('processNegationPatterns should flip sentiment appropriately', () => {
       const result = processNegationPatterns('良くない悪くない', ['ない'], 3, 1);
-      
+
       // 2 negation patterns, should reduce positive and increase negative
       expect(result.negationAdjustments).toBe(2);
       expect(result.adjustedPositiveCount).toBeLessThan(3); // Should be reduced
@@ -150,9 +150,15 @@ describe('Japanese Sentiment Analysis', () => {
     });
 
     test('processEmphasisMitigation should apply correct multipliers', () => {
-      const emphasisPatterns = new Map([['めちゃ', 1.5], ['すごく', 1.5]]);
-      const mitigationPatterns = new Map([['少し', 0.8], ['まあまあ', 0.9]]);
-      
+      const emphasisPatterns = new Map([
+        ['めちゃ', 1.5],
+        ['すごく', 1.5],
+      ]);
+      const mitigationPatterns = new Map([
+        ['少し', 0.8],
+        ['まあまあ', 0.9],
+      ]);
+
       // Test emphasis only
       const emphasisResult = processEmphasisMitigation(
         'めちゃ良い',
@@ -191,8 +197,11 @@ describe('Japanese Sentiment Analysis', () => {
 
     test('should handle multiple emphasis patterns', () => {
       const text = 'めちゃくちゃすごく良い';
-      const emphasisPatterns = new Map([['めちゃくちゃ', 1.5], ['すごく', 1.5]]);
-      
+      const emphasisPatterns = new Map([
+        ['めちゃくちゃ', 1.5],
+        ['すごく', 1.5],
+      ]);
+
       const result = processEmphasisMitigation(text, emphasisPatterns, new Map(), 1, 0);
       expect(result.emphasisAdjustments).toBe(2);
       expect(result.adjustedPositiveCount).toBe(2); // Max multiplier of 1.5 applied
@@ -320,11 +329,11 @@ describe('Japanese Sentiment Analysis', () => {
 
       // Should have some sentiment words to generate meaningful explanation
       expect(result.totalWords).toBeGreaterThan(1);
-      
+
       if ((result.negationAdjustments || 0) > 0 || (result.emphasisAdjustments || 0) > 0) {
         expect(explanation).toContain('Applied adjustments');
       }
-      
+
       // Verify it processes the text correctly
       expect(result.negationAdjustments || 0).toBeGreaterThan(0); // Should detect 'ない'
       expect(result.emphasisAdjustments || 0).toBeGreaterThan(0); // Should detect 'めちゃくちゃ' and 'とても'
@@ -374,7 +383,7 @@ describe('Japanese Sentiment Analysis', () => {
   describe('Performance and Determinism', () => {
     test('should be deterministic with same input', () => {
       const messages = [createMessage('めちゃくちゃ良いですが、少し問題があります。')];
-      
+
       const result1 = analyzeSentiment(messages);
       const result2 = analyzeSentiment(messages);
 
@@ -397,12 +406,14 @@ describe('Japanese Sentiment Analysis', () => {
     test('should not mutate input configuration', () => {
       const originalConfig = { ...DEFAULT_SENTIMENT_CONFIG };
       const messages = [createMessage('良いです')];
-      
+
       analyzeSentiment(messages, DEFAULT_SENTIMENT_CONFIG);
 
       // Check that configuration hasn't been mutated
       expect(DEFAULT_SENTIMENT_CONFIG.threshold).toBe(originalConfig.threshold);
-      expect(DEFAULT_SENTIMENT_CONFIG.enableJapaneseProcessing).toBe(originalConfig.enableJapaneseProcessing);
+      expect(DEFAULT_SENTIMENT_CONFIG.enableJapaneseProcessing).toBe(
+        originalConfig.enableJapaneseProcessing
+      );
     });
   });
 });

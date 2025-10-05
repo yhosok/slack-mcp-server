@@ -1,6 +1,6 @@
 /**
  * @fileoverview Cache infrastructure module exports
- * 
+ *
  * Provides clean exports for all cache-related functionality including:
  * - LRUCacheWrapper class with comprehensive caching features
  * - SearchCache with advanced query normalization and adaptive TTL
@@ -9,7 +9,7 @@
  * - CachePerformanceMonitor for performance tracking
  * - Configuration and metrics interfaces
  * - Type definitions for cache operations
- * 
+ *
  * Created: 2025-08-19
  * Updated: 2025-08-19 - Added unified cache service components
  */
@@ -18,7 +18,7 @@ export {
   LRUCacheWrapper,
   type LRUCacheConfig,
   type CacheMetrics,
-  type SetOptions
+  type SetOptions,
 } from './lru-cache.js';
 
 export {
@@ -28,7 +28,7 @@ export {
   type SearchQuery,
   type SearchResult,
   type CacheInvalidationPattern,
-  type SearchCacheMetrics
+  type SearchCacheMetrics,
 } from './search-cache.js';
 
 export {
@@ -39,7 +39,7 @@ export {
   type CacheServiceDependencies,
   type CacheServiceMetrics,
   type CacheInstance,
-  type CacheHealthStatus
+  type CacheHealthStatus,
 } from './cache-service.js';
 
 export {
@@ -47,5 +47,5 @@ export {
   CacheKeyBuilder,
   createCacheIntegrationHelper,
   type CacheOrFetchOptions,
-  type CacheInvalidationOptions
+  type CacheInvalidationOptions,
 } from './cache-integration-helpers.js';

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Advanced Search Query Parser for Slack Search API
  * Provides comprehensive parsing and building of Slack search queries
- * 
+ *
  * Created: 2025-01-19
  * Phase: TDD Green - Implementation placeholder (to be implemented)
  */
@@ -13,15 +13,15 @@
 /**
  * Supported Slack search operators
  */
-export type SlackSearchOperator = 
-  | 'in'          // Channel filter: in:#general
-  | 'from'        // User filter: from:@alice
-  | 'has'         // Content type: has:link, has:attachment
-  | 'after'       // Date filter: after:2023-01-01
-  | 'before'      // Date filter: before:2023-12-31
-  | 'filetype'    // File type: filetype:pdf
-  | 'is'          // Status: is:starred, is:pinned
-  | 'during';     // Time period: during:january
+export type SlackSearchOperator =
+  | 'in' // Channel filter: in:#general
+  | 'from' // User filter: from:@alice
+  | 'has' // Content type: has:link, has:attachment
+  | 'after' // Date filter: after:2023-01-01
+  | 'before' // Date filter: before:2023-12-31
+  | 'filetype' // File type: filetype:pdf
+  | 'is' // Status: is:starred, is:pinned
+  | 'during'; // Time period: during:january
 
 /**
  * Boolean operators for complex queries
@@ -101,7 +101,7 @@ export interface QueryValidationResult {
 /**
  * Query parsing result (discriminated union)
  */
-export type QueryParseResult = 
+export type QueryParseResult =
   | { success: true; query: ParsedSearchQuery }
   | { success: false; error: SearchQueryError };
 
@@ -111,15 +111,12 @@ export type QueryParseResult =
 
 /**
  * Parse a search query string into structured components
- * 
+ *
  * @param query - Raw search query string
  * @param options - Parsing options
  * @returns Parsed query result
  */
-export function parseSearchQuery(
-  query: string, 
-  options?: SearchQueryOptions
-): QueryParseResult {
+export function parseSearchQuery(query: string, options?: SearchQueryOptions): QueryParseResult {
   try {
     // Input validation
     if (!query || typeof query !== 'string') {
@@ -127,8 +124,8 @@ export function parseSearchQuery(
         success: false,
         error: {
           code: QUERY_ERROR_CODES.EMPTY_QUERY,
-          message: 'Query cannot be empty'
-        }
+          message: 'Query cannot be empty',
+        },
       };
     }
 
@@ -138,8 +135,8 @@ export function parseSearchQuery(
         success: false,
         error: {
           code: QUERY_ERROR_CODES.EMPTY_QUERY,
-          message: 'Query cannot be empty or whitespace only'
-        }
+          message: 'Query cannot be empty or whitespace only',
+        },
       };
     }
 
@@ -150,8 +147,8 @@ export function parseSearchQuery(
         success: false,
         error: {
           code: QUERY_ERROR_CODES.QUERY_TOO_COMPLEX,
-          message: 'Query is too complex'
-        }
+          message: 'Query is too complex',
+        },
       };
     }
 
@@ -162,8 +159,8 @@ export function parseSearchQuery(
         success: false,
         error: {
           code: QUERY_ERROR_CODES.QUERY_TOO_LONG,
-          message: `Query exceeds maximum length of ${maxLength} characters`
-        }
+          message: `Query exceeds maximum length of ${maxLength} characters`,
+        },
       };
     }
 
@@ -174,13 +171,13 @@ export function parseSearchQuery(
       operators: [],
       booleanOperators: [],
       groups: [],
-      raw: trimmedQuery
+      raw: trimmedQuery,
     };
 
     // Check for unmatched quotes (but allow quotes within terms for legacy compatibility)
     const quoteMatches = trimmedQuery.match(/"/g) || [];
     const quoteCount = quoteMatches.length;
-    
+
     // Only fail if we have obvious quoted phrases that are unmatched
     if (quoteCount % 2 !== 0) {
       // Check if the quotes look like they're intended as phrase delimiters
@@ -190,8 +187,8 @@ export function parseSearchQuery(
           success: false,
           error: {
             code: QUERY_ERROR_CODES.UNMATCHED_QUOTES,
-            message: 'Unmatched quotes in query'
-          }
+            message: 'Unmatched quotes in query',
+          },
         };
       }
       // Otherwise allow it for legacy compatibility (quotes within terms)
@@ -205,8 +202,8 @@ export function parseSearchQuery(
         success: false,
         error: {
           code: QUERY_ERROR_CODES.UNMATCHED_PARENTHESES,
-          message: 'Unmatched parentheses in query'
-        }
+          message: 'Unmatched parentheses in query',
+        },
       };
     }
 
@@ -225,10 +222,10 @@ export function parseSearchQuery(
     const groupRegex = /\(([^)]+)\)/g;
     while ((match = groupRegex.exec(workingQuery)) !== null) {
       const groupContent = match[1] || '';
-      const groupTerms = groupContent.split(/\s+/).filter(term => 
-        term && !['AND', 'OR', 'NOT'].includes(term.toUpperCase())
-      );
-      
+      const groupTerms = groupContent
+        .split(/\s+/)
+        .filter((term) => term && !['AND', 'OR', 'NOT'].includes(term.toUpperCase()));
+
       let booleanOp: BooleanOperator | undefined;
       if (groupContent.toUpperCase().includes(' OR ')) {
         booleanOp = 'OR';
@@ -240,9 +237,9 @@ export function parseSearchQuery(
         terms: groupTerms,
         phrases: [],
         operators: [],
-        booleanOperator: booleanOp
+        booleanOperator: booleanOp,
       });
-      
+
       workingQuery = workingQuery.replace(match[0], '');
     }
 
@@ -260,8 +257,8 @@ export function parseSearchQuery(
           error: {
             code: QUERY_ERROR_CODES.INVALID_OPERATOR,
             message: `Invalid operator: ${operatorType}`,
-            suggestion: `Valid operators are: ${Object.keys(OPERATOR_FIELD_MAP).join(', ')}`
-          }
+            suggestion: `Valid operators are: ${Object.keys(OPERATOR_FIELD_MAP).join(', ')}`,
+          },
         };
       }
 
@@ -271,8 +268,8 @@ export function parseSearchQuery(
           success: false,
           error: {
             code: QUERY_ERROR_CODES.OPERATOR_NOT_ALLOWED,
-            message: `Operator '${operatorType}' is not allowed`
-          }
+            message: `Operator '${operatorType}' is not allowed`,
+          },
         };
       }
 
@@ -283,17 +280,17 @@ export function parseSearchQuery(
           error: {
             code: QUERY_ERROR_CODES.INVALID_OPERATOR,
             message: `Operator '${operatorType}' is missing value`,
-            suggestion: `Use format: ${operatorType}:value`
-          }
+            suggestion: `Use format: ${operatorType}:value`,
+          },
         };
       }
 
       parsedQuery.operators.push({
         type: operatorType,
         value: value,
-        field: OPERATOR_FIELD_MAP[operatorType] || 'unknown'
+        field: OPERATOR_FIELD_MAP[operatorType] || 'unknown',
       });
-      
+
       workingQuery = workingQuery.replace(operatorMatch[0], '');
     }
 
@@ -306,8 +303,8 @@ export function parseSearchQuery(
         error: {
           code: QUERY_ERROR_CODES.INVALID_OPERATOR,
           message: `Operator '${malformedMatch[1]}:' is missing value`,
-          suggestion: `Use format: ${malformedMatch[1]}:value`
-        }
+          suggestion: `Use format: ${malformedMatch[1]}:value`,
+        },
       };
     }
 
@@ -317,11 +314,13 @@ export function parseSearchQuery(
     booleanMatches.forEach((match, _index) => {
       // Calculate position in terms (terms before this operator)
       const beforeOperator = trimmedQuery.substring(0, match.index || 0);
-      const termsBefore = beforeOperator.split(/\s+/).filter(t => t && !['AND', 'OR', 'NOT'].includes(t.toUpperCase())).length;
-      
+      const termsBefore = beforeOperator
+        .split(/\s+/)
+        .filter((t) => t && !['AND', 'OR', 'NOT'].includes(t.toUpperCase())).length;
+
       parsedQuery.booleanOperators.push({
         type: match[1]?.toUpperCase() as BooleanOperator,
-        position: Math.max(1, termsBefore) // Position starts from 1
+        position: Math.max(1, termsBefore), // Position starts from 1
       });
     });
 
@@ -331,30 +330,29 @@ export function parseSearchQuery(
     // Extract remaining terms
     const terms = workingQuery
       .split(/\s+/)
-      .map(term => term.trim())
-      .filter(term => term.length > 0);
-    
+      .map((term) => term.trim())
+      .filter((term) => term.length > 0);
+
     parsedQuery.terms = terms;
 
     return {
       success: true,
-      query: parsedQuery
+      query: parsedQuery,
     };
-
   } catch (error) {
     return {
       success: false,
       error: {
         code: 'PARSE_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown parsing error'
-      }
+        message: error instanceof Error ? error.message : 'Unknown parsing error',
+      },
     };
   }
 }
 
 /**
  * Build a Slack-compatible search query from parsed components
- * 
+ *
  * @param parsed - Parsed query structure
  * @param options - Building options
  * @returns Slack API compatible query string
@@ -367,14 +365,14 @@ export function buildSlackSearchQuery(
 
   // Add phrases first (with quotes)
   if (parsed.phrases?.length > 0) {
-    parsed.phrases.forEach(phrase => {
+    parsed.phrases.forEach((phrase) => {
       parts.push(`"${escapeSlackSearchText(phrase)}"`);
     });
   }
 
   // Add terms (escaped)
   if (parsed.terms?.length > 0) {
-    parsed.terms.forEach(term => {
+    parsed.terms.forEach((term) => {
       parts.push(escapeSlackSearchText(term));
     });
   }
@@ -385,7 +383,7 @@ export function buildSlackSearchQuery(
     // Reconstruct with boolean operators
     const result: string[] = [];
     let termIndex = 0;
-    
+
     parsed.booleanOperators.forEach((boolOp, _index) => {
       if (termIndex < queryParts.length) {
         result.push(queryParts[termIndex++] || '');
@@ -395,24 +393,24 @@ export function buildSlackSearchQuery(
         result.push(queryParts[termIndex++] || '');
       }
     });
-    
+
     // Add any remaining terms
     while (termIndex < queryParts.length) {
       result.push(queryParts[termIndex++] || '');
     }
-    
-    queryParts = result.filter(part => part.length > 0);
+
+    queryParts = result.filter((part) => part.length > 0);
   }
 
   // Add operators
   if (parsed.operators?.length > 0) {
-    parsed.operators.forEach(op => {
+    parsed.operators.forEach((op) => {
       queryParts.push(`${op.type}:${op.value}`);
     });
   }
 
   // Add default channel if specified in options and no channel operator present
-  if (options?.defaultChannel && !parsed.operators?.some(op => op.type === 'in')) {
+  if (options?.defaultChannel && !parsed.operators?.some((op) => op.type === 'in')) {
     const channelName = resolveChannelName(options.defaultChannel, options.channelNameMap);
     queryParts.push(`in:#${channelName}`);
   }
@@ -422,7 +420,7 @@ export function buildSlackSearchQuery(
 
 /**
  * Validate a search query for syntax and compliance
- * 
+ *
  * @param query - Query string to validate
  * @param options - Validation options
  * @returns Validation result with errors and warnings
@@ -436,7 +434,7 @@ export function validateSearchQuery(
 
   // Parse the query first
   const parseResult = parseSearchQuery(query, options);
-  
+
   if (!parseResult.success) {
     errors.push(parseResult.error);
   }
@@ -444,7 +442,7 @@ export function validateSearchQuery(
   // Additional validation checks
   if (query && typeof query === 'string') {
     const trimmed = query.trim();
-    
+
     // Check for invalid operators (only if parse was successful)
     if (parseResult.success) {
       const operatorMatches = trimmed.matchAll(/(\w+):/g);
@@ -454,7 +452,7 @@ export function validateSearchQuery(
           errors.push({
             code: QUERY_ERROR_CODES.INVALID_OPERATOR,
             message: `Invalid operator: ${operator}`,
-            suggestion: `Valid operators are: ${Object.keys(OPERATOR_FIELD_MAP).join(', ')}`
+            suggestion: `Valid operators are: ${Object.keys(OPERATOR_FIELD_MAP).join(', ')}`,
           });
         }
       }
@@ -467,7 +465,7 @@ export function validateSearchQuery(
       errors.push({
         code: QUERY_ERROR_CODES.INVALID_OPERATOR,
         message: `Operator '${operator}' is missing value`,
-        suggestion: `Use format: ${operator}:value`
+        suggestion: `Use format: ${operator}:value`,
       });
     }
   }
@@ -475,7 +473,7 @@ export function validateSearchQuery(
   return {
     isValid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   };
 }
 
@@ -485,7 +483,7 @@ export function validateSearchQuery(
 
 /**
  * Escape special characters for Slack search
- * 
+ *
  * @param text - Text to escape
  * @returns Escaped text
  */
@@ -493,26 +491,23 @@ export function escapeSlackSearchText(text: string): string {
   if (!text || typeof text !== 'string') {
     return '';
   }
-  
+
   return text
     .replace(/\\/g, '\\\\') // Escape backslashes first
-    .replace(/"/g, '\\"')    // Escape quotes
+    .replace(/"/g, '\\"') // Escape quotes
     .replace(/[\r\n\t]/g, ' ') // Replace control characters with spaces
-    .replace(/\s+/g, ' ')     // Normalize multiple spaces
+    .replace(/\s+/g, ' ') // Normalize multiple spaces
     .trim();
 }
 
 /**
  * Resolve channel ID to channel name
- * 
+ *
  * @param channelId - Channel ID
  * @param channelMap - Optional channel name mapping
  * @returns Channel name or original ID
  */
-export function resolveChannelName(
-  channelId: string,
-  channelMap?: Map<string, string>
-): string {
+export function resolveChannelName(channelId: string, channelMap?: Map<string, string>): string {
   if (!channelId) {
     return '';
   }
@@ -538,7 +533,7 @@ export function resolveChannelName(
 
 /**
  * Check if operator is allowed based on options
- * 
+ *
  * @param operator - Operator to check
  * @param options - Query options
  * @returns True if operator is allowed
@@ -563,14 +558,14 @@ export function isOperatorAllowed(
  * Mapping of Slack operators to their field types
  */
 const OPERATOR_FIELD_MAP: Record<SlackSearchOperator, string> = {
-  'in': 'channel',
-  'from': 'user', 
-  'has': 'content_type',
-  'after': 'date',
-  'before': 'date',
-  'filetype': 'file_type',
-  'is': 'status',
-  'during': 'date'
+  in: 'channel',
+  from: 'user',
+  has: 'content_type',
+  after: 'date',
+  before: 'date',
+  filetype: 'file_type',
+  is: 'status',
+  during: 'date',
 };
 
 /**
@@ -596,7 +591,7 @@ export const QUERY_ERROR_CODES = {
   UNMATCHED_PARENTHESES: 'UNMATCHED_PARENTHESES',
   INVALID_DATE_FORMAT: 'INVALID_DATE_FORMAT',
   INVALID_CHANNEL_FORMAT: 'INVALID_CHANNEL_FORMAT',
-  INVALID_USER_FORMAT: 'INVALID_USER_FORMAT'
+  INVALID_USER_FORMAT: 'INVALID_USER_FORMAT',
 } as const;
 
 /**
@@ -606,7 +601,7 @@ export const DEFAULT_QUERY_OPTIONS: SearchQueryOptions = {
   maxQueryLength: 1000,
   enableGrouping: true,
   enableBooleanOperators: true,
-  allowedOperators: ['in', 'from', 'has', 'after', 'before', 'filetype', 'is']
+  allowedOperators: ['in', 'from', 'has', 'after', 'before', 'filetype', 'is'],
 };
 
 // ============================================================================
@@ -622,7 +617,7 @@ export function escapeSearchQuery(query: string): string {
   if (!query || typeof query !== 'string') {
     return '';
   }
-  
+
   return query
     .replace(/"/g, '\\"') // Escape quotes
     .replace(/[\r\n]/g, ' ') // Replace newlines with spaces

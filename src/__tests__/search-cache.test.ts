@@ -1,7 +1,7 @@
 /**
  * @fileoverview Tests for search-specific caching functionality
  * Tests query normalization, search result caching, and pattern-based invalidation
- * 
+ *
  * Created: 2025-08-19
  * TDD Red Phase: Tests written before implementation to drive development
  */
@@ -18,12 +18,14 @@ jest.mock('../slack/utils/search-query-parser', () => ({
       operators: [],
       booleanOperators: [],
       groups: [],
-      raw: query || 'hello world'
-    }
+      raw: query || 'hello world',
+    },
   })),
-  buildSlackSearchQuery: jest.fn().mockImplementation((parsed: any) => parsed?.raw || 'hello world'),
+  buildSlackSearchQuery: jest
+    .fn()
+    .mockImplementation((parsed: any) => parsed?.raw || 'hello world'),
   validateSearchQuery: jest.fn().mockReturnValue({ isValid: true, errors: [], warnings: [] }),
-  normalizeSearchQuery: jest.fn().mockImplementation((query: any) => query || 'hello world')
+  normalizeSearchQuery: jest.fn().mockImplementation((query: any) => query || 'hello world'),
 }));
 
 // Mock the LRU cache
@@ -47,18 +49,18 @@ jest.mock('../slack/infrastructure/cache/lru-cache', () => ({
         evictions: 0,
         hitRate: 0,
         memoryUsage: 0,
-        size: 0
+        size: 0,
       }),
-      resetMetrics: jest.fn()
+      resetMetrics: jest.fn(),
     };
-  })
+  }),
 }));
 
 // Import mocked functions
 import {
   parseSearchQuery,
   buildSlackSearchQuery,
-  validateSearchQuery as _validateSearchQuery
+  validateSearchQuery as _validateSearchQuery,
 } from '../slack/utils/search-query-parser';
 
 // Types and interfaces that will be implemented
@@ -113,10 +115,7 @@ interface _SearchCacheMetrics {
 }
 
 // Import the actual implementations
-import {
-  SearchCache,
-  SearchQueryNormalizer
-} from '../slack/infrastructure/cache/search-cache.js';
+import { SearchCache, SearchQueryNormalizer } from '../slack/infrastructure/cache/search-cache.js';
 
 describe('Search Query Normalizer', () => {
   let normalizer: SearchQueryNormalizer;
@@ -160,15 +159,15 @@ describe('Search Query Normalizer', () => {
           phrases: [],
           operators: [
             { type: 'in', value: '#general', field: 'channel' },
-            { type: 'from', value: '@alice', field: 'user' }
+            { type: 'from', value: '@alice', field: 'user' },
           ],
           booleanOperators: [],
           groups: [],
-          raw: 'in:#general from:@alice hello'
-        }
+          raw: 'in:#general from:@alice hello',
+        },
       };
       (parseSearchQuery as jest.MockedFunction<any>).mockReturnValueOnce(mockParseResult);
-      
+
       normalizer = new SearchQueryNormalizer();
       const result = normalizer.normalize('in:#general from:@alice hello');
       expect(result).toBeDefined();
@@ -207,7 +206,7 @@ describe('Search Query Normalizer', () => {
         normalized: 'hello',
         hash: '123',
         complexity: 'simple' as const,
-        operators: []
+        operators: [],
       } as SearchQuery;
       const result = normalizer.calculateComplexity(query);
       expect(result).toBe('simple');
@@ -232,7 +231,7 @@ describe('Search Query Normalizer', () => {
         normalized: 'hello world',
         hash: 'hash123',
         complexity: 'simple' as const,
-        operators: []
+        operators: [],
       } as SearchQuery;
       const key1 = normalizer.generateCacheKey(query);
       const key2 = normalizer.generateCacheKey(query);
@@ -265,7 +264,7 @@ describe('Search Cache', () => {
       resultTTL: 300000, // 5 minutes
       adaptiveTTL: true,
       enablePatternInvalidation: true,
-      memoryLimit: 10 * 1024 * 1024 // 10MB
+      memoryLimit: 10 * 1024 * 1024, // 10MB
     };
   });
 
@@ -280,10 +279,10 @@ describe('Search Cache', () => {
       const invalidConfigs = [
         { ...mockConfig, maxQueries: 0 },
         { ...mockConfig, maxResults: -1 },
-        { ...mockConfig, queryTTL: -1000 }
+        { ...mockConfig, queryTTL: -1000 },
       ];
 
-      invalidConfigs.forEach(config => {
+      invalidConfigs.forEach((config) => {
         expect(() => {
           new SearchCache(config);
         }).toThrow();
@@ -309,7 +308,7 @@ describe('Search Cache', () => {
     it('should store search results with metadata', async () => {
       cache = new SearchCache(mockConfig);
       const results = [{ id: '1', text: 'hello world' }];
-      
+
       await expect(cache.set('hello world', results)).resolves.not.toThrow();
       const cached = await cache.get('hello world');
       expect(cached).toBeDefined();
@@ -339,7 +338,7 @@ describe('Search Cache', () => {
     it('should retrieve multiple queries in batch', async () => {
       cache = new SearchCache(mockConfig);
       const queries = ['hello', 'world', 'test'];
-      
+
       const results = await cache.getBatch(queries);
       expect(results).toBeInstanceOf(Map);
       expect(results.size).toBe(3);
@@ -352,7 +351,7 @@ describe('Search Cache', () => {
       cache = new SearchCache(mockConfig);
       const entries = [
         { query: 'hello', results: [{ id: '1' }] },
-        { query: 'world', results: [{ id: '2' }] }
+        { query: 'world', results: [{ id: '2' }] },
       ];
 
       await expect(cache.setBatch(entries)).resolves.not.toThrow();
@@ -407,7 +406,7 @@ describe('Search Cache', () => {
       const pattern: CacheInvalidationPattern = {
         type: 'channel',
         value: 'C1234567890',
-        reason: 'Channel archived'
+        reason: 'Channel archived',
       };
 
       const count = await cache.invalidatePattern(pattern);
@@ -512,12 +511,12 @@ describe('Search Cache', () => {
         query: {
           terms: ['hello', 'world'],
           operators: [],
-          raw: 'hello world'
-        }
+          raw: 'hello world',
+        },
       });
 
       (buildSlackSearchQuery as jest.MockedFunction<any>).mockReturnValue('hello world');
-      
+
       try {
         cache = new SearchCache(mockConfig);
       } catch {

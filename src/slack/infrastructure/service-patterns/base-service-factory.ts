@@ -45,10 +45,7 @@ import {
   createErrorContext,
   type ErrorHandlingConfig,
 } from './error-handling-patterns.js';
-import type {
-  ServiceResult,
-  ServiceOutput,
-} from '../../types/typesafe-api-patterns.js';
+import type { ServiceResult, ServiceOutput } from '../../types/typesafe-api-patterns.js';
 import { logger } from '../../../utils/logger.js';
 import type { SlackClientManager } from '../client/types.js';
 
@@ -141,7 +138,7 @@ export interface MethodDefinition<TInput, TOutput extends ServiceOutput> {
  */
 export const createDomainService = <
   TDependencies extends BaseDomainServiceDependencies,
-  TMethods extends ServiceMethodRegistry
+  TMethods extends ServiceMethodRegistry,
 >(
   config: DomainServiceConfig<TDependencies>,
   methodsFactory: (dependencies: TDependencies) => TMethods
@@ -435,9 +432,7 @@ export interface ServiceRegistry {
 /**
  * Create a service registry with multiple domain services
  */
-export const createServiceRegistry = (
-  services: DomainService[]
-): ServiceRegistry => {
+export const createServiceRegistry = (services: DomainService[]): ServiceRegistry => {
   const registry: ServiceRegistry = {};
 
   for (const service of services) {
@@ -446,7 +441,7 @@ export const createServiceRegistry = (
 
   logger.info('Service registry created', {
     serviceCount: services.length,
-    services: services.map(s => s.serviceName),
+    services: services.map((s) => s.serviceName),
   });
 
   return registry;
@@ -455,9 +450,7 @@ export const createServiceRegistry = (
 /**
  * Get all methods from a service registry as a flat map
  */
-export const flattenServiceMethods = (
-  registry: ServiceRegistry
-): ServiceMethodRegistry => {
+export const flattenServiceMethods = (registry: ServiceRegistry): ServiceMethodRegistry => {
   const methods: ServiceMethodRegistry = {};
 
   for (const [serviceName, service] of Object.entries(registry)) {

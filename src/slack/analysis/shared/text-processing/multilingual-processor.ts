@@ -4,7 +4,6 @@
  * No side effects, fully testable and functional
  */
 
-
 /**
  * English stop words
  * Exported for reuse across analysis functions

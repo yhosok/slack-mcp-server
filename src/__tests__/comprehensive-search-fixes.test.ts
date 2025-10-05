@@ -1,9 +1,9 @@
 /**
  * Comprehensive Search Query Construction Fixes Test
- * 
+ *
  * This test suite validates that all search-related functions use consistent,
  * properly escaped query construction with correct Slack API syntax.
- * 
+ *
  * Fixes implemented:
  * 1. Channel reference syntax: `in:#channel_name` (not `in:<#CHANNEL_ID>`)
  * 2. Query escaping: Proper handling of special characters
@@ -117,7 +117,14 @@ describe('Comprehensive Search Query Construction Fixes', () => {
       cacheConfig: {
         channels: { max: 100, ttl: 300000, updateAgeOnGet: true },
         users: { max: 100, ttl: 300000, updateAgeOnGet: true },
-        search: { maxQueries: 10, maxResults: 10, queryTTL: 300000, resultTTL: 300000, adaptiveTTL: false, enablePatternInvalidation: false },
+        search: {
+          maxQueries: 10,
+          maxResults: 10,
+          queryTTL: 300000,
+          resultTTL: 300000,
+          adaptiveTTL: false,
+          enablePatternInvalidation: false,
+        },
         files: { max: 50, ttl: 300000 },
         threads: { max: 50, ttl: 300000, updateAgeOnGet: true },
         enableMetrics: false,
@@ -250,7 +257,7 @@ describe('Comprehensive Search Query Construction Fixes', () => {
       });
 
       await fileService.searchFiles({
-        query: 'line1\nline2\rline3',  // Use actual newline characters
+        query: 'line1\nline2\rline3', // Use actual newline characters
       });
 
       // Should replace newlines with spaces
@@ -283,7 +290,7 @@ describe('Comprehensive Search Query Construction Fixes', () => {
     it('should apply date filters consistently across all search functions', async () => {
       const testAfter = '2023-01-01';
       const testBefore = '2023-12-31';
-      
+
       const queries: string[] = [];
 
       // Capture queries from different search functions
@@ -325,7 +332,7 @@ describe('Comprehensive Search Query Construction Fixes', () => {
       });
 
       // All queries should have consistent date filter format
-      queries.forEach(query => {
+      queries.forEach((query) => {
         expect(query).toContain(`after:${testAfter}`);
         expect(query).toContain(`before:${testBefore}`);
       });
@@ -365,7 +372,7 @@ describe('Comprehensive Search Query Construction Fixes', () => {
       });
 
       // All queries should have consistent user filter format
-      queries.forEach(query => {
+      queries.forEach((query) => {
         expect(query).toContain(`from:<@${testUserId1}>`);
       });
     });

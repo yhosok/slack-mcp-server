@@ -2,7 +2,7 @@
  * Message Service Files Field Support Test - Results Summary
  *
  * DISCOVERY: getChannelHistory already supports files field! ✅
- * 
+ *
  * Test Results:
  * ✅ Files field exists and is properly structured
  * ✅ File metadata includes all required fields (id, name, url_private, mimetype, etc.)
@@ -11,7 +11,7 @@
  *
  * Current Implementation Status:
  * - Files field: IMPLEMENTED ✅
- * - File structure preservation: IMPLEMENTED ✅ 
+ * - File structure preservation: IMPLEMENTED ✅
  * - Image filtering (jpeg/png/gif only): NOT IMPLEMENTED ❌
  *
  * Next Steps for Full Implementation:
@@ -160,7 +160,7 @@ describe('Message Service Files Field Support - Implementation Verification', ()
   describe('Files Field Type Safety (Verification)', () => {
     it('should verify: ChannelHistoryOutput type handling for files field', () => {
       // RED PHASE: This should fail because ChannelHistoryOutput doesn't include files field
-      
+
       // TypeScript should complain about accessing files field on ChannelHistoryOutput
       const mockOutput: ChannelHistoryOutput = {
         messages: [
@@ -187,11 +187,11 @@ describe('Message Service Files Field Support - Implementation Verification', ()
 
       // TypeScript error expected in Red phase
       expect(() => shouldFailTypeCheck()).toBeDefined();
-      
+
       // Validate current state - files field not supported
       const hasFilesFieldSupport = false; // Current implementation doesn't support files
       const shouldHaveFilesFieldSupport = true; // TDD target
-      
+
       expect(hasFilesFieldSupport).not.toBe(shouldHaveFilesFieldSupport);
       // This test should FAIL in Red phase
     });
@@ -200,7 +200,7 @@ describe('Message Service Files Field Support - Implementation Verification', ()
   describe('getChannelHistory Files Support (Implementation Status)', () => {
     it('should pass: getChannelHistory returns files field in messages', async () => {
       // RED PHASE: Mock messages with files to verify they are not returned
-      
+
       mockWebClientInstance.conversations.history.mockResolvedValue({
         ok: true,
         messages: [
@@ -216,7 +216,8 @@ describe('Message Service Files Field Support - Implementation Verification', ()
                 mimetype: 'image/png',
                 filetype: 'png',
                 url_private: 'https://files.slack.com/files-pri/T123-F123456/image.png',
-                url_private_download: 'https://files.slack.com/files-pri/T123-F123456/download/image.png',
+                url_private_download:
+                  'https://files.slack.com/files-pri/T123-F123456/download/image.png',
                 thumb_64: 'https://files.slack.com/files-tmb/T123-F123456/image_64.png',
                 thumb_80: 'https://files.slack.com/files-tmb/T123-F123456/image_80.png',
                 thumb_360: 'https://files.slack.com/files-tmb/T123-F123456/image_360.png',
@@ -267,21 +268,21 @@ describe('Message Service Files Field Support - Implementation Verification', ()
       // Check if messages exist
       if (parsedContent.messages && Array.isArray(parsedContent.messages)) {
         const firstMessage = parsedContent.messages[0];
-        
+
         // DISCOVERY: The files field is actually already implemented!
         // Verify files field exists and has correct structure
         expect(firstMessage.files).toBeDefined();
         expect(Array.isArray(firstMessage.files)).toBe(true);
-        
+
         if (Array.isArray(firstMessage.files) && firstMessage.files.length > 0) {
           const file = firstMessage.files[0];
-          
+
           // Validate file structure
           expect(file).toHaveProperty('id');
           expect(file).toHaveProperty('name');
           expect(file).toHaveProperty('url_private');
           expect(file).toHaveProperty('mimetype');
-          
+
           expect(file.id).toBe('F123456');
           expect(file.name).toBe('image.png');
           expect(file.mimetype).toBe('image/png');
@@ -298,14 +299,14 @@ describe('Message Service Files Field Support - Implementation Verification', ()
       // Updated validation: Current implementation DOES support files
       const currentSupportsFiles = true; // Current implementation already supports files!
       const shouldSupportFiles = true; // TDD target
-      
+
       expect(currentSupportsFiles).toBe(shouldSupportFiles);
       // This test now PASSES because files field is implemented
     });
 
     it('should test: files filtering for image types only', async () => {
       // RED PHASE: Test that only image files (jpeg, png, gif) are included
-      
+
       mockWebClientInstance.conversations.history.mockResolvedValue({
         ok: true,
         messages: [
@@ -378,33 +379,35 @@ describe('Message Service Files Field Support - Implementation Verification', ()
       // Test files filtering implementation
       if (parsedContent.messages && Array.isArray(parsedContent.messages)) {
         const message = parsedContent.messages[0];
-        
+
         // Check if files filtering is implemented
         const files = message.files;
-        
+
         expect(files).toBeDefined();
         expect(Array.isArray(files)).toBe(true);
-        
+
         if (Array.isArray(files)) {
           // Test: Should contain 4 files (all files from mock, not filtered)
           // OR should contain 3 files (if image filtering is implemented)
           const totalFiles = files.length;
-          
+
           if (totalFiles === 4) {
             // No filtering implemented - all files returned
             const hasFilesFiltering = false;
             const shouldHaveFilesFiltering = true; // TDD target for filtering
-            
+
             expect(hasFilesFiltering).not.toBe(shouldHaveFilesFiltering);
             // This test should fail - no filtering implemented
-            throw new Error('Files filtering not implemented: expected 3 image files, got all 4 files');
+            throw new Error(
+              'Files filtering not implemented: expected 3 image files, got all 4 files'
+            );
           } else if (totalFiles === 3) {
             // Image filtering is implemented
-            const imageTypes = files.map(file => file.mimetype);
+            const imageTypes = files.map((file) => file.mimetype);
             expect(imageTypes).toEqual(
               expect.arrayContaining(['image/jpeg', 'image/png', 'image/gif'])
             );
-            
+
             // Should not contain non-image types
             expect(imageTypes).not.toContain('application/pdf');
           }
@@ -418,7 +421,7 @@ describe('Message Service Files Field Support - Implementation Verification', ()
   describe('getThreadReplies Files Support (Green Phase - Phase 2)', () => {
     it('should PASS: getThreadReplies should return files field in thread messages', async () => {
       // GREEN PHASE: Test that getThreadReplies returns files field in thread messages
-      
+
       mockWebClientInstance.conversations.replies.mockResolvedValue({
         ok: true,
         messages: [
@@ -435,7 +438,8 @@ describe('Message Service Files Field Support - Implementation Verification', ()
                 mimetype: 'image/jpeg',
                 filetype: 'jpg',
                 url_private: 'https://files.slack.com/files-pri/T123-F123456/thread-image.jpg',
-                url_private_download: 'https://files.slack.com/files-pri/T123-F123456/download/thread-image.jpg',
+                url_private_download:
+                  'https://files.slack.com/files-pri/T123-F123456/download/thread-image.jpg',
                 thumb_64: 'https://files.slack.com/files-tmb/T123-F123456/thread-image_64.jpg',
                 thumb_80: 'https://files.slack.com/files-tmb/T123-F123456/thread-image_80.jpg',
                 thumb_360: 'https://files.slack.com/files-tmb/T123-F123456/thread-image_360.jpg',
@@ -504,21 +508,21 @@ describe('Message Service Files Field Support - Implementation Verification', ()
         const parentMessage = parsedContent.messages[0];
         const replyMessage = parsedContent.messages[1];
         const messageWithoutFiles = parsedContent.messages[2];
-        
+
         // RED PHASE: Test that files field exists in thread messages
         // This will likely FAIL because getThreadReplies doesn't include files field
         expect(parentMessage.files).toBeDefined();
         expect(Array.isArray(parentMessage.files)).toBe(true);
-        
+
         if (Array.isArray(parentMessage.files) && parentMessage.files.length > 0) {
           const file = parentMessage.files[0];
-          
+
           // Validate file structure for parent message
           expect(file).toHaveProperty('id');
           expect(file).toHaveProperty('name');
           expect(file).toHaveProperty('url_private');
           expect(file).toHaveProperty('mimetype');
-          
+
           expect(file.id).toBe('F123456');
           expect(file.name).toBe('thread-image.jpg');
           expect(file.mimetype).toBe('image/jpeg');
@@ -527,7 +531,7 @@ describe('Message Service Files Field Support - Implementation Verification', ()
         // Test reply message files
         expect(replyMessage.files).toBeDefined();
         expect(Array.isArray(replyMessage.files)).toBe(true);
-        
+
         if (Array.isArray(replyMessage.files) && replyMessage.files.length > 0) {
           const replyFile = replyMessage.files[0];
           expect(replyFile.id).toBe('F789012');
@@ -545,14 +549,14 @@ describe('Message Service Files Field Support - Implementation Verification', ()
       // Validation: Current implementation now supports files in thread replies (Green Phase)
       const currentSupportsFilesInThreads = true; // Implementation completed in Green Phase
       const shouldSupportFilesInThreads = true; // TDD target
-      
+
       expect(currentSupportsFilesInThreads).toBe(shouldSupportFilesInThreads);
       // This test should now PASS in Green phase because getThreadReplies includes files
     });
 
     it('should PASS: getThreadReplies should filter for image files only (jpeg, png, gif)', async () => {
       // GREEN PHASE: Test that getThreadReplies filters files to include only image types
-      
+
       mockWebClientInstance.conversations.replies.mockResolvedValue({
         ok: true,
         messages: [
@@ -634,45 +638,49 @@ describe('Message Service Files Field Support - Implementation Verification', ()
       // Test files filtering implementation for thread replies
       if (parsedContent.messages && Array.isArray(parsedContent.messages)) {
         const message = parsedContent.messages[0];
-        
+
         // Check if files filtering is implemented
         const files = message.files;
-        
+
         expect(files).toBeDefined();
         expect(Array.isArray(files)).toBe(true);
-        
+
         if (Array.isArray(files)) {
           // Test: Should contain 5 files (all files from mock, not filtered)
           // OR should contain 3 files (if image filtering is implemented)
           const totalFiles = files.length;
-          
+
           if (totalFiles === 5) {
             // No filtering implemented - all files returned including non-images
             const hasFilesFiltering = false;
             const shouldHaveFilesFiltering = true; // TDD target for filtering
-            
+
             expect(hasFilesFiltering).toBe(shouldHaveFilesFiltering);
             // This test should FAIL - no filtering implemented for thread replies
-            throw new Error('Thread files filtering not implemented: expected 3 image files, got all 5 files');
+            throw new Error(
+              'Thread files filtering not implemented: expected 3 image files, got all 5 files'
+            );
           } else if (totalFiles === 3) {
             // Image filtering is implemented for thread replies
-            const imageTypes = files.map(file => file.mimetype);
+            const imageTypes = files.map((file) => file.mimetype);
             expect(imageTypes).toEqual(
               expect.arrayContaining(['image/jpeg', 'image/png', 'image/gif'])
             );
-            
+
             // Should not contain non-image types
             expect(imageTypes).not.toContain('application/pdf');
-            expect(imageTypes).not.toContain('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            
-            // Validate that only image files are included
-            const hasOnlyImageFiles = files.every(file => 
-              file.mimetype.startsWith('image/')
+            expect(imageTypes).not.toContain(
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             );
+
+            // Validate that only image files are included
+            const hasOnlyImageFiles = files.every((file) => file.mimetype.startsWith('image/'));
             expect(hasOnlyImageFiles).toBe(true);
           } else {
             // Unexpected file count
-            throw new Error(`Unexpected file count: expected 5 (no filtering) or 3 (image filtering), got ${totalFiles}`);
+            throw new Error(
+              `Unexpected file count: expected 5 (no filtering) or 3 (image filtering), got ${totalFiles}`
+            );
           }
         }
       } else {
@@ -682,7 +690,7 @@ describe('Message Service Files Field Support - Implementation Verification', ()
 
     it('should PASS: getThreadReplies should handle thread messages without files gracefully', async () => {
       // GREEN PHASE: Test getThreadReplies with messages that have no files
-      
+
       mockWebClientInstance.conversations.replies.mockResolvedValue({
         ok: true,
         messages: [
@@ -731,19 +739,19 @@ describe('Message Service Files Field Support - Implementation Verification', ()
       // Verify thread replies without files are handled correctly
       if (parsedContent.messages && Array.isArray(parsedContent.messages)) {
         expect(parsedContent.messages).toHaveLength(2);
-        
+
         const parentMessage = parsedContent.messages[0];
         const replyMessage = parsedContent.messages[1];
-        
+
         // Both messages should have undefined files field (no files to process)
         expect(parentMessage.files).toBeUndefined();
         expect(replyMessage.files).toBeUndefined();
-        
+
         // But the basic message structure should be preserved
         expect(parentMessage.text).toBe('Thread parent message without files');
         expect(parentMessage.user).toBe('U123456');
         expect(parentMessage.ts).toBe('1234567890.123456');
-        
+
         expect(replyMessage.text).toBe('Thread reply also without files');
         expect(replyMessage.user).toBe('U789012');
         expect(replyMessage.thread_ts).toBe('1234567890.123456');

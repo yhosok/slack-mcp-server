@@ -118,7 +118,7 @@ describe('Japanese Conjugation Normalization', () => {
 
     test('should process conjugated verbs and return normalized forms', () => {
       const results = processJapaneseToken('修正しました', testConfig);
-      
+
       expect(results.length).toBeGreaterThan(0);
       expect(results[0]?.segment).toBe('修正する');
       expect(results[0]?.weight).toBeGreaterThan(0);
@@ -126,11 +126,11 @@ describe('Japanese Conjugation Normalization', () => {
 
     test('should avoid duplicates when normalization produces same forms', () => {
       const results = processJapaneseToken('実装しました', testConfig);
-      
+
       // Should get '実装する' from '実装しました'
-      const segments = results.map(r => r.segment);
+      const segments = results.map((r) => r.segment);
       expect(segments.includes('実装する')).toBe(true);
-      
+
       // Should not have duplicate normalized forms
       const uniqueSegments = segments.filter((s, i, arr) => arr.indexOf(s) === i);
       expect(uniqueSegments.length).toBe(segments.length);
@@ -138,14 +138,15 @@ describe('Japanese Conjugation Normalization', () => {
 
     test('should handle particles with conjugated verbs', () => {
       const results = processJapaneseToken('バグを修正しました', testConfig);
-      
-      const segments = results.map(r => r.segment);
-      
+
+      const segments = results.map((r) => r.segment);
+
       // Should extract the noun 'バグ'
       expect(segments).toContain('バグ');
-      
+
       // Should extract the normalized verb - either from the whole phrase or the verb part
-      const hasNormalizedVerb = segments.includes('修正する') || segments.includes('バグを修正する');
+      const hasNormalizedVerb =
+        segments.includes('修正する') || segments.includes('バグを修正する');
       expect(hasNormalizedVerb).toBe(true);
     });
 
@@ -156,9 +157,9 @@ describe('Japanese Conjugation Normalization', () => {
       };
 
       const results = processJapaneseToken('修正しました', configWithStopWords);
-      
+
       // Should not include 'する' as it's a stop word
-      const segments = results.map(r => r.segment);
+      const segments = results.map((r) => r.segment);
       expect(segments).not.toContain('する');
       // But should include the compound word part
       expect(segments).toContain('修正する');
@@ -171,9 +172,9 @@ describe('Japanese Conjugation Normalization', () => {
       };
 
       const results = processJapaneseToken('修正しました', configDisabled);
-      
+
       // Should get original form, not normalized
-      const segments = results.map(r => r.segment);
+      const segments = results.map((r) => r.segment);
       expect(segments).toContain('修正しました');
       expect(segments).not.toContain('修正する');
     });
@@ -208,18 +209,21 @@ describe('Japanese Conjugation Normalization', () => {
       });
 
       const topics = result.topics;
-      
+
       // Should extract normalized verbs (either standalone or as part of phrases)
       const hasImplementation = topics.includes('実装する') || topics.includes('新機能を実装する');
       const hasTesting = topics.includes('テストする') || topics.includes('テスト');
       const hasUpdate = topics.includes('更新する');
-      const hasFix = topics.includes('修正する') || topics.includes('修正が必要だ') || topics.some(t => t.includes('修正'));
-      
+      const hasFix =
+        topics.includes('修正する') ||
+        topics.includes('修正が必要だ') ||
+        topics.some((t) => t.includes('修正'));
+
       expect(hasImplementation).toBe(true);
       expect(hasTesting).toBe(true);
       expect(hasUpdate).toBe(true);
       expect(hasFix).toBe(true);
-      
+
       // Should extract nouns
       expect(topics).toContain('新機能');
       expect(topics).toContain('ドキュメント');
@@ -243,15 +247,15 @@ describe('Japanese Conjugation Normalization', () => {
       });
 
       const topics = result.topics;
-      
+
       // Should extract both Japanese normalized terms and English terms
       const hasImplementation = topics.includes('実装する') || topics.includes('実装し');
       const hasTesting = topics.includes('テストする') || topics.includes('テストしてい');
-      
+
       expect(hasImplementation).toBe(true);
       expect(hasTesting).toBe(true);
-      expect(topics.some(t => t.toLowerCase().includes('api'))).toBe(true);
-      expect(topics.some(t => t.toLowerCase().includes('json'))).toBe(true);
+      expect(topics.some((t) => t.toLowerCase().includes('api'))).toBe(true);
+      expect(topics.some((t) => t.toLowerCase().includes('json'))).toBe(true);
     });
 
     test('should improve topic grouping with normalization enabled vs disabled', () => {
@@ -291,16 +295,16 @@ describe('Japanese Conjugation Normalization', () => {
       // Normalized version should consolidate conjugated forms better
       const normalizedFreq = resultNormalized.wordCounts.get('デプロイする') || 0;
       const nonNormalizedBaseFreq = resultNotNormalized.wordCounts.get('デプロイする') || 0;
-      
+
       // With normalization, we should see better consolidation of conjugated forms
       // The frequency should be at least as good, and ideally better
       expect(normalizedFreq).toBeGreaterThanOrEqual(nonNormalizedBaseFreq);
-      
+
       // Check that normalization is working by verifying we have fewer total unique topics
       // when normalization consolidates conjugated forms
       const normalizedTopicCount = resultNormalized.topics.length;
       const nonNormalizedTopicCount = resultNotNormalized.topics.length;
-      
+
       // Should have same or fewer topics due to consolidation (this is a better test)
       expect(normalizedTopicCount).toBeLessThanOrEqual(nonNormalizedTopicCount + 1); // Allow slight variance
     });
@@ -310,21 +314,16 @@ describe('Japanese Conjugation Normalization', () => {
     test('should handle large text efficiently', () => {
       const largeText = 'システムを確認しました。'.repeat(1000);
       const startTime = Date.now();
-      
+
       const result = normalizeConjugation(largeText);
-      
+
       const endTime = Date.now();
       expect(endTime - startTime).toBeLessThan(100); // Should complete within 100ms
       expect(result).toBeTruthy();
     });
 
     test('should not create memory leaks with repeated processing', () => {
-      const testTexts = [
-        '実装しました',
-        '開発している',
-        'テストします',
-        '確認した',
-      ];
+      const testTexts = ['実装しました', '開発している', 'テストします', '確認した'];
 
       // Process multiple times to check for memory issues
       for (let i = 0; i < 1000; i++) {

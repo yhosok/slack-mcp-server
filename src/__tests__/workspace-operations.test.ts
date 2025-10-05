@@ -597,7 +597,7 @@ describe('Workspace Management Operations', () => {
         // This test will FAIL until the parameter is added to the schema
         const result = await service.listTeamMembers({
           include_profile_details: true,
-          limit: 10
+          limit: 10,
         });
 
         expect(result).toBeDefined();
@@ -607,7 +607,7 @@ describe('Workspace Management Operations', () => {
       it('should default include_profile_details to true for backward compatibility', async () => {
         // This test will FAIL until the parameter is added with proper default
         const result = await service.listTeamMembers({
-          limit: 10
+          limit: 10,
         });
 
         expect(result).toBeDefined();
@@ -632,7 +632,7 @@ describe('Workspace Management Operations', () => {
         // This test will FAIL until proper validation is implemented
         const result = await service.listTeamMembers({
           include_profile_details: 'invalid',
-          limit: 10
+          limit: 10,
         });
 
         expect(result).toBeDefined();
@@ -647,7 +647,7 @@ describe('Workspace Management Operations', () => {
         // This test will FAIL until proper validation is implemented
         const result = await service.listTeamMembers({
           include_profile_details: 1,
-          limit: 10
+          limit: 10,
         });
 
         expect(result).toBeDefined();
@@ -735,7 +735,7 @@ describe('Workspace Management Operations', () => {
         // This test will FAIL until the feature is implemented
         const result = await service.listTeamMembers({
           include_profile_details: true,
-          limit: 10
+          limit: 10,
         });
 
         expect(result).toBeDefined();
@@ -747,7 +747,7 @@ describe('Workspace Management Operations', () => {
           expect(membersData.members).toHaveLength(2);
 
           const firstMember = membersData.members[0];
-          
+
           // Core fields should always be present
           expect(firstMember.id).toBe('U123456789');
           expect(firstMember.name).toBe('admin');
@@ -755,7 +755,7 @@ describe('Workspace Management Operations', () => {
           expect(firstMember.isAdmin).toBe(true);
           expect(firstMember.isOwner).toBe(true);
           expect(firstMember.isBot).toBe(false);
-          
+
           // Full profile details should be included
           expect(firstMember.profile).toBeDefined();
           expect(firstMember.profile.image24).toBe('https://example.com/admin24.png');
@@ -784,7 +784,7 @@ describe('Workspace Management Operations', () => {
         // This test will FAIL until the feature is implemented
         const result = await service.listTeamMembers({
           include_profile_details: false,
-          limit: 10
+          limit: 10,
         });
 
         expect(result).toBeDefined();
@@ -796,7 +796,7 @@ describe('Workspace Management Operations', () => {
           expect(membersData.members).toHaveLength(2);
 
           const firstMember = membersData.members[0];
-          
+
           // Core fields should always be present
           expect(firstMember.id).toBe('U123456789');
           expect(firstMember.name).toBe('admin');
@@ -805,11 +805,11 @@ describe('Workspace Management Operations', () => {
           expect(firstMember.isOwner).toBe(true);
           expect(firstMember.isBot).toBe(false);
           expect(firstMember.deleted).toBe(false);
-          
+
           // Lightweight mode: profile should contain only essential image
           expect(firstMember.profile).toBeDefined();
           expect(firstMember.profile.image24).toBe('https://example.com/admin24.png');
-          
+
           // Lightweight mode: extended profile details should be excluded
           expect(firstMember.profile.image32).toBeUndefined();
           expect(firstMember.profile.image48).toBeUndefined();
@@ -836,23 +836,24 @@ describe('Workspace Management Operations', () => {
         // This test will FAIL until the feature ensures core fields consistency
         const fullResult = await service.listTeamMembers({
           include_profile_details: true,
-          limit: 10
+          limit: 10,
         });
 
         const lightResult = await service.listTeamMembers({
           include_profile_details: false,
-          limit: 10
+          limit: 10,
         });
 
         expect(fullResult).toBeDefined();
         expect(lightResult).toBeDefined();
 
-        if (!('isError' in fullResult && fullResult.isError) && 
-            !('isError' in lightResult && lightResult.isError)) {
-          
+        if (
+          !('isError' in fullResult && fullResult.isError) &&
+          !('isError' in lightResult && lightResult.isError)
+        ) {
           const fullResponse = JSON.parse(extractTextContent(fullResult.content?.[0]) || '{}');
           const lightResponse = JSON.parse(extractTextContent(lightResult.content?.[0]) || '{}');
-          
+
           expect(fullResponse.statusCode).toBe('10000');
           expect(lightResponse.statusCode).toBe('10000');
 
@@ -860,9 +861,21 @@ describe('Workspace Management Operations', () => {
           const lightMember = lightResponse.data.members[0];
 
           // Core fields must be identical in both modes
-          const coreFields = ['id', 'name', 'displayName', 'isAdmin', 'isOwner', 'isBot', 'deleted', 'isPrimaryOwner', 'isRestricted', 'isUltraRestricted', 'hasFiles'];
-          
-          coreFields.forEach(field => {
+          const coreFields = [
+            'id',
+            'name',
+            'displayName',
+            'isAdmin',
+            'isOwner',
+            'isBot',
+            'deleted',
+            'isPrimaryOwner',
+            'isRestricted',
+            'isUltraRestricted',
+            'hasFiles',
+          ];
+
+          coreFields.forEach((field) => {
             expect(fullMember[field]).toBe(lightMember[field]);
           });
 
@@ -877,7 +890,7 @@ describe('Workspace Management Operations', () => {
         // This test will FAIL if backward compatibility is broken
         const result = await service.listTeamMembers({
           limit: 10,
-          include_bots: true
+          include_bots: true,
         });
 
         expect(result).toBeDefined();
@@ -886,11 +899,11 @@ describe('Workspace Management Operations', () => {
           expect(apiResponse.statusCode).toBe('10000');
 
           const membersData = apiResponse.data;
-          
+
           // Should match current full response structure
           if (membersData.members && membersData.members.length > 0) {
             const member = membersData.members[0];
-            
+
             // All current fields should be present (backward compatibility)
             expect(member.id).toBeDefined();
             expect(member.name).toBeDefined();
@@ -910,13 +923,13 @@ describe('Workspace Management Operations', () => {
           { include_deleted: true },
           { cursor: 'test-cursor' },
           { fetch_all_pages: true },
-          { fetch_all_pages: true, max_pages: 5, max_items: 100 }
+          { fetch_all_pages: true, max_pages: 5, max_items: 100 },
         ];
 
         for (const args of legacyCalls) {
           const result = await service.listTeamMembers(args);
           expect(result).toBeDefined();
-          
+
           // All existing calls should continue to work
           if (!('isError' in result && result.isError)) {
             const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
@@ -934,30 +947,31 @@ describe('Workspace Management Operations', () => {
         // This test will FAIL until response size optimization is implemented
         const fullResult = await service.listTeamMembers({
           include_profile_details: true,
-          limit: 10
+          limit: 10,
         });
 
         const lightResult = await service.listTeamMembers({
           include_profile_details: false,
-          limit: 10
+          limit: 10,
         });
 
         expect(fullResult).toBeDefined();
         expect(lightResult).toBeDefined();
 
-        if (!('isError' in fullResult && fullResult.isError) && 
-            !('isError' in lightResult && lightResult.isError)) {
-          
+        if (
+          !('isError' in fullResult && fullResult.isError) &&
+          !('isError' in lightResult && lightResult.isError)
+        ) {
           const fullContent = extractTextContent(fullResult.content?.[0]) || '';
           const lightContent = extractTextContent(lightResult.content?.[0]) || '';
-          
+
           const fullSize = new Blob([fullContent]).size;
           const lightSize = new Blob([lightContent]).size;
-          
+
           // Lightweight response should be at least 20% smaller
           const compressionRatio = (fullSize - lightSize) / fullSize;
           expect(compressionRatio).toBeGreaterThan(0.2);
-          
+
           // Both should be valid JSON
           expect(() => JSON.parse(fullContent)).not.toThrow();
           expect(() => JSON.parse(lightContent)).not.toThrow();
@@ -968,7 +982,7 @@ describe('Workspace Management Operations', () => {
         // This test will FAIL if essential data is lost in optimization
         const result = await service.listTeamMembers({
           include_profile_details: false,
-          limit: 10
+          limit: 10,
         });
 
         expect(result).toBeDefined();
@@ -977,12 +991,12 @@ describe('Workspace Management Operations', () => {
           expect(apiResponse.statusCode).toBe('10000');
 
           const membersData = apiResponse.data;
-          
+
           // Essential pagination metadata must be preserved
           expect(membersData.total).toBeGreaterThanOrEqual(0);
           expect(membersData.hasMore).toBeDefined();
           expect(Array.isArray(membersData.members)).toBe(true);
-          
+
           // Each member must have core identification fields
           membersData.members.forEach((member: any) => {
             expect(member.id).toBeDefined();
@@ -999,28 +1013,29 @@ describe('Workspace Management Operations', () => {
         // This test will FAIL if pagination metadata is affected by the optimization
         const fullResult = await service.listTeamMembers({
           include_profile_details: true,
-          limit: 5
+          limit: 5,
         });
 
         const lightResult = await service.listTeamMembers({
           include_profile_details: false,
-          limit: 5
+          limit: 5,
         });
 
         expect(fullResult).toBeDefined();
         expect(lightResult).toBeDefined();
 
-        if (!('isError' in fullResult && fullResult.isError) && 
-            !('isError' in lightResult && lightResult.isError)) {
-          
+        if (
+          !('isError' in fullResult && fullResult.isError) &&
+          !('isError' in lightResult && lightResult.isError)
+        ) {
           const fullResponse = JSON.parse(extractTextContent(fullResult.content?.[0]) || '{}');
           const lightResponse = JSON.parse(extractTextContent(lightResult.content?.[0]) || '{}');
-          
+
           // Pagination metadata should be identical
           expect(fullResponse.data.total).toBe(lightResponse.data.total);
           expect(fullResponse.data.hasMore).toBe(lightResponse.data.hasMore);
           expect(fullResponse.data.members.length).toBe(lightResponse.data.members.length);
-          
+
           // Cursor information should match
           if (fullResponse.data.cursor || lightResponse.data.cursor) {
             expect(fullResponse.data.cursor).toBe(lightResponse.data.cursor);
@@ -1035,22 +1050,22 @@ describe('Workspace Management Operations', () => {
         const testCases = [
           { include_profile_details: true },
           { include_profile_details: false },
-          {} // default case
+          {}, // default case
         ];
 
         for (const testCase of testCases) {
           const result = await service.listTeamMembers(testCase);
           expect(result).toBeDefined();
-          
+
           if (!('isError' in result && result.isError)) {
             const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
-            
+
             // Valid TypeSafeAPI success response structure
             expect(apiResponse).toHaveProperty('statusCode');
             expect(apiResponse).toHaveProperty('message');
             expect(apiResponse).toHaveProperty('data');
             expect(apiResponse.statusCode).toBe('10000');
-            
+
             // Valid TeamMembersOutput structure
             const data = apiResponse.data;
             expect(data).toHaveProperty('members');
@@ -1066,14 +1081,14 @@ describe('Workspace Management Operations', () => {
       it('should maintain TypeSafeAPI error response structure for validation failures', async () => {
         // This test will FAIL if error handling is inconsistent
         const result = await service.listTeamMembers({
-          include_profile_details: 'invalid_value'
+          include_profile_details: 'invalid_value',
         });
 
         expect(result).toBeDefined();
         expect('isError' in result ? result.isError : false).toBe(true);
 
         const apiResponse = JSON.parse(extractTextContent(result.content?.[0]) || '{}');
-        
+
         // Valid TypeSafeAPI error response structure
         expect(apiResponse).toHaveProperty('statusCode');
         expect(apiResponse).toHaveProperty('message');

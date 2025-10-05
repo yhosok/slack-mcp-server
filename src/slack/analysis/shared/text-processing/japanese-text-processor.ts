@@ -169,7 +169,13 @@ export function normalizeConjugation(word: string): string {
   if (word.endsWith('いで')) return word.replace(/(.+)いで$/, '$1ぐ');
   if (word.endsWith('んで')) {
     const stem = word.substring(0, word.length - 'んで'.length);
-    if (stem.endsWith('呼') || stem.endsWith('読') || stem.endsWith('飲') || stem.endsWith('込') || stem.endsWith('住')) {
+    if (
+      stem.endsWith('呼') ||
+      stem.endsWith('読') ||
+      stem.endsWith('飲') ||
+      stem.endsWith('込') ||
+      stem.endsWith('住')
+    ) {
       return stem + 'む';
     }
     if (stem.endsWith('運') || stem.endsWith('遊') || stem.endsWith('学')) {
@@ -238,9 +244,8 @@ export function processJapaneseToken(
     !config.japaneseStopWords.has(token)
   ) {
     // Apply conjugation normalization to whole token
-    const normalizedToken = config.enableConjugationNormalization !== false
-      ? normalizeConjugation(token)
-      : token;
+    const normalizedToken =
+      config.enableConjugationNormalization !== false ? normalizeConjugation(token) : token;
 
     // Check if normalization actually changed something (indicating it was a conjugated form)
     const wasNormalized = normalizedToken !== token;
@@ -283,9 +288,8 @@ export function processJapaneseToken(
   for (const segment of segments) {
     if (segment.length >= config.minWordLength && !config.japaneseStopWords.has(segment)) {
       // Apply conjugation normalization if enabled
-      const normalizedSegment = config.enableConjugationNormalization !== false
-        ? normalizeConjugation(segment)
-        : segment;
+      const normalizedSegment =
+        config.enableConjugationNormalization !== false ? normalizeConjugation(segment) : segment;
 
       // Skip if we've already processed this normalized form
       if (seenSegments.has(normalizedSegment)) {

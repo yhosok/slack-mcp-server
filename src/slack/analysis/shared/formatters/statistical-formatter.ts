@@ -168,7 +168,9 @@ export function formatStorageUsageSummary(
 
     if (topTypes.length > 0 && topTypes[0]) {
       lines.push(
-        createListItem(`Largest Type: ${topTypes[0][0]} (${formatBytes(topTypes[0][1].size_bytes)})`)
+        createListItem(
+          `Largest Type: ${topTypes[0][0]} (${formatBytes(topTypes[0][1].size_bytes)})`
+        )
       );
     }
   }

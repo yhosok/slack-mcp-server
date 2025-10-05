@@ -1,6 +1,6 @@
 /**
  * Concurrent Processing Utilities for Thread Service Performance Optimization
- * 
+ *
  * Provides utilities for parallel processing operations while respecting Slack API
  * rate limits and maintaining error handling consistency.
  */
@@ -63,14 +63,14 @@ export function createDefaultConfigWithConcurrency(
 
 /**
  * Process an array of items concurrently with rate limiting and error handling.
- * 
+ *
  * @template T - Input item type
  * @template R - Result type
  * @param items - Array of items to process
  * @param processor - Async function to process each item
  * @param config - Configuration for concurrent processing
  * @returns Promise resolving to processing results
- * 
+ *
  * @example
  * ```typescript
  * const threadResults = await processConcurrently(
@@ -98,18 +98,18 @@ export async function processConcurrently<T, R>(
       } catch (error) {
         const errorObj = error instanceof Error ? error : new Error(String(error));
         finalConfig.errorHandler(errorObj, index);
-        
+
         if (finalConfig.failFast) {
           throw errorObj;
         }
-        
+
         return { success: false as const, error: errorObj, index };
       }
     })
   );
 
   const outcomes = await Promise.all(promises);
-  
+
   for (const outcome of outcomes) {
     if (outcome.success) {
       results.push(outcome.result);
@@ -130,7 +130,7 @@ export async function processConcurrently<T, R>(
 /**
  * Process items in batches with concurrent processing within each batch.
  * Useful for very large datasets that need to be processed in chunks.
- * 
+ *
  * @template T - Input item type
  * @template R - Result type
  * @param items - Array of items to process
@@ -152,7 +152,7 @@ export async function processConcurrentlyInBatches<T, R>(
   // Process items in batches
   for (let i = 0; i < items.length; i += batchSize) {
     const batch = items.slice(i, i + batchSize);
-    
+
     const batchResult = await processConcurrently(
       batch,
       async (item, batchIndex) => {
@@ -163,14 +163,14 @@ export async function processConcurrentlyInBatches<T, R>(
     );
 
     allResults.push(...batchResult.results);
-    
+
     // Adjust error indices to global indices
     const adjustedErrors = batchResult.errors.map(({ index, error }) => ({
       index: globalIndex + index,
       error,
     }));
     allErrors.push(...adjustedErrors);
-    
+
     globalIndex += batch.length;
   }
 
@@ -186,7 +186,7 @@ export async function processConcurrentlyInBatches<T, R>(
 /**
  * Map an array with concurrent processing, preserving order and handling errors gracefully.
  * Similar to Promise.all but with concurrency limiting and error collection.
- * 
+ *
  * @template T - Input item type
  * @template R - Result type
  * @param items - Array of items to map
@@ -222,7 +222,7 @@ export async function mapConcurrently<T, R>(
 
 /**
  * Filter an array with concurrent async predicate, maintaining original order.
- * 
+ *
  * @template T - Item type
  * @param items - Array of items to filter
  * @param predicate - Async predicate function
@@ -258,44 +258,46 @@ export async function filterConcurrently<T>(
 /**
  * Create a simple cache for function results to avoid redundant operations.
  * Useful for caching API responses that don't change frequently.
- * 
+ *
  * @template K - Cache key type
  * @template V - Cache value type
  * @param ttlMs - Time to live in milliseconds (default: 5 minutes)
  * @returns Cache object with get/set/clear methods
  */
-export function createSimpleCache<K, V>(ttlMs: number = 5 * 60 * 1000): {
+export function createSimpleCache<K, V>(
+  ttlMs: number = 5 * 60 * 1000
+): {
   get(key: K): V | undefined;
   set(key: K, value: V): void;
   clear(): void;
   size(): number;
 } {
   const cache = new Map<K, { value: V; expires: number }>();
-  
+
   return {
     get(key: K): V | undefined {
       const entry = cache.get(key);
       if (!entry) return undefined;
-      
+
       if (Date.now() > entry.expires) {
         cache.delete(key);
         return undefined;
       }
-      
+
       return entry.value;
     },
-    
+
     set(key: K, value: V): void {
       cache.set(key, {
         value,
         expires: Date.now() + ttlMs,
       });
     },
-    
+
     clear(): void {
       cache.clear();
     },
-    
+
     size(): number {
       // Clean expired entries and return size
       const now = Date.now();

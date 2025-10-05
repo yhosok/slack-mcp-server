@@ -15,9 +15,7 @@ import {
   formatBytes,
   formatNumber,
 } from './general-formatters.js';
-import {
-  formatChannelDistribution,
-} from '../shared/formatters/distribution-formatter.js';
+import { formatChannelDistribution } from '../shared/formatters/distribution-formatter.js';
 import {
   formatFileList as formatFileListShared,
   formatStorageUsageSummary as formatStorageUsageSummaryShared,
