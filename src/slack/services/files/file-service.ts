@@ -486,13 +486,13 @@ export const createFileService = (deps: FileServiceDependencies): FileService =>
       let ts_to: string | undefined;
 
       if (input.after_date) {
-        ts_from = convertDateToTimestamp(input.after_date, false); // 00:00:00 UTC
+        ts_from = convertDateToTimestamp(input.after_date, false); // 00:00:00 local time
       } else if (input.ts_from) {
         ts_from = input.ts_from;
       }
 
       if (input.before_date) {
-        ts_to = convertDateToTimestamp(input.before_date, true); // 23:59:59 UTC
+        ts_to = convertDateToTimestamp(input.before_date, true); // 23:59:59 local time
       } else if (input.ts_to) {
         ts_to = input.ts_to;
       }

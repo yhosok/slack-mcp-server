@@ -114,13 +114,13 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       let latest: string | undefined;
 
       if (input.after_date) {
-        oldest = convertDateToTimestamp(input.after_date, false); // 00:00:00 UTC
+        oldest = convertDateToTimestamp(input.after_date, false); // 00:00:00 local time
       } else if (input.oldest_ts) {
         oldest = input.oldest_ts;
       }
 
       if (input.before_date) {
-        latest = convertDateToTimestamp(input.before_date, true); // 23:59:59 UTC
+        latest = convertDateToTimestamp(input.before_date, true); // 23:59:59 local time
       } else if (input.latest_ts) {
         latest = input.latest_ts;
       }
@@ -324,13 +324,13 @@ export const createThreadService = (deps: ThreadServiceDependencies): ThreadServ
       let latest: string | undefined;
 
       if (input.after_date) {
-        oldest = convertDateToTimestamp(input.after_date, false); // 00:00:00 UTC
+        oldest = convertDateToTimestamp(input.after_date, false); // 00:00:00 local time
       } else if (input.oldest_ts) {
         oldest = input.oldest_ts;
       }
 
       if (input.before_date) {
-        latest = convertDateToTimestamp(input.before_date, true); // 23:59:59 UTC
+        latest = convertDateToTimestamp(input.before_date, true); // 23:59:59 local time
       } else if (input.latest_ts) {
         latest = input.latest_ts;
       }

@@ -12,32 +12,32 @@ import {
 
 describe('date-converter', () => {
   describe('convertDateToTimestamp', () => {
-    test('converts valid date to start of day timestamp (00:00:00 UTC)', () => {
+    test('converts valid date to start of day timestamp (00:00:00 local time)', () => {
       const result = convertDateToTimestamp('2025-09-10', false);
-      // 2025-09-10 00:00:00 UTC = 1757462400 seconds since epoch
-      expect(result).toBe('1757462400');
+      // 2025-09-10 00:00:00 JST (local time) = 1757430000 seconds since epoch
+      expect(result).toBe('1757430000');
     });
 
-    test('converts valid date to end of day timestamp (23:59:59 UTC)', () => {
+    test('converts valid date to end of day timestamp (23:59:59 local time)', () => {
       const result = convertDateToTimestamp('2025-09-10', true);
-      // 2025-09-10 23:59:59 UTC = 1757548799 seconds since epoch
-      expect(result).toBe('1757548799');
+      // 2025-09-10 23:59:59 JST (local time) = 1757516399 seconds since epoch
+      expect(result).toBe('1757516399');
     });
 
     test('handles leap year date correctly', () => {
       const result = convertDateToTimestamp('2024-02-29', false);
-      // 2024-02-29 00:00:00 UTC (valid leap year date)
-      expect(result).toBe('1709164800');
+      // 2024-02-29 00:00:00 JST (valid leap year date, local time)
+      expect(result).toBe('1709132400');
     });
 
     test('handles month boundaries correctly', () => {
       // Last day of month
       const endOfMonth = convertDateToTimestamp('2025-01-31', true);
-      expect(endOfMonth).toBe('1738367999');
+      expect(endOfMonth).toBe('1738335599');
 
       // First day of next month
       const startOfNextMonth = convertDateToTimestamp('2025-02-01', false);
-      expect(startOfNextMonth).toBe('1738368000');
+      expect(startOfNextMonth).toBe('1738335600');
 
       // Verify they are consecutive
       expect(Number(startOfNextMonth) - Number(endOfMonth)).toBe(1);
@@ -46,11 +46,11 @@ describe('date-converter', () => {
     test('handles year boundaries correctly', () => {
       // Last day of year
       const endOfYear = convertDateToTimestamp('2025-12-31', true);
-      expect(endOfYear).toBe('1767225599');
+      expect(endOfYear).toBe('1767193199');
 
       // First day of next year
       const startOfNextYear = convertDateToTimestamp('2026-01-01', false);
-      expect(startOfNextYear).toBe('1767225600');
+      expect(startOfNextYear).toBe('1767193200');
 
       // Verify they are consecutive
       expect(Number(startOfNextYear) - Number(endOfYear)).toBe(1);

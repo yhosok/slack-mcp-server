@@ -97,13 +97,13 @@ export const GetChannelHistorySchema = z
       .string()
       .optional()
       .describe(
-        'Start date in YYYY-MM-DD format, inclusive (00:00:00 UTC). Recommended for day-level filtering. Example: "2025-09-10". Cannot be used with oldest_ts.'
+        'Start date in YYYY-MM-DD format, inclusive (00:00:00 local time). Uses system\'s local timezone. Recommended for day-level filtering. Example: "2025-09-10". Cannot be used with oldest_ts.'
       ),
     before_date: z
       .string()
       .optional()
       .describe(
-        'End date in YYYY-MM-DD format, inclusive (23:59:59 UTC). Recommended for day-level filtering. Example: "2025-09-30". Cannot be used with latest_ts.'
+        'End date in YYYY-MM-DD format, inclusive (23:59:59 local time). Uses system\'s local timezone. Recommended for day-level filtering. Example: "2025-09-30". Cannot be used with latest_ts.'
       ),
 
     // Timestamp range parameters (advanced, for precise second-level control)
@@ -212,13 +212,13 @@ export const FindThreadsInChannelSchema = z
       .string()
       .optional()
       .describe(
-        'Start date in YYYY-MM-DD format, inclusive (00:00:00 UTC). Recommended for day-level filtering. Example: "2025-09-10". Cannot be used with oldest_ts.'
+        'Start date in YYYY-MM-DD format, inclusive (00:00:00 local time). Uses system\'s local timezone. Recommended for day-level filtering. Example: "2025-09-10". Cannot be used with oldest_ts.'
       ),
     before_date: z
       .string()
       .optional()
       .describe(
-        'End date in YYYY-MM-DD format, inclusive (23:59:59 UTC). Recommended for day-level filtering. Example: "2025-09-30". Cannot be used with latest_ts.'
+        'End date in YYYY-MM-DD format, inclusive (23:59:59 local time). Uses system\'s local timezone. Recommended for day-level filtering. Example: "2025-09-30". Cannot be used with latest_ts.'
       ),
 
     // Timestamp range parameters (advanced, for precise second-level control)
@@ -292,13 +292,13 @@ export const GetThreadRepliesSchema = z
       .string()
       .optional()
       .describe(
-        'Start date in YYYY-MM-DD format, inclusive (00:00:00 UTC). Recommended for day-level filtering. Example: "2025-09-10". Cannot be used with oldest_ts.'
+        'Start date in YYYY-MM-DD format, inclusive (00:00:00 local time). Uses system\'s local timezone. Recommended for day-level filtering. Example: "2025-09-10". Cannot be used with oldest_ts.'
       ),
     before_date: z
       .string()
       .optional()
       .describe(
-        'End date in YYYY-MM-DD format, inclusive (23:59:59 UTC). Recommended for day-level filtering. Example: "2025-09-30". Cannot be used with latest_ts.'
+        'End date in YYYY-MM-DD format, inclusive (23:59:59 local time). Uses system\'s local timezone. Recommended for day-level filtering. Example: "2025-09-30". Cannot be used with latest_ts.'
       ),
 
     // Timestamp range parameters (advanced, for precise second-level control)
@@ -742,13 +742,13 @@ export const ListFilesSchema = z
       .string()
       .optional()
       .describe(
-        'Start date in YYYY-MM-DD format, inclusive (00:00:00 UTC). Filter files created on or after this date. Example: "2025-09-10". Cannot be used with ts_from.'
+        'Start date in YYYY-MM-DD format, inclusive (00:00:00 local time). Uses system\'s local timezone. Filter files created on or after this date. Example: "2025-09-10". Cannot be used with ts_from.'
       ),
     before_date: z
       .string()
       .optional()
       .describe(
-        'End date in YYYY-MM-DD format, inclusive (23:59:59 UTC). Filter files created on or before this date. Example: "2025-09-30". Cannot be used with ts_to.'
+        'End date in YYYY-MM-DD format, inclusive (23:59:59 local time). Uses system\'s local timezone. Filter files created on or before this date. Example: "2025-09-30". Cannot be used with ts_to.'
       ),
 
     // Timestamp range parameters (advanced, for precise second-level control)
@@ -1071,13 +1071,13 @@ export const GetWorkspaceActivitySchema = z
       .string()
       .optional()
       .describe(
-        'Start date in YYYY-MM-DD format, inclusive (00:00:00 UTC). Activity from this date onwards will be included. Example: "2025-09-01". Cannot be used with oldest_ts.'
+        'Start date in YYYY-MM-DD format, inclusive (00:00:00 local time). Uses system\'s local timezone. Activity from this date onwards will be included. Example: "2025-09-01". Cannot be used with oldest_ts.'
       ),
     before_date: z
       .string()
       .optional()
       .describe(
-        'End date in YYYY-MM-DD format, inclusive (23:59:59 UTC). Activity up to and including this date will be included. Example: "2025-09-30". Cannot be used with latest_ts.'
+        'End date in YYYY-MM-DD format, inclusive (23:59:59 local time). Uses system\'s local timezone. Activity up to and including this date will be included. Example: "2025-09-30". Cannot be used with latest_ts.'
       ),
 
     // Timestamp range parameters (advanced, for precise second-level control)
