@@ -1,9 +1,9 @@
 /**
  * Infrastructure Search Ranking Configuration Integration Tests
- * 
+ *
  * Tests the integration of search ranking configuration into the infrastructure layer
  * following TDD Red-Green-Refactor cycle.
- * 
+ *
  * Phase 1: Infrastructure Configuration Integration
  * - Tests that InfrastructureConfig accepts search ranking configuration
  * - Tests that RelevanceScorerConfig factory transforms configuration properly
@@ -11,7 +11,7 @@
  */
 
 import { jest } from '@jest/globals';
-import type { 
+import type {
   InfrastructureConfig,
   InfrastructureServices,
 } from '../slack/infrastructure/index.js';
@@ -74,12 +74,16 @@ describe('Infrastructure Search Ranking Configuration Integration', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    
+
     // Import the functions we're testing
-    const { createInfrastructureServices: createInfrastructureServicesImpl } = await import('../slack/infrastructure/index.js');
+    const { createInfrastructureServices: createInfrastructureServicesImpl } = await import(
+      '../slack/infrastructure/index.js'
+    );
     createInfrastructureServices = createInfrastructureServicesImpl;
-    
-    const { createRelevanceScorerConfig: createRelevanceScorerConfigImpl } = await import('../slack/infrastructure/index.js');
+
+    const { createRelevanceScorerConfig: createRelevanceScorerConfigImpl } = await import(
+      '../slack/infrastructure/index.js'
+    );
     createRelevanceScorerConfig = createRelevanceScorerConfigImpl;
   });
 
@@ -134,7 +138,7 @@ describe('Infrastructure Search Ranking Configuration Integration', () => {
 
       // This will fail initially because createInfrastructureServices doesn't handle search config
       const services = createInfrastructureServices(config);
-      
+
       // This property should be added to InfrastructureServices interface
       expect('relevanceScorer' in services).toBe(true);
     });
@@ -288,7 +292,7 @@ describe('Infrastructure Search Ranking Configuration Integration', () => {
     it('should pass search ranking config from CONFIG to infrastructureConfig', async () => {
       // This test verifies that service-factory.ts properly passes search config
       const { createSlackServiceRegistry } = await import('../slack/service-factory.js');
-      
+
       // This should not throw and should create services with search ranking config
       expect(() => createSlackServiceRegistry()).not.toThrow();
     });

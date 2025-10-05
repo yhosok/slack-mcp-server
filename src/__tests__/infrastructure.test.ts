@@ -84,7 +84,7 @@ describe('Infrastructure Services', () => {
       expect(services.userService).toBeDefined();
       expect(services.requestHandler).toBeDefined();
       expect(services.cacheService).toBeDefined(); // Should be null when cacheEnabled: false
-      
+
       // NEW EXPECTED STRUCTURE: config object should exist
       expect(services.config).toBeDefined();
       expect(typeof services.config).toBe('object');
@@ -97,11 +97,11 @@ describe('Infrastructure Services', () => {
       expect(services.config).toBeDefined();
       expect(services.config.maxRequestConcurrency).toBe(mockConfig.maxRequestConcurrency);
       expect(services.config.maxRequestConcurrency).toBe(5);
-      
+
       // Cache configuration should reflect actual cache service state
       expect(services.config.cacheEnabled).toBe(false); // Cache is disabled in mockConfig
       expect(services.cacheService).toBeNull(); // Cache service should be null when disabled
-      
+
       // OLD STRUCTURE: direct property should NOT exist anymore
       expect('maxRequestConcurrency' in services).toBe(false);
     });

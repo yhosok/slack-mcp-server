@@ -7,15 +7,18 @@ import {
   processConcurrently,
   createDefaultConfigWithConcurrency,
 } from '../slack/infrastructure/concurrent-utils.js';
-import { createInfrastructureServices, InfrastructureConfig } from '../slack/infrastructure/factory.js';
+import {
+  createInfrastructureServices,
+  InfrastructureConfig,
+} from '../slack/infrastructure/factory.js';
 
 // Mock configuration to avoid environment dependencies
 jest.mock('../config/index.js', () => ({
   CONFIG: {
     SLACK_BOT_TOKEN: 'xoxb-mock-token',
     SLACK_MAX_REQUEST_CONCURRENCY: 5, // Test value different from hardcoded default
-    LOG_LEVEL: 'warn'
-  }
+    LOG_LEVEL: 'warn',
+  },
 }));
 
 // Mock logger to avoid config dependencies
@@ -24,8 +27,8 @@ jest.mock('../utils/logger.js', () => ({
     warn: jest.fn(),
     error: jest.fn(),
     info: jest.fn(),
-    debug: jest.fn()
-  }
+    debug: jest.fn(),
+  },
 }));
 
 // Mock WebClient
@@ -59,21 +62,23 @@ describe('Concurrency Configuration Integration', () => {
       let activeCount = 0;
       let maxActiveCount = 0;
 
-      const processor = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => {
-        activeCount++;
-        maxActiveCount = Math.max(maxActiveCount, activeCount);
-        
-        // Simulate async work
-        await new Promise(resolve => setTimeout(resolve, 20));
-        
-        activeCount--;
-        return item * 2;
-      });
+      const processor = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => {
+          activeCount++;
+          maxActiveCount = Math.max(maxActiveCount, activeCount);
+
+          // Simulate async work
+          await new Promise((resolve) => setTimeout(resolve, 20));
+
+          activeCount--;
+          return item * 2;
+        });
 
       // This should use config concurrency (5) instead of hardcoded default (3)
       const configuredConcurrency = 5;
-      await processConcurrently(items, processor, { 
-        concurrency: configuredConcurrency 
+      await processConcurrently(items, processor, {
+        concurrency: configuredConcurrency,
       });
 
       // This works because we explicitly pass concurrency
@@ -95,7 +100,14 @@ describe('Concurrency Configuration Integration', () => {
         cacheConfig: {
           channels: { max: 100, ttl: 300000, updateAgeOnGet: true },
           users: { max: 100, ttl: 300000, updateAgeOnGet: true },
-          search: { maxQueries: 10, maxResults: 10, queryTTL: 300000, resultTTL: 300000, adaptiveTTL: false, enablePatternInvalidation: false },
+          search: {
+            maxQueries: 10,
+            maxResults: 10,
+            queryTTL: 300000,
+            resultTTL: 300000,
+            adaptiveTTL: false,
+            enablePatternInvalidation: false,
+          },
           files: { max: 50, ttl: 300000 },
           threads: { max: 50, ttl: 300000, updateAgeOnGet: true },
           enableMetrics: false,
@@ -107,7 +119,7 @@ describe('Concurrency Configuration Integration', () => {
       };
 
       const infrastructure = createInfrastructureServices(infrastructureConfig);
-      
+
       // Infrastructure now exposes the concurrency config via config object
       expect(infrastructure.config.maxRequestConcurrency).toBe(7);
     });
@@ -127,7 +139,14 @@ describe('Concurrency Configuration Integration', () => {
         cacheConfig: {
           channels: { max: 100, ttl: 300000, updateAgeOnGet: true },
           users: { max: 100, ttl: 300000, updateAgeOnGet: true },
-          search: { maxQueries: 10, maxResults: 10, queryTTL: 300000, resultTTL: 300000, adaptiveTTL: false, enablePatternInvalidation: false },
+          search: {
+            maxQueries: 10,
+            maxResults: 10,
+            queryTTL: 300000,
+            resultTTL: 300000,
+            adaptiveTTL: false,
+            enablePatternInvalidation: false,
+          },
           files: { max: 50, ttl: 300000 },
           threads: { max: 50, ttl: 300000, updateAgeOnGet: true },
           enableMetrics: false,
@@ -139,12 +158,12 @@ describe('Concurrency Configuration Integration', () => {
       };
 
       const infrastructure = createInfrastructureServices(infrastructureConfig);
-      
+
       // NEW EXPECTED STRUCTURE: config object should exist
       expect('config' in infrastructure).toBe(true);
       expect(infrastructure.config).toBeDefined();
       expect(infrastructure.config.maxRequestConcurrency).toBe(8);
-      
+
       // OLD STRUCTURE: direct property should NOT exist anymore
       expect('maxRequestConcurrency' in infrastructure).toBe(false);
     });
@@ -162,7 +181,14 @@ describe('Concurrency Configuration Integration', () => {
         cacheConfig: {
           channels: { max: 100, ttl: 300000, updateAgeOnGet: true },
           users: { max: 100, ttl: 300000, updateAgeOnGet: true },
-          search: { maxQueries: 10, maxResults: 10, queryTTL: 300000, resultTTL: 300000, adaptiveTTL: false, enablePatternInvalidation: false },
+          search: {
+            maxQueries: 10,
+            maxResults: 10,
+            queryTTL: 300000,
+            resultTTL: 300000,
+            adaptiveTTL: false,
+            enablePatternInvalidation: false,
+          },
           files: { max: 50, ttl: 300000 },
           threads: { max: 50, ttl: 300000, updateAgeOnGet: true },
           enableMetrics: false,
@@ -174,13 +200,13 @@ describe('Concurrency Configuration Integration', () => {
       };
 
       const infrastructure = createInfrastructureServices(infrastructureConfig);
-      
+
       // Config object should have the expected structure
       expect(infrastructure.config).toEqual({
         maxRequestConcurrency: 12,
-        cacheEnabled: false
+        cacheEnabled: false,
       });
-      
+
       // Should be a plain object, not undefined or null
       expect(typeof infrastructure.config).toBe('object');
       expect(infrastructure.config).not.toBeNull();
@@ -190,16 +216,16 @@ describe('Concurrency Configuration Integration', () => {
   describe('Thread Service Concurrency Configuration', () => {
     it('should use configured concurrency through infrastructure services', () => {
       // This test verifies that thread service can now access the configured concurrency
-      
+
       const configuredConcurrency = 6;
       const oldHardcodedValues = [2, 3, 4, 5]; // Values previously used in thread-service.ts
-      
+
       // Thread service no longer uses hardcoded values
       expect(oldHardcodedValues).not.toContain(configuredConcurrency);
-      
+
       // The implementation now:
       // ✅ Thread service accepts configuration through dependencies
-      // ✅ Uses maxRequestConcurrency from infrastructure config  
+      // ✅ Uses maxRequestConcurrency from infrastructure config
       // ✅ Falls back to reasonable defaults (3) if not provided
       expect(configuredConcurrency).toBeGreaterThan(3); // Demonstrates config flexibility
     });
@@ -218,20 +244,22 @@ describe('Concurrency Configuration Integration', () => {
     it('should use configured concurrency with processConcurrently', async () => {
       const customConcurrency = 4;
       const defaultConfig = createDefaultConfigWithConcurrency(customConcurrency);
-      
+
       const items = [1, 2, 3, 4, 5, 6];
       let activeCount = 0;
       let maxActiveCount = 0;
 
-      const processor = jest.fn<(item: number, index: number) => Promise<number>>().mockImplementation(async (item: number) => {
-        activeCount++;
-        maxActiveCount = Math.max(maxActiveCount, activeCount);
-        
-        await new Promise(resolve => setTimeout(resolve, 10));
-        
-        activeCount--;
-        return item * 2;
-      });
+      const processor = jest
+        .fn<(item: number, index: number) => Promise<number>>()
+        .mockImplementation(async (item: number) => {
+          activeCount++;
+          maxActiveCount = Math.max(maxActiveCount, activeCount);
+
+          await new Promise((resolve) => setTimeout(resolve, 10));
+
+          activeCount--;
+          return item * 2;
+        });
 
       await processConcurrently(items, processor, defaultConfig);
 

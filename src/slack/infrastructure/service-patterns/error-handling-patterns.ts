@@ -128,18 +128,13 @@ export const handleSlackApiError = (
       });
     }
 
-    return createTypedServiceError(
-      'API_ERROR',
-      truncatedMessage,
-      userMessage,
-      {
-        method: context.method,
-        operationType: context.operationType,
-        slackError: context.slackError,
-        ...(finalConfig.includeInputContext ? context.inputContext : {}),
-        ...context.metadata,
-      }
-    );
+    return createTypedServiceError('API_ERROR', truncatedMessage, userMessage, {
+      method: context.method,
+      operationType: context.operationType,
+      slackError: context.slackError,
+      ...(finalConfig.includeInputContext ? context.inputContext : {}),
+      ...context.metadata,
+    });
   }
 
   // Not a SlackAPIError, delegate to generic error handler
@@ -170,17 +165,12 @@ export const handleValidationError = (
     });
   }
 
-  return createTypedServiceError(
-    'VALIDATION_ERROR',
-    truncatedMessage,
-    userMessage,
-    {
-      method: context.method,
-      validationType: error instanceof Error ? error.name : 'unknown',
-      ...(finalConfig.includeInputContext ? context.inputContext : {}),
-      ...context.metadata,
-    }
-  );
+  return createTypedServiceError('VALIDATION_ERROR', truncatedMessage, userMessage, {
+    method: context.method,
+    validationType: error instanceof Error ? error.name : 'unknown',
+    ...(finalConfig.includeInputContext ? context.inputContext : {}),
+    ...context.metadata,
+  });
 };
 
 /**
@@ -207,17 +197,12 @@ export const handleNotFoundError = (
     });
   }
 
-  return createTypedServiceError(
-    'NOT_FOUND_ERROR',
-    errorMessage,
-    userMessage,
-    {
-      method: context.method,
-      resourceType,
-      resourceId,
-      ...context.metadata,
-    }
-  );
+  return createTypedServiceError('NOT_FOUND_ERROR', errorMessage, userMessage, {
+    method: context.method,
+    resourceType,
+    resourceId,
+    ...context.metadata,
+  });
 };
 
 /**
@@ -282,17 +267,12 @@ export const handleRateLimitError = (
     });
   }
 
-  return createTypedServiceError(
-    'RATE_LIMIT_ERROR',
-    errorMessage,
-    userMessage,
-    {
-      method: context.method,
-      retryAfter,
-      operationType: context.operationType,
-      ...context.metadata,
-    }
-  );
+  return createTypedServiceError('RATE_LIMIT_ERROR', errorMessage, userMessage, {
+    method: context.method,
+    retryAfter,
+    operationType: context.operationType,
+    ...context.metadata,
+  });
 };
 
 /**
@@ -320,18 +300,13 @@ export const handleGenericError = (
     });
   }
 
-  return createTypedServiceError(
-    'UNKNOWN_ERROR',
-    truncatedMessage,
-    userMessage,
-    {
-      method: context.method,
-      errorType: error instanceof Error ? error.constructor.name : 'unknown',
-      operationType: context.operationType,
-      ...(finalConfig.includeInputContext ? context.inputContext : {}),
-      ...context.metadata,
-    }
-  );
+  return createTypedServiceError('UNKNOWN_ERROR', truncatedMessage, userMessage, {
+    method: context.method,
+    errorType: error instanceof Error ? error.constructor.name : 'unknown',
+    operationType: context.operationType,
+    ...(finalConfig.includeInputContext ? context.inputContext : {}),
+    ...context.metadata,
+  });
 };
 
 /**
@@ -399,9 +374,7 @@ export const createErrorContext = (
 /**
  * Type for service method that can throw errors
  */
-type ServiceMethodWithErrors<TInput, TOutput> = (
-  input: TInput
-) => Promise<TOutput>;
+type ServiceMethodWithErrors<TInput, TOutput> = (input: TInput) => Promise<TOutput>;
 
 /**
  * Wrap a service method with automatic error handling
@@ -431,7 +404,11 @@ export const withErrorHandling = <TInput, TOutput>(
  */
 export const CommonErrorHandlers = {
   /** Handle file operation errors */
-  fileOperation: (error: unknown, method: string, operation: string): ServiceResult<ServiceOutput> =>
+  fileOperation: (
+    error: unknown,
+    method: string,
+    operation: string
+  ): ServiceResult<ServiceOutput> =>
     handleServiceError(
       error,
       createErrorContext(method, 'write', { operation }),
@@ -439,7 +416,11 @@ export const CommonErrorHandlers = {
     ),
 
   /** Handle message operation errors */
-  messageOperation: (error: unknown, method: string, operation: string): ServiceResult<ServiceOutput> =>
+  messageOperation: (
+    error: unknown,
+    method: string,
+    operation: string
+  ): ServiceResult<ServiceOutput> =>
     handleServiceError(
       error,
       createErrorContext(method, operation === 'send' ? 'write' : 'read', { operation }),
@@ -447,7 +428,11 @@ export const CommonErrorHandlers = {
     ),
 
   /** Handle channel operation errors */
-  channelOperation: (error: unknown, method: string, operation: string): ServiceResult<ServiceOutput> =>
+  channelOperation: (
+    error: unknown,
+    method: string,
+    operation: string
+  ): ServiceResult<ServiceOutput> =>
     handleServiceError(
       error,
       createErrorContext(method, 'read', { operation }),
@@ -455,7 +440,11 @@ export const CommonErrorHandlers = {
     ),
 
   /** Handle search operation errors */
-  searchOperation: (error: unknown, method: string, searchType: string): ServiceResult<ServiceOutput> =>
+  searchOperation: (
+    error: unknown,
+    method: string,
+    searchType: string
+  ): ServiceResult<ServiceOutput> =>
     handleServiceError(
       error,
       createErrorContext(method, 'read', { searchType }),

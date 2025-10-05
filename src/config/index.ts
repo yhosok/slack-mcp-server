@@ -31,7 +31,10 @@ const ConfigSchema = z.object({
   CACHE_THREADS_TTL: z.coerce.number().min(60).max(3600).default(2700), // Thread cache TTL in seconds (45 minutes)
 
   // Search ranking configuration (Advanced relevance scoring features)
-  SEARCH_RANKING_ENABLED: z.string().transform(val => val === 'true').default('true'), // Enable/disable advanced search ranking features
+  SEARCH_RANKING_ENABLED: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('true'), // Enable/disable advanced search ranking features
   SEARCH_INDEX_TTL: z.coerce.number().min(60).max(3600).default(900), // Search index cache TTL in seconds (15 minutes)
   SEARCH_TIME_DECAY_RATE: z.coerce.number().min(0.001).max(1).default(0.01), // Time decay rate for message recency scoring (0.001-1.0)
   SEARCH_MAX_INDEX_SIZE: z.coerce.number().min(100).max(100000).default(10000), // Maximum search index size for performance optimization

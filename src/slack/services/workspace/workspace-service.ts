@@ -6,6 +6,7 @@ import {
   GetServerHealthSchema,
   validateInput,
 } from '../../../utils/validation.js';
+import { convertDateToTimestamp } from '../../../utils/date-converter.js';
 import type { WorkspaceService, WorkspaceServiceDependencies } from './types.js';
 import { executePagination } from '../../infrastructure/generic-pagination.js';
 import {
@@ -422,15 +423,38 @@ export const createWorkspaceService = (deps: WorkspaceServiceDependencies): Work
       const input = validateInput(GetWorkspaceActivitySchema, args);
       const client = deps.clientManager.getClientForOperation('read');
 
-      // Calculate time range
+      // Calculate time range - use new date/timestamp parameters
       const now = new Date();
-      const startDate = input.start_date
-        ? new Date(input.start_date)
-        : new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const endDate = input.end_date ? new Date(input.end_date) : now;
+      let oldestTs: string;
+      let latestTs: string;
+      let startDate: Date;
+      let endDate: Date;
 
-      const oldestTs = Math.floor(startDate.getTime() / 1000).toString();
-      const latestTs = Math.floor(endDate.getTime() / 1000).toString();
+      // Handle after_date or oldest_ts
+      if (input.after_date) {
+        oldestTs = convertDateToTimestamp(input.after_date, false); // 00:00:00 UTC
+        startDate = new Date(input.after_date);
+      } else if (input.oldest_ts) {
+        oldestTs = input.oldest_ts;
+        startDate = new Date(Number(input.oldest_ts) * 1000);
+      } else {
+        // Default: 7 days ago
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        oldestTs = Math.floor(startDate.getTime() / 1000).toString();
+      }
+
+      // Handle before_date or latest_ts
+      if (input.before_date) {
+        latestTs = convertDateToTimestamp(input.before_date, true); // 23:59:59 UTC
+        endDate = new Date(input.before_date);
+      } else if (input.latest_ts) {
+        latestTs = input.latest_ts;
+        endDate = new Date(Number(input.latest_ts) * 1000);
+      } else {
+        // Default: now
+        endDate = now;
+        latestTs = Math.floor(endDate.getTime() / 1000).toString();
+      }
 
       // Get list of channels
       const channelsResult = await client.conversations.list({

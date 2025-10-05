@@ -91,8 +91,35 @@ export const GetChannelHistorySchema = z
       .default(100)
       .describe('Number of messages to retrieve per page (1-1000)'),
     cursor: z.string().optional().describe('Cursor for pagination (optional)'),
-    oldest: z.string().optional().describe('Start of time range (timestamp)'),
-    latest: z.string().optional().describe('End of time range (timestamp)'),
+
+    // Date range parameters (recommended, user-friendly)
+    after_date: z
+      .string()
+      .optional()
+      .describe(
+        'Start date in YYYY-MM-DD format, inclusive (00:00:00 UTC). Recommended for day-level filtering. Example: "2025-09-10". Cannot be used with oldest_ts.'
+      ),
+    before_date: z
+      .string()
+      .optional()
+      .describe(
+        'End date in YYYY-MM-DD format, inclusive (23:59:59 UTC). Recommended for day-level filtering. Example: "2025-09-30". Cannot be used with latest_ts.'
+      ),
+
+    // Timestamp range parameters (advanced, for precise second-level control)
+    oldest_ts: z
+      .string()
+      .optional()
+      .describe(
+        'Start Unix timestamp in seconds. For precise second-level control. Cannot be used with after_date.'
+      ),
+    latest_ts: z
+      .string()
+      .optional()
+      .describe(
+        'End Unix timestamp in seconds. For precise second-level control. Cannot be used with before_date.'
+      ),
+
     fetch_all_pages: z
       .boolean()
       .optional()
@@ -110,6 +137,14 @@ export const GetChannelHistorySchema = z
       .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
+  })
+  .refine((data) => !(data.after_date && data.oldest_ts), {
+    message:
+      'Cannot specify both after_date and oldest_ts. Use date strings OR timestamps, not both.',
+  })
+  .refine((data) => !(data.before_date && data.latest_ts), {
+    message:
+      'Cannot specify both before_date and latest_ts. Use date strings OR timestamps, not both.',
   })
   .describe('Get message history from a Slack channel with optional pagination support');
 
@@ -171,8 +206,35 @@ export const FindThreadsInChannelSchema = z
       .default(50)
       .describe('Maximum number of parent messages to examine (1-200)'),
     cursor: z.string().optional().describe('Pagination cursor for retrieving more results'),
-    oldest: z.string().optional().describe('Start of time range (timestamp)'),
-    latest: z.string().optional().describe('End of time range (timestamp)'),
+
+    // Date range parameters (recommended, user-friendly)
+    after_date: z
+      .string()
+      .optional()
+      .describe(
+        'Start date in YYYY-MM-DD format, inclusive (00:00:00 UTC). Recommended for day-level filtering. Example: "2025-09-10". Cannot be used with oldest_ts.'
+      ),
+    before_date: z
+      .string()
+      .optional()
+      .describe(
+        'End date in YYYY-MM-DD format, inclusive (23:59:59 UTC). Recommended for day-level filtering. Example: "2025-09-30". Cannot be used with latest_ts.'
+      ),
+
+    // Timestamp range parameters (advanced, for precise second-level control)
+    oldest_ts: z
+      .string()
+      .optional()
+      .describe(
+        'Start Unix timestamp in seconds. For precise second-level control. Cannot be used with after_date.'
+      ),
+    latest_ts: z
+      .string()
+      .optional()
+      .describe(
+        'End Unix timestamp in seconds. For precise second-level control. Cannot be used with before_date.'
+      ),
+
     include_all_metadata: z
       .boolean()
       .optional()
@@ -196,6 +258,14 @@ export const FindThreadsInChannelSchema = z
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
   })
+  .refine((data) => !(data.after_date && data.oldest_ts), {
+    message:
+      'Cannot specify both after_date and oldest_ts. Use date strings OR timestamps, not both.',
+  })
+  .refine((data) => !(data.before_date && data.latest_ts), {
+    message:
+      'Cannot specify both before_date and latest_ts. Use date strings OR timestamps, not both.',
+  })
   .describe('Find all threaded conversations in a specific channel');
 
 export const GetThreadRepliesSchema = z
@@ -216,8 +286,35 @@ export const GetThreadRepliesSchema = z
       .default(100)
       .describe('Maximum number of messages to retrieve per page (1-1000)'),
     cursor: z.string().optional().describe('Pagination cursor'),
-    oldest: z.string().optional().describe('Start of time range'),
-    latest: z.string().optional().describe('End of time range'),
+
+    // Date range parameters (recommended, user-friendly)
+    after_date: z
+      .string()
+      .optional()
+      .describe(
+        'Start date in YYYY-MM-DD format, inclusive (00:00:00 UTC). Recommended for day-level filtering. Example: "2025-09-10". Cannot be used with oldest_ts.'
+      ),
+    before_date: z
+      .string()
+      .optional()
+      .describe(
+        'End date in YYYY-MM-DD format, inclusive (23:59:59 UTC). Recommended for day-level filtering. Example: "2025-09-30". Cannot be used with latest_ts.'
+      ),
+
+    // Timestamp range parameters (advanced, for precise second-level control)
+    oldest_ts: z
+      .string()
+      .optional()
+      .describe(
+        'Start Unix timestamp in seconds. For precise second-level control. Cannot be used with after_date.'
+      ),
+    latest_ts: z
+      .string()
+      .optional()
+      .describe(
+        'End Unix timestamp in seconds. For precise second-level control. Cannot be used with before_date.'
+      ),
+
     inclusive: z
       .boolean()
       .optional()
@@ -240,6 +337,14 @@ export const GetThreadRepliesSchema = z
       .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
+  })
+  .refine((data) => !(data.after_date && data.oldest_ts), {
+    message:
+      'Cannot specify both after_date and oldest_ts. Use date strings OR timestamps, not both.',
+  })
+  .refine((data) => !(data.before_date && data.latest_ts), {
+    message:
+      'Cannot specify both before_date and latest_ts. Use date strings OR timestamps, not both.',
   })
   .describe(
     'Get complete thread content including parent message and all replies with optional pagination support'
@@ -631,8 +736,35 @@ export const ListFilesSchema = z
       .string()
       .optional()
       .describe('Comma-separated list of file types to include (e.g., "images,pdfs")'),
-    ts_from: z.string().optional().describe('Filter files created after this timestamp'),
-    ts_to: z.string().optional().describe('Filter files created before this timestamp'),
+
+    // Date range parameters (recommended, user-friendly)
+    after_date: z
+      .string()
+      .optional()
+      .describe(
+        'Start date in YYYY-MM-DD format, inclusive (00:00:00 UTC). Filter files created on or after this date. Example: "2025-09-10". Cannot be used with ts_from.'
+      ),
+    before_date: z
+      .string()
+      .optional()
+      .describe(
+        'End date in YYYY-MM-DD format, inclusive (23:59:59 UTC). Filter files created on or before this date. Example: "2025-09-30". Cannot be used with ts_to.'
+      ),
+
+    // Timestamp range parameters (advanced, for precise second-level control)
+    ts_from: z
+      .string()
+      .optional()
+      .describe(
+        'Filter files created after this Unix timestamp (seconds). For precise second-level control. Cannot be used with after_date.'
+      ),
+    ts_to: z
+      .string()
+      .optional()
+      .describe(
+        'Filter files created before this Unix timestamp (seconds). For precise second-level control. Cannot be used with before_date.'
+      ),
+
     count: z
       .number()
       .min(1)
@@ -658,6 +790,13 @@ export const ListFilesSchema = z
       .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
+  })
+  .refine((data) => !(data.after_date && data.ts_from), {
+    message:
+      'Cannot specify both after_date and ts_from. Use date strings OR timestamps, not both.',
+  })
+  .refine((data) => !(data.before_date && data.ts_to), {
+    message: 'Cannot specify both before_date and ts_to. Use date strings OR timestamps, not both.',
   })
   .describe('List files in workspace with filtering options and optional pagination support');
 
@@ -891,7 +1030,9 @@ export const ListTeamMembersSchema = z
       .boolean()
       .optional()
       .default(true)
-      .describe('Include detailed profile information. When false, returns only core fields and single image for optimized response size'),
+      .describe(
+        'Include detailed profile information. When false, returns only core fields and single image for optimized response size'
+      ),
     cursor: z.string().optional().describe('Pagination cursor'),
     limit: z
       .number()
@@ -925,8 +1066,34 @@ export const ListTeamMembersSchema = z
  */
 export const GetWorkspaceActivitySchema = z
   .object({
-    start_date: z.string().optional().describe('Start date for report (YYYY-MM-DD)'),
-    end_date: z.string().optional().describe('End date for report (YYYY-MM-DD)'),
+    // Date range parameters (recommended, user-friendly)
+    after_date: z
+      .string()
+      .optional()
+      .describe(
+        'Start date in YYYY-MM-DD format, inclusive (00:00:00 UTC). Activity from this date onwards will be included. Example: "2025-09-01". Cannot be used with oldest_ts.'
+      ),
+    before_date: z
+      .string()
+      .optional()
+      .describe(
+        'End date in YYYY-MM-DD format, inclusive (23:59:59 UTC). Activity up to and including this date will be included. Example: "2025-09-30". Cannot be used with latest_ts.'
+      ),
+
+    // Timestamp range parameters (advanced, for precise second-level control)
+    oldest_ts: z
+      .string()
+      .optional()
+      .describe(
+        'Start Unix timestamp in seconds. For precise second-level control. Cannot be used with after_date.'
+      ),
+    latest_ts: z
+      .string()
+      .optional()
+      .describe(
+        'End Unix timestamp in seconds. For precise second-level control. Cannot be used with before_date.'
+      ),
+
     include_user_details: z
       .boolean()
       .optional()
@@ -959,6 +1126,14 @@ export const GetWorkspaceActivitySchema = z
       .max(PAGINATION_DEFAULTS.MAX_ITEMS_LIMIT)
       .optional()
       .describe('Maximum total items to fetch when fetch_all_pages is true'),
+  })
+  .refine((data) => !(data.after_date && data.oldest_ts), {
+    message:
+      'Cannot specify both after_date and oldest_ts. Use date strings OR timestamps, not both.',
+  })
+  .refine((data) => !(data.before_date && data.latest_ts), {
+    message:
+      'Cannot specify both before_date and latest_ts. Use date strings OR timestamps, not both.',
   })
   .describe('Generate comprehensive workspace activity report');
 

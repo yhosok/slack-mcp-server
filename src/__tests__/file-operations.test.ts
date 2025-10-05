@@ -1462,7 +1462,9 @@ describe('SlackService - File Operations', () => {
         });
 
         expect(result.isError).toBe(true);
-        expect(extractTextContent(result.content?.[0])).toContain('before date must be after the after date');
+        expect(extractTextContent(result.content?.[0])).toContain(
+          'before date must be after the after date'
+        );
       });
 
       it('should combine period parameters with other filters', async () => {

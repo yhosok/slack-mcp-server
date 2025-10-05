@@ -15,14 +15,14 @@ export interface MCPTool {
 
 /**
  * Tool result structure as required by the Model Context Protocol specification
- * 
+ *
  * This is the required return type for all MCP tool implementations. The codebase
  * uses a three-layer architecture to balance type safety with MCP protocol compliance:
- * 
+ *
  * 1. **TypeSafeAPI Services** (internal) - Use ServiceResult<T> discriminated unions for enhanced type safety
- * 2. **MCP Adapters** (bridge) - Convert ServiceResult<T> to MCPToolResult for protocol compliance  
+ * 2. **MCP Adapters** (bridge) - Convert ServiceResult<T> to MCPToolResult for protocol compliance
  * 3. **MCP Protocol** (external) - MCPToolResult format as required by the specification
- * 
+ *
  * MCPToolResult is NOT legacy - it is the current and required format for MCP protocol compliance.
  * The internal TypeSafeAPI pattern provides additional type safety benefits while maintaining
  * full compatibility with the MCP specification through adapter patterns.

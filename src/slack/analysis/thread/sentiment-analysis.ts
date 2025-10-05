@@ -234,7 +234,7 @@ export function processNegationPatterns(
   if (negationCount > 0) {
     // Strong negation effect: if negation patterns >= sentiment words, reverse the sentiment
     const totalSentimentWords = positiveCount + negativeCount;
-    
+
     if (negationCount >= totalSentimentWords && totalSentimentWords > 0) {
       // Complete flip when negation dominates
       const temp = adjustedPositiveCount;
@@ -299,7 +299,7 @@ export function processEmphasisMitigation(
 
   // Apply combined multiplier (emphasis first, then mitigation)
   const finalMultiplier = emphasisMultiplier * mitigationMultiplier;
-  
+
   const adjustedPositiveCount = Math.round(positiveCount * finalMultiplier);
   const adjustedNegativeCount = Math.round(negativeCount * finalMultiplier);
 
@@ -369,15 +369,15 @@ export function analyzeSentiment(
 
   // Detect language content
   const languageContent = detectLanguageContent(text);
-  
+
   // Count English sentiment words
   let positiveCount = countWordOccurrences(text, config.positiveWords);
   let negativeCount = countWordOccurrences(text, config.negativeWords);
-  
+
   // Count Japanese sentiment words if Japanese processing is enabled
   let japanesePositiveCount = 0;
   let japaneseNegativeCount = 0;
-  
+
   if (config.enableJapaneseProcessing && languageContent.hasJapanese) {
     if (config.japanesePositiveWords) {
       japanesePositiveCount = countJapaneseWordOccurrences(text, config.japanesePositiveWords);
@@ -393,9 +393,9 @@ export function analyzeSentiment(
   let negationAdjustments = 0;
   if (config.enableJapaneseProcessing && config.negationPatterns && languageContent.hasJapanese) {
     const negationResult = processNegationPatterns(
-      text, 
-      config.negationPatterns, 
-      positiveCount, 
+      text,
+      config.negationPatterns,
+      positiveCount,
       negativeCount
     );
     positiveCount = negationResult.adjustedPositiveCount;
@@ -488,19 +488,19 @@ export function isSentimentReliable(result: SentimentAnalysisResult): boolean {
  * @returns Human-readable explanation of the sentiment analysis
  */
 export function explainSentiment(result: SentimentAnalysisResult): string {
-  const { 
-    sentiment, 
-    positiveCount, 
-    negativeCount, 
+  const {
+    sentiment,
+    positiveCount,
+    negativeCount,
     totalWords,
     japanesePositiveCount = 0,
     japaneseNegativeCount = 0,
     negationAdjustments = 0,
     emphasisAdjustments = 0,
     mitigationAdjustments = 0,
-    languageContent
+    languageContent,
   } = result;
-  
+
   const totalSentimentWords = positiveCount + negativeCount;
 
   if (totalWords === 0) {
@@ -514,11 +514,10 @@ export function explainSentiment(result: SentimentAnalysisResult): string {
   const reliability = isSentimentReliable(result) ? 'reliable' : 'limited';
   const ratio = negativeCount > 0 ? (positiveCount / negativeCount).toFixed(1) : 'infinite';
 
-  let explanation = (
+  let explanation =
     `${sentiment.charAt(0).toUpperCase() + sentiment.slice(1)} sentiment (${reliability} analysis) - ` +
     `${positiveCount} positive vs ${negativeCount} negative indicators ` +
-    `(ratio: ${ratio}) in ${totalWords} total words.`
-  );
+    `(ratio: ${ratio}) in ${totalWords} total words.`;
 
   // Add Japanese processing details if applicable
   if (languageContent?.hasJapanese && (japanesePositiveCount > 0 || japaneseNegativeCount > 0)) {
@@ -531,7 +530,7 @@ export function explainSentiment(result: SentimentAnalysisResult): string {
     if (negationAdjustments > 0) adjustments.push(`${negationAdjustments} negation patterns`);
     if (emphasisAdjustments > 0) adjustments.push(`${emphasisAdjustments} emphasis patterns`);
     if (mitigationAdjustments > 0) adjustments.push(`${mitigationAdjustments} mitigation patterns`);
-    
+
     explanation += ` Applied adjustments: ${adjustments.join(', ')}.`;
   }
 

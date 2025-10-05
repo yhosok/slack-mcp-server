@@ -1,7 +1,7 @@
 /**
  * @fileoverview Test suite for Advanced Search Query Parser
  * Tests comprehensive query parsing functionality for Slack Search API
- * 
+ *
  * Created: 2025-01-19
  * TDD Red Phase: Comprehensive test cases before implementation
  */
@@ -12,13 +12,11 @@ import {
   buildSlackSearchQuery,
   validateSearchQuery,
   SearchQueryOptions,
-  ParsedSearchQuery
+  ParsedSearchQuery,
 } from '../slack/utils/search-query-parser';
 
 describe('Advanced Search Query Parser', () => {
-  
   describe('parseSearchQuery', () => {
-    
     describe('Basic Query Parsing', () => {
       it('should parse simple text queries', () => {
         const result = parseSearchQuery('hello world');
@@ -64,7 +62,7 @@ describe('Advanced Search Query Parser', () => {
           expect(result.query.operators).toContainEqual({
             type: 'in',
             value: '#general',
-            field: 'channel'
+            field: 'channel',
           });
           expect(result.query.terms).toEqual(['hello']);
         }
@@ -77,7 +75,7 @@ describe('Advanced Search Query Parser', () => {
           expect(result.query.operators).toContainEqual({
             type: 'from',
             value: '@alice',
-            field: 'user'
+            field: 'user',
           });
         }
       });
@@ -89,7 +87,7 @@ describe('Advanced Search Query Parser', () => {
           expect(result.query.operators).toContainEqual({
             type: 'has',
             value: 'link',
-            field: 'content_type'
+            field: 'content_type',
           });
         }
       });
@@ -101,12 +99,12 @@ describe('Advanced Search Query Parser', () => {
           expect(result.query.operators).toContainEqual({
             type: 'after',
             value: '2023-01-01',
-            field: 'date'
+            field: 'date',
           });
           expect(result.query.operators).toContainEqual({
             type: 'before',
             value: '2023-12-31',
-            field: 'date'
+            field: 'date',
           });
         }
       });
@@ -118,7 +116,7 @@ describe('Advanced Search Query Parser', () => {
           expect(result.query.operators).toContainEqual({
             type: 'filetype',
             value: 'pdf',
-            field: 'file_type'
+            field: 'file_type',
           });
         }
       });
@@ -131,7 +129,7 @@ describe('Advanced Search Query Parser', () => {
         if (result.success) {
           expect(result.query.booleanOperators).toContainEqual({
             type: 'AND',
-            position: 1
+            position: 1,
           });
         }
       });
@@ -142,7 +140,7 @@ describe('Advanced Search Query Parser', () => {
         if (result.success) {
           expect(result.query.booleanOperators).toContainEqual({
             type: 'OR',
-            position: 1
+            position: 1,
           });
         }
       });
@@ -153,7 +151,7 @@ describe('Advanced Search Query Parser', () => {
         if (result.success) {
           expect(result.query.booleanOperators).toContainEqual({
             type: 'NOT',
-            position: 1
+            position: 1,
           });
         }
       });
@@ -161,7 +159,9 @@ describe('Advanced Search Query Parser', () => {
 
     describe('Complex Query Parsing', () => {
       it('should parse queries with multiple operators', () => {
-        const result = parseSearchQuery('in:#general from:@alice has:link "important message" after:2023-01-01');
+        const result = parseSearchQuery(
+          'in:#general from:@alice has:link "important message" after:2023-01-01'
+        );
         expect(result.success).toBe(true);
         if (result.success) {
           expect(result.query.operators).toHaveLength(4);
@@ -218,7 +218,6 @@ describe('Advanced Search Query Parser', () => {
   });
 
   describe('buildSlackSearchQuery', () => {
-    
     describe('Basic Query Building', () => {
       it('should build simple queries', () => {
         const parsed: ParsedSearchQuery = {
@@ -227,9 +226,9 @@ describe('Advanced Search Query Parser', () => {
           operators: [],
           booleanOperators: [],
           groups: [],
-          raw: 'hello world'
+          raw: 'hello world',
         };
-        
+
         const result = buildSlackSearchQuery(parsed);
         expect(result).toBe('hello world');
       });
@@ -241,9 +240,9 @@ describe('Advanced Search Query Parser', () => {
           operators: [],
           booleanOperators: [],
           groups: [],
-          raw: '"hello world" test'
+          raw: '"hello world" test',
         };
-        
+
         const result = buildSlackSearchQuery(parsed);
         expect(result).toBe('"hello world" test');
       });
@@ -254,16 +253,18 @@ describe('Advanced Search Query Parser', () => {
         const parsed: ParsedSearchQuery = {
           terms: ['hello'],
           phrases: [],
-          operators: [{
-            type: 'in',
-            value: '#general',
-            field: 'channel'
-          }],
+          operators: [
+            {
+              type: 'in',
+              value: '#general',
+              field: 'channel',
+            },
+          ],
           booleanOperators: [],
           groups: [],
-          raw: 'in:#general hello'
+          raw: 'in:#general hello',
         };
-        
+
         const result = buildSlackSearchQuery(parsed);
         expect(result).toBe('hello in:#general');
       });
@@ -275,13 +276,13 @@ describe('Advanced Search Query Parser', () => {
           operators: [
             { type: 'in', value: '#general', field: 'channel' },
             { type: 'from', value: '@alice', field: 'user' },
-            { type: 'after', value: '2023-01-01', field: 'date' }
+            { type: 'after', value: '2023-01-01', field: 'date' },
           ],
           booleanOperators: [],
           groups: [],
-          raw: 'in:#general from:@alice after:2023-01-01 hello'
+          raw: 'in:#general from:@alice after:2023-01-01 hello',
         };
-        
+
         const result = buildSlackSearchQuery(parsed);
         expect(result).toBe('hello in:#general from:@alice after:2023-01-01');
       });
@@ -295,9 +296,9 @@ describe('Advanced Search Query Parser', () => {
           operators: [],
           booleanOperators: [{ type: 'AND', position: 1 }],
           groups: [],
-          raw: 'hello AND world'
+          raw: 'hello AND world',
         };
-        
+
         const result = buildSlackSearchQuery(parsed);
         expect(result).toBe('hello AND world');
       });
@@ -311,9 +312,9 @@ describe('Advanced Search Query Parser', () => {
           operators: [],
           booleanOperators: [],
           groups: [],
-          raw: 'hello"world'
+          raw: 'hello"world',
         };
-        
+
         const result = buildSlackSearchQuery(parsed);
         expect(result).toBe('hello\\"world');
       });
@@ -325,9 +326,9 @@ describe('Advanced Search Query Parser', () => {
           operators: [],
           booleanOperators: [],
           groups: [],
-          raw: 'hello\nworld\r\t'
+          raw: 'hello\nworld\r\t',
         };
-        
+
         const result = buildSlackSearchQuery(parsed);
         expect(result).toBe('hello world');
       });
@@ -335,7 +336,6 @@ describe('Advanced Search Query Parser', () => {
   });
 
   describe('validateSearchQuery', () => {
-    
     it('should validate valid queries', () => {
       const result = validateSearchQuery('hello world');
       expect(result.isValid).toBe(true);
@@ -345,26 +345,20 @@ describe('Advanced Search Query Parser', () => {
     it('should reject empty queries', () => {
       const result = validateSearchQuery('');
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContainEqual(
-        expect.objectContaining({ code: 'EMPTY_QUERY' })
-      );
+      expect(result.errors).toContainEqual(expect.objectContaining({ code: 'EMPTY_QUERY' }));
     });
 
     it('should reject queries with invalid operators', () => {
       const result = validateSearchQuery('invalidop:value hello');
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContainEqual(
-        expect.objectContaining({ code: 'INVALID_OPERATOR' })
-      );
+      expect(result.errors).toContainEqual(expect.objectContaining({ code: 'INVALID_OPERATOR' }));
     });
 
     it('should reject queries that are too long', () => {
       const longQuery = 'hello '.repeat(500);
       const result = validateSearchQuery(longQuery);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContainEqual(
-        expect.objectContaining({ code: 'QUERY_TOO_LONG' })
-      );
+      expect(result.errors).toContainEqual(expect.objectContaining({ code: 'QUERY_TOO_LONG' }));
     });
 
     it('should provide helpful error messages', () => {
@@ -376,14 +370,13 @@ describe('Advanced Search Query Parser', () => {
   });
 
   describe('Integration with SearchQueryOptions', () => {
-    
     it('should apply channel filter options', () => {
       const options: SearchQueryOptions = {
         defaultChannel: 'C1234567890',
         allowedOperators: ['in', 'from', 'after', 'before'],
-        maxQueryLength: 500
+        maxQueryLength: 500,
       };
-      
+
       const result = parseSearchQuery('hello world', options);
       expect(result.success).toBe(true);
       if (result.success) {
@@ -394,9 +387,9 @@ describe('Advanced Search Query Parser', () => {
 
     it('should restrict operators based on options', () => {
       const options: SearchQueryOptions = {
-        allowedOperators: ['in', 'from']
+        allowedOperators: ['in', 'from'],
       };
-      
+
       const result = parseSearchQuery('has:link hello', options);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -406,7 +399,6 @@ describe('Advanced Search Query Parser', () => {
   });
 
   describe('Performance and Edge Cases', () => {
-    
     it('should handle unicode characters', () => {
       const result = parseSearchQuery('こんにちは 世界 🌍');
       expect(result.success).toBe(true);
@@ -425,19 +417,19 @@ describe('Advanced Search Query Parser', () => {
     });
 
     it('should process queries quickly', () => {
-      const complexQuery = 'in:#general from:@alice has:link "important message" after:2023-01-01 before:2023-12-31 (urgent OR priority) AND NOT spam';
-      
+      const complexQuery =
+        'in:#general from:@alice has:link "important message" after:2023-01-01 before:2023-12-31 (urgent OR priority) AND NOT spam';
+
       const start = Date.now();
       const result = parseSearchQuery(complexQuery);
       const end = Date.now();
-      
+
       expect(end - start).toBeLessThan(100); // Should complete in under 100ms
       expect(result.success).toBe(true);
     });
   });
 
   describe('Backward Compatibility', () => {
-    
     it('should handle legacy simple escaping', () => {
       const result = parseSearchQuery('hello"world');
       expect(result.success).toBe(true);
@@ -468,9 +460,9 @@ describe('Type Safety', () => {
     const options: TestSearchQueryOptions = {
       allowedOperators: ['in', 'from'],
       maxQueryLength: 100,
-      testMode: true
+      testMode: true,
     };
-    
+
     expect(options.allowedOperators).toBeDefined();
   });
 });

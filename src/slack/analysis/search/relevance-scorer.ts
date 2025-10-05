@@ -1,6 +1,6 @@
 /**
  * RelevanceScorer - Advanced search relevance scoring with MiniSearch integration
- * 
+ *
  * This class implements sophisticated relevance scoring for Slack messages using:
  * - TF-IDF scoring via MiniSearch for content relevance
  * - Time decay scoring for message recency
@@ -76,7 +76,7 @@ export class RelevanceScorer {
 
   constructor(config: Partial<RelevanceScorerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    
+
     if (!this.config.miniSearchConfig) {
       throw new Error('MiniSearch configuration is required');
     }
@@ -94,11 +94,11 @@ export class RelevanceScorer {
    */
   async calculateTFIDFScore(messages: SlackMessage[], searchQuery: string): Promise<TFIDFResult> {
     const startTime = performance.now();
-    
+
     // Check cache first
-    const cacheKey = `${JSON.stringify(messages.map(m => m.ts))}-${searchQuery}`;
+    const cacheKey = `${JSON.stringify(messages.map((m) => m.ts))}-${searchQuery}`;
     const cached = this.tfidfCache.get(cacheKey);
-    
+
     if (cached && this.config.cacheTTL) {
       const age = Date.now() - cached.timestamp;
       if (age < this.config.cacheTTL) {
@@ -139,7 +139,7 @@ export class RelevanceScorer {
 
       // Create score array
       const scores = new Array(messages.length).fill(0);
-      
+
       // Map search results to scores
       searchResults.forEach((result) => {
         const index = parseInt(result.id, 10);
@@ -194,20 +194,20 @@ export class RelevanceScorer {
       if (isNaN(timestampFloat)) {
         return 0; // Invalid timestamp
       }
-      
+
       const messageTime = timestampFloat * 1000; // Convert to milliseconds
       const now = Date.now();
       const hoursSinceMessage = (now - messageTime) / (1000 * 60 * 60);
-      
+
       // For very recent messages (negative time difference), clamp to near 1
       if (hoursSinceMessage < 0) {
         return 1;
       }
-      
+
       // Exponential decay: exp(-λ * t) where λ = ln(2) / half-life
       const lambda = Math.log(2) / this.config.timeDecayHalfLife;
       const decay = Math.exp(-lambda * hoursSinceMessage);
-      
+
       return Math.max(0, Math.min(1, decay));
     } catch {
       return 0; // Invalid timestamp
@@ -222,7 +222,10 @@ export class RelevanceScorer {
 
     // Reaction score
     if (message.reactions && message.reactions.length > 0) {
-      const totalReactions = message.reactions.reduce((sum, reaction) => sum + (reaction.count || 0), 0);
+      const totalReactions = message.reactions.reduce(
+        (sum, reaction) => sum + (reaction.count || 0),
+        0
+      );
       score += totalReactions * this.config.engagementMetrics.reactionWeight;
     }
 
@@ -244,13 +247,16 @@ export class RelevanceScorer {
   /**
    * Calculate composite relevance scores for messages
    */
-  async calculateRelevance(messages: SlackMessage[], searchQuery: string): Promise<RelevanceResult> {
+  async calculateRelevance(
+    messages: SlackMessage[],
+    searchQuery: string
+  ): Promise<RelevanceResult> {
     const startTime = performance.now();
 
     try {
       // Handle malformed input - filter out null/undefined/invalid messages
-      const validMessages = messages.filter(m => m && typeof m === 'object' && m.ts);
-      
+      const validMessages = messages.filter((m) => m && typeof m === 'object' && m.ts);
+
       if (validMessages.length === 0) {
         return {
           scores: new Array(messages.length).fill({
@@ -275,11 +281,10 @@ export class RelevanceScorer {
         const engagementScore = this.calculateEngagementScore(message);
 
         // Calculate composite score using weighted average
-        const compositeScore = (
+        const compositeScore =
           tfidfScore * this.config.weights.tfidf +
           timeDecayScore * this.config.weights.timeDecay +
-          engagementScore * this.config.weights.engagement
-        );
+          engagementScore * this.config.weights.engagement;
 
         // Calculate confidence based on available data
         let confidence = 0.5; // Base confidence
@@ -299,16 +304,18 @@ export class RelevanceScorer {
       // Handle original array size if there were invalid messages
       const allScores: RelevanceScore[] = [];
       let validIndex = 0;
-      
+
       for (let i = 0; i < messages.length; i++) {
         if (messages[i] && typeof messages[i] === 'object' && messages[i]?.ts) {
-          allScores.push(scores[validIndex++] || {
-            tfidfScore: 0,
-            timeDecayScore: 0,
-            engagementScore: 0,
-            compositeScore: 0,
-            confidence: 0,
-          });
+          allScores.push(
+            scores[validIndex++] || {
+              tfidfScore: 0,
+              timeDecayScore: 0,
+              engagementScore: 0,
+              compositeScore: 0,
+              confidence: 0,
+            }
+          );
         } else {
           // Zero score for invalid messages
           allScores.push({
@@ -376,7 +383,7 @@ export class RelevanceScorer {
       resultPairs.sort((a, b) => b.score - a.score);
 
       // Return sorted results
-      return resultPairs.map(pair => pair.result);
+      return resultPairs.map((pair) => pair.result);
     } catch {
       // Return original order on error
       return results;
@@ -386,7 +393,9 @@ export class RelevanceScorer {
   /**
    * TypeSafeAPI service wrapper for relevance calculation
    */
-  async calculateRelevanceService(args: unknown): Promise<ServiceResult<{ scores: RelevanceScore[] }> & { statusCode: number }> {
+  async calculateRelevanceService(
+    args: unknown
+  ): Promise<ServiceResult<{ scores: RelevanceScore[] }> & { statusCode: number }> {
     try {
       // Basic validation
       if (!args || typeof args !== 'object') {
@@ -442,16 +451,18 @@ export class RelevanceScorer {
    */
   private cleanText(text: string): string {
     if (!text) return '';
-    
-    return text
-      // Remove Slack-specific formatting
-      .replace(/<@[A-Z0-9]+>/g, '') // Remove user mentions
-      .replace(/<#[A-Z0-9]+>/g, '') // Remove channel mentions
-      .replace(/<[^>]+>/g, '') // Remove other angle bracket formats
-      .replace(/:[a-z_]+:/g, '') // Remove emoji codes
-      // Clean up whitespace
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLowerCase();
+
+    return (
+      text
+        // Remove Slack-specific formatting
+        .replace(/<@[A-Z0-9]+>/g, '') // Remove user mentions
+        .replace(/<#[A-Z0-9]+>/g, '') // Remove channel mentions
+        .replace(/<[^>]+>/g, '') // Remove other angle bracket formats
+        .replace(/:[a-z_]+:/g, '') // Remove emoji codes
+        // Clean up whitespace
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase()
+    );
   }
 }

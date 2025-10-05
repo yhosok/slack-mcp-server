@@ -1,7 +1,7 @@
 /**
  * @fileoverview Integration tests for cache service infrastructure
  * Tests cache service factory, dependency injection, and system integration
- * 
+ *
  * Created: 2025-08-19
  * TDD Red Phase: Tests written before implementation to drive development
  */
@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 
 // Mock existing infrastructure components
 jest.mock('../slack/infrastructure/index.js', () => ({
-  createInfrastructureServices: jest.fn()
+  createInfrastructureServices: jest.fn(),
 }));
 
 jest.mock('../utils/logger', () => ({
@@ -18,8 +18,8 @@ jest.mock('../utils/logger', () => ({
     debug: jest.fn(),
     info: jest.fn(),
     warn: jest.fn(),
-    error: jest.fn()
-  }
+    error: jest.fn(),
+  },
 }));
 
 // Import the actual implementations for testing
@@ -30,7 +30,7 @@ import {
   type CacheServiceConfig,
   type CacheServiceDependencies,
   type CacheServiceMetrics as _CacheServiceMetrics,
-  type CacheInstance as _CacheInstance
+  type CacheInstance as _CacheInstance,
 } from '../slack/infrastructure/cache/index.js';
 
 describe('Cache Service Integration', () => {
@@ -40,17 +40,17 @@ describe('Cache Service Integration', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockConfig = {
       channels: {
         max: 500,
         ttl: 3600000, // 1 hour
-        updateAgeOnGet: true
+        updateAgeOnGet: true,
       },
       users: {
         max: 1000,
         ttl: 1800000, // 30 minutes
-        updateAgeOnGet: true
+        updateAgeOnGet: true,
       },
       search: {
         maxQueries: 100,
@@ -58,45 +58,46 @@ describe('Cache Service Integration', () => {
         queryTTL: 900000, // 15 minutes
         resultTTL: 300000, // 5 minutes
         adaptiveTTL: true,
-        enablePatternInvalidation: true
+        enablePatternInvalidation: true,
       },
       files: {
         max: 200,
         ttl: 1800000, // 30 minutes
-        maxSize: 10 * 1024 * 1024 // 10MB
+        maxSize: 10 * 1024 * 1024, // 10MB
       },
       threads: {
         max: 300,
         ttl: 3600000, // 1 hour
-        updateAgeOnGet: true
+        updateAgeOnGet: true,
       },
       enableMetrics: true,
-      globalMemoryLimit: 100 * 1024 * 1024 // 100MB
+      globalMemoryLimit: 100 * 1024 * 1024, // 100MB
     };
 
     mockDependencies = {
       clientManager: {
         getBotClient: jest.fn(),
         getUserClient: jest.fn(),
-        getClientForOperation: jest.fn()
+        getClientForOperation: jest.fn(),
       },
       rateLimitService: {
         trackRequest: jest.fn(),
-        getMetrics: jest.fn()
+        getMetrics: jest.fn(),
       },
       requestHandler: {
-        validateInput: (<T>(schema: unknown, input: unknown): T => input as T) as jest.MockedFunction<any>,
-        handleRequest: (async <T>(fn: () => Promise<T>) => await fn()) as any
+        validateInput: (<T>(schema: unknown, input: unknown): T =>
+          input as T) as jest.MockedFunction<any>,
+        handleRequest: (async <T>(fn: () => Promise<T>) => await fn()) as any,
       },
       userService: {
         getUser: (async (userId: string) => ({ id: userId })) as any,
-        getUserDisplayName: (async (userId: string) => `User-${userId}`) as any
+        getUserDisplayName: (async (userId: string) => `User-${userId}`) as any,
       },
       config: {
         botToken: 'xoxb-test',
         userToken: 'xoxp-test',
-        enableRateLimit: true
-      }
+        enableRateLimit: true,
+      },
     };
   });
 
@@ -127,7 +128,7 @@ describe('Cache Service Integration', () => {
 
     it('should validate configuration on creation', () => {
       const invalidConfig = { ...mockConfig, channels: { max: -1, ttl: 0, updateAgeOnGet: true } };
-      
+
       expect(() => {
         CacheServiceFactory.create(invalidConfig, mockDependencies);
       }).toThrow('Invalid channels cache configuration');
@@ -152,7 +153,7 @@ describe('Cache Service Integration', () => {
 
     it('should initialize all cache instances', async () => {
       await expect(cacheService.initialize()).resolves.not.toThrow();
-      
+
       // Verify all cache instances are accessible after initialization
       expect(cacheService.getChannelCache()).toBeDefined();
       expect(cacheService.getUserCache()).toBeDefined();
@@ -163,7 +164,7 @@ describe('Cache Service Integration', () => {
 
     it('should setup metrics collection if enabled', async () => {
       await cacheService.initialize();
-      
+
       const metrics = cacheService.getMetrics();
       expect(metrics).toBeDefined();
       expect(metrics.global).toBeDefined();
@@ -176,7 +177,7 @@ describe('Cache Service Integration', () => {
 
     it('should apply global memory limits', async () => {
       await cacheService.initialize();
-      
+
       const metrics = cacheService.getMetrics();
       expect(typeof metrics.global.totalMemoryUsage).toBe('number');
       expect(metrics.global.totalMemoryUsage).toBeGreaterThanOrEqual(0);
@@ -200,7 +201,7 @@ describe('Cache Service Integration', () => {
       expect(searchCache).toBeDefined();
       expect(fileCache).toBeDefined();
       expect(threadCache).toBeDefined();
-      
+
       // Verify they are different instances
       expect(channelCache).not.toBe(userCache);
       expect(userCache).not.toBe(fileCache);
@@ -210,19 +211,19 @@ describe('Cache Service Integration', () => {
 
     it('should list all cache instances with metadata', () => {
       const instances = cacheService.getCacheInstances();
-      
+
       expect(instances).toBeInstanceOf(Array);
       expect(instances).toHaveLength(5);
-      
-      const instanceNames = instances.map(i => i.name);
+
+      const instanceNames = instances.map((i) => i.name);
       expect(instanceNames).toContain('channels');
       expect(instanceNames).toContain('users');
       expect(instanceNames).toContain('search');
       expect(instanceNames).toContain('files');
       expect(instanceNames).toContain('threads');
-      
+
       // Check metadata structure
-      instances.forEach(instance => {
+      instances.forEach((instance) => {
         expect(instance).toHaveProperty('name');
         expect(instance).toHaveProperty('type');
         expect(instance).toHaveProperty('config');
@@ -235,11 +236,11 @@ describe('Cache Service Integration', () => {
     it('should isolate cache instances from each other', async () => {
       const channelCache = cacheService.getChannelCache();
       const userCache = cacheService.getUserCache();
-      
+
       // Set data in different caches
       channelCache.set('test-channel', { name: 'Test Channel' });
       userCache.set('test-user', { name: 'Test User' });
-      
+
       // Verify isolation
       expect(channelCache.get('test-channel')).toEqual({ name: 'Test Channel' });
       expect(channelCache.get('test-user')).toBeUndefined();
@@ -255,13 +256,13 @@ describe('Cache Service Integration', () => {
 
     it('should invalidate related entries across all caches by channel', async () => {
       const channelId = 'C1234567890';
-      
+
       // Set up test data
       const channelCache = cacheService.getChannelCache();
       channelCache.set(channelId, { name: 'Test Channel' });
-      
+
       const invalidatedCount = await cacheService.invalidateByChannel(channelId);
-      
+
       expect(typeof invalidatedCount).toBe('number');
       expect(invalidatedCount).toBeGreaterThanOrEqual(0);
       expect(channelCache.get(channelId)).toBeUndefined();
@@ -269,13 +270,13 @@ describe('Cache Service Integration', () => {
 
     it('should invalidate related entries across all caches by user', async () => {
       const userId = 'U1234567890';
-      
+
       // Set up test data
       const userCache = cacheService.getUserCache();
       userCache.set(userId, { name: 'Test User' });
-      
+
       const invalidatedCount = await cacheService.invalidateByUser(userId);
-      
+
       expect(typeof invalidatedCount).toBe('number');
       expect(invalidatedCount).toBeGreaterThanOrEqual(0);
       expect(userCache.get(userId)).toBeUndefined();
@@ -284,16 +285,16 @@ describe('Cache Service Integration', () => {
     it('should return count of total invalidated entries', async () => {
       const channelId = 'C1234567890';
       const userId = 'U1234567890';
-      
+
       // Set up test data in multiple caches
       const channelCache = cacheService.getChannelCache();
       const userCache = cacheService.getUserCache();
       channelCache.set(channelId, { name: 'Test Channel' });
       userCache.set(userId, { name: 'Test User' });
-      
+
       const channelInvalidated = await cacheService.invalidateByChannel(channelId);
       const userInvalidated = await cacheService.invalidateByUser(userId);
-      
+
       expect(channelInvalidated).toBeGreaterThanOrEqual(0);
       expect(userInvalidated).toBeGreaterThanOrEqual(0);
     });
@@ -303,12 +304,12 @@ describe('Cache Service Integration', () => {
       const channelId = 'C1234567890';
       const channelCache = cacheService.getChannelCache();
       const threadCache = cacheService.getThreadCache();
-      
+
       channelCache.set(channelId, { name: 'Test Channel' });
       threadCache.set(`thread:${channelId}:T123`, { text: 'Test Thread' });
-      
+
       const invalidatedCount = await cacheService.invalidateByChannel(channelId);
-      
+
       // Should have invalidated entries from multiple caches
       expect(invalidatedCount).toBeGreaterThanOrEqual(1);
       expect(channelCache.get(channelId)).toBeUndefined();
@@ -317,12 +318,15 @@ describe('Cache Service Integration', () => {
 
   describe('Integrated Metrics and Monitoring', () => {
     beforeEach(() => {
-      cacheService = CacheServiceFactory.create({ ...mockConfig, enableMetrics: true }, mockDependencies);
+      cacheService = CacheServiceFactory.create(
+        { ...mockConfig, enableMetrics: true },
+        mockDependencies
+      );
     });
 
     it('should aggregate metrics across all cache instances', () => {
       const metrics = cacheService.getMetrics();
-      
+
       expect(metrics).toBeDefined();
       expect(metrics).toHaveProperty('channels');
       expect(metrics).toHaveProperty('users');
@@ -330,7 +334,7 @@ describe('Cache Service Integration', () => {
       expect(metrics).toHaveProperty('files');
       expect(metrics).toHaveProperty('threads');
       expect(metrics).toHaveProperty('global');
-      
+
       expect(metrics.global).toHaveProperty('totalMemoryUsage');
       expect(metrics.global).toHaveProperty('totalHits');
       expect(metrics.global).toHaveProperty('totalMisses');
@@ -340,27 +344,27 @@ describe('Cache Service Integration', () => {
     it('should track global memory usage', async () => {
       const channelCache = cacheService.getChannelCache();
       const userCache = cacheService.getUserCache();
-      
+
       // Add some data to caches
       channelCache.set('C123', { name: 'Test Channel', members: 100 });
       userCache.set('U123', { name: 'Test User', profile: { email: 'test@example.com' } });
-      
+
       const metrics = cacheService.getMetrics();
-      
+
       expect(typeof metrics.global.totalMemoryUsage).toBe('number');
       expect(metrics.global.totalMemoryUsage).toBeGreaterThanOrEqual(0);
     });
 
     it('should calculate overall hit rates', async () => {
       const channelCache = cacheService.getChannelCache();
-      
+
       // Generate some hits and misses
       channelCache.set('C123', { name: 'Test Channel' });
       channelCache.get('C123'); // Hit
       channelCache.get('C999'); // Miss
-      
+
       const metrics = cacheService.getMetrics();
-      
+
       expect(typeof metrics.global.overallHitRate).toBe('number');
       expect(metrics.global.overallHitRate).toBeGreaterThanOrEqual(0);
       expect(metrics.global.overallHitRate).toBeLessThanOrEqual(100);
@@ -370,13 +374,13 @@ describe('Cache Service Integration', () => {
 
     it('should identify performance bottlenecks', async () => {
       const instances = cacheService.getCacheInstances();
-      
+
       // Check that we can identify which caches have poor performance
-      instances.forEach(instance => {
+      instances.forEach((instance) => {
         expect(instance.metrics).toBeDefined();
         expect(typeof instance.memoryUsage).toBe('number');
       });
-      
+
       const metrics = cacheService.getMetrics();
       expect(metrics.global.overallHitRate).toBeGreaterThanOrEqual(0);
     });
@@ -387,7 +391,7 @@ describe('Cache Service Integration', () => {
       cacheService = CacheServiceFactory.create(mockConfig, mockDependencies);
 
       await expect(cacheService.shutdown()).resolves.not.toThrow();
-      
+
       // Verify all caches are cleared after shutdown
       const metrics = cacheService.getMetrics();
       expect(metrics.channels.size).toBe(0);
@@ -400,7 +404,7 @@ describe('Cache Service Integration', () => {
       cacheService = CacheServiceFactory.create(mockConfig, mockDependencies);
 
       await expect(cacheService.performMaintenance()).resolves.not.toThrow();
-      
+
       // After maintenance, service should still be functional
       expect(cacheService.getChannelCache()).toBeDefined();
       expect(cacheService.getUserCache()).toBeDefined();
@@ -408,7 +412,7 @@ describe('Cache Service Integration', () => {
 
     it('should clear all caches', async () => {
       cacheService = CacheServiceFactory.create(mockConfig, mockDependencies);
-      
+
       // Add some test data
       const channelCache = cacheService.getChannelCache();
       const userCache = cacheService.getUserCache();
@@ -416,11 +420,11 @@ describe('Cache Service Integration', () => {
       userCache.set('U123', { name: 'User' });
 
       await expect(cacheService.clearAll()).resolves.not.toThrow();
-      
+
       // Verify all data is cleared
       expect(channelCache.get('C123')).toBeUndefined();
       expect(userCache.get('U123')).toBeUndefined();
-      
+
       const metrics = cacheService.getMetrics();
       expect(metrics.channels.size).toBe(0);
       expect(metrics.users.size).toBe(0);
@@ -501,7 +505,7 @@ describe('Cache Performance Monitoring', () => {
       const benchmarkId = monitor.startBenchmark('cache-get');
       expect(typeof benchmarkId).toBe('string');
       expect(benchmarkId).toContain('cache-get');
-      
+
       // End the benchmark and get duration
       const duration = monitor.endBenchmark(benchmarkId);
       expect(typeof duration).toBe('number');
@@ -522,7 +526,7 @@ describe('Cache Performance Monitoring', () => {
       // Create some benchmark data
       const benchmarkId = monitor.startBenchmark('test-operation');
       const _duration = monitor.endBenchmark(benchmarkId);
-      
+
       const report = monitor.getPerformanceReport();
       expect(report).toBeDefined();
       expect(typeof report.averageResponseTime).toBe('number');
@@ -548,7 +552,7 @@ describe('Cache Performance Monitoring', () => {
 
     it('should maintain target hit ratios', async () => {
       // Cache hit ratio should be above 70% under normal conditions
-      const targetHitRatio = 0.70;
+      const targetHitRatio = 0.7;
       // Will implement hit ratio assertions
       expect(targetHitRatio).toBeGreaterThan(0);
     });

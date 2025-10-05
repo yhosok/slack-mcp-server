@@ -17,7 +17,11 @@ import type { SlackMessage, ThreadParticipant } from '../slack/types/index.js';
 import type { UrgencyConfig } from '../slack/analysis/thread/types.js';
 
 // Test helper to create mock messages
-function createMockMessage(text: string, user: string = 'user1', ts: string = '1699564800.000100'): SlackMessage {
+function createMockMessage(
+  text: string,
+  user: string = 'user1',
+  ts: string = '1699564800.000100'
+): SlackMessage {
   return {
     type: 'message',
     user,
@@ -238,7 +242,10 @@ describe('Enhanced Urgency Calculation', () => {
 
     test('should handle multiple time keywords', () => {
       const timeKeywords = DEFAULT_URGENCY_CONFIG.timeBasedKeywords || [];
-      const result = detectTimeBasedUrgency('Need this by deadline 本日中 before meeting', timeKeywords);
+      const result = detectTimeBasedUrgency(
+        'Need this by deadline 本日中 before meeting',
+        timeKeywords
+      );
 
       expect(result.hasTimeBasedUrgency).toBe(true);
       expect(result.timeKeywords.length).toBeGreaterThanOrEqual(2);
@@ -283,9 +290,7 @@ describe('Enhanced Urgency Calculation', () => {
     });
 
     test('should combine all scoring factors', () => {
-      const messages = [
-        createMockMessage('This is urgent!!! Need by deadline 本日中 緊急対応'),
-      ];
+      const messages = [createMockMessage('This is urgent!!! Need by deadline 本日中 緊急対応')];
 
       const result = calculateUrgencyScore(messages);
 
@@ -299,8 +304,10 @@ describe('Enhanced Urgency Calculation', () => {
 
     test('should respect maximum score cap of 1.0', () => {
       // Create a highly urgent message with all factors
-      const messages = Array.from({ length: 25 }, (_, i) => 
-        createMockMessage(`URGENT!!! CRITICAL!!! 緊急対応!!! 大至急!!! deadline 本日中 急ぎ!!! Message ${i}`)
+      const messages = Array.from({ length: 25 }, (_, i) =>
+        createMockMessage(
+          `URGENT!!! CRITICAL!!! 緊急対応!!! 大至急!!! deadline 本日中 急ぎ!!! Message ${i}`
+        )
       );
 
       const result = calculateUrgencyScore(messages);
@@ -365,7 +372,9 @@ describe('Enhanced Urgency Calculation', () => {
     });
 
     test('should include all enhancements in comprehensive explanation', () => {
-      const messages = [createMockMessage('URGENT!!! Need by deadline 本日中 before meeting 緊急対応!!!')];
+      const messages = [
+        createMockMessage('URGENT!!! Need by deadline 本日中 before meeting 緊急対応!!!'),
+      ];
       const urgencyScore = calculateUrgencyScore(messages);
       const importanceScore = calculateImportanceScore(messages, mockParticipants);
 
